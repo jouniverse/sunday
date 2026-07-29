@@ -1,0 +1,16 @@
+/*
+ * IBM Plex, bundled locally.
+ *
+ * These are imported from @fontsource rather than fetched from a CDN: the app is
+ * a desktop tool that must render identically behind a corporate firewall and
+ * must not make a network request just to draw its own chrome.
+ *
+ * Only the weights the design system actually uses are imported, and only the
+ * Latin subset, which keeps the bundle small.
+ */
+
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-500.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";

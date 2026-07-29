@@ -1,0 +1,392 @@
+/**
+ * Right-hand inspector for the selected site.
+ *
+ * This is where a drawn boundary turns into engineering: geometry, then resource,
+ * then screening flags, then a route into the design workflow. Every number shows
+ * where it came from, and every action says what it will do before it does it.
+ */
+
+import { useState } from "react";
+import { useDrawStore } from "@/core/map/draw/store";
+import { useMapStore } from "@/core/store/mapStore";
+import { useProjectStore } from "@/core/store/projectStore";
+import { useSettingsStore } from "@/core/store/settingsStore";
+import type { Site } from "@/core/store/siteStore";
+import { useSiteStore } from "@/core/store/siteStore";
+import { useUiStore } from "@/core/store/uiStore";
+import { Button, IconButton, Input } from "@/design-system/controls";
+import {
+  Callout,
+  EmptyState,
+  ParamList,
+  ProvenanceBadge,
+  SectionLabel,
+} from "@/design-system/data";
+import { CrosshairIcon, PolygonIcon, ReportIcon, SunIcon, TrashIcon } from "@/design-system/icons";
+import type { TechnologyProfile } from "@/domain/siting/nudges";
+import { evaluateSite, summariseNudges } from "@/domain/siting/nudges";
+import { formatCoordinates, formatNumber, scaleArea, scaleDistance } from "@/domain/units";
+import { generateSiteReport } from "@/services/solar/orchestrator";
+import type { SolarProvider } from "@/services/solar/types";
+import { NudgeList } from "./NudgeList";
+import "./inspector.css";
+
+export function SiteInspector() {
+  const sites = useSiteStore((state) => state.sites);
+  const selectedId = useSiteStore((state) => state.selectedSiteId);
+  const selectSite = useSiteStore((state) => state.selectSite);
+  const site = sites.find((entry) => entry.id === selectedId) ?? null;
+
+  if (sites.length === 0) {
+    return (
+      <EmptyState
+        icon={<PolygonIcon size={28} />}
+        title="No sites yet"
+        body="Draw a boundary with the Draw site tool, or mark a location, to start a resource report and a system design."
+      />
+    );
+  }
+
+  if (!site) {
+    return (
+      <div>
+        <SectionLabel>Sites</SectionLabel>
+        {sites.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            className="site-list__item"
+            onClick={() => selectSite(entry.id)}
+          >
+            <span className="site-list__name">{entry.name}</span>
+            <span className="site-list__meta mono">
+              {entry.areaM2 > 0
+                ? `${scaleArea(entry.areaM2).value} ${scaleArea(entry.areaM2).unit}`
+                : "point"}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return <SiteDetail site={site} />;
+}
+
+function SiteDetail({ site }: { site: Site }) {
+  const renameSite = useSiteStore((state) => state.renameSite);
+  const removeSite = useSiteStore((state) => state.removeSite);
+  const selectSite = useSiteStore((state) => state.selectSite);
+  const setResource = useSiteStore((state) => state.setResource);
+  const setNudges = useSiteStore((state) => state.setNudges);
+  const setKind = useSiteStore((state) => state.setKind);
+  const flyTo = useMapStore((state) => state.flyTo);
+  const setView = useUiStore((state) => state.setView);
+  const notify = useUiStore((state) => state.notify);
+  const startBusy = useUiStore((state) => state.startBusy);
+  const endBusy = useUiStore((state) => state.endBusy);
+  const markDirty = useProjectStore((state) => state.markDirty);
+  const beginEdit = useDrawStore((state) => state.beginEdit);
+  const useKey = useSettingsStore((state) => state.useKey);
+
+  const [technology, setTechnology] = useState<TechnologyProfile>(
+    site.kind === "rooftop" ? "rooftop" : "pv_fixed",
+  );
+  const [fetching, setFetching] = useState(false);
+
+  const area = scaleArea(site.areaM2);
+  const perimeter = scaleDistance(site.perimeterM);
+
+  /** Fans the location out to the free providers and stores the consensus. */
+  async function fetchResource() {
+    setFetching(true);
+    startBusy("resource", "Fetching solar resource");
+    try {
+      const providers: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
+      const report = await generateSiteReport({
+        latitude: site.centre[1],
+        longitude: site.centre[0],
+        providers,
+        getApiKey: (provider) => useKey(provider),
+        capacityKwDc: 1,
+        optimiseTilt: true,
+      });
+
+      const consensus = report.consensus;
+      if (!consensus.ghiKwhM2Year) {
+        notify({
+          tone: "warning",
+          message: "No source returned irradiation for this location",
+          detail: report.outcomes
+            .filter((outcome) => outcome.status !== "ok")
+            .map((outcome) => `${outcome.provider}: ${outcome.reason ?? ""}`)
+            .join(" · "),
+        });
+        return;
+      }
+
+      const primary = report.reports.find(
+        (entry) => entry.provider === consensus.ghiKwhM2Year?.from[0],
+      );
+      setResource(site.id, {
+        ghiKwhM2Year: consensus.ghiKwhM2Year.value,
+        dniKwhM2Year: consensus.dniKwhM2Year?.value,
+        optimalTiltDegrees: consensus.optimalTiltDegrees?.value,
+        meanAirTempC: primary?.meanAirTempC,
+        source: primary?.source ?? "multiple sources",
+        vintage: primary?.vintage,
+        fidelity: primary?.fidelity ?? "modelled",
+        method: consensus.ghiKwhM2Year.note,
+      });
+      markDirty();
+
+      for (const warning of report.warnings) {
+        notify({ tone: "warning", message: warning });
+      }
+      notify({
+        tone: "success",
+        message: `Resource fetched from ${report.reports.length} source${report.reports.length === 1 ? "" : "s"}`,
+      });
+    } catch (error) {
+      notify({
+        tone: "error",
+        message: "Could not fetch the solar resource",
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setFetching(false);
+      endBusy("resource");
+    }
+  }
+
+  /** Runs the screening soft rules over whatever facts are known. */
+  function runScreening() {
+    const nudges = evaluateSite({
+      areaM2: site.areaM2,
+      latitude: site.centre[1],
+      technology,
+      meanSlopeDegrees: site.terrain?.meanSlopeDegrees,
+      aspectDegrees: site.terrain?.aspectDegrees,
+      ghiKwhM2Year: site.resource?.ghiKwhM2Year,
+      dniKwhM2Year: site.resource?.dniKwhM2Year,
+      invalidGeometry: site.ring !== null && !site.geometryValid,
+    });
+    setNudges(site.id, nudges);
+    markDirty();
+
+    const summary = summariseNudges(nudges);
+    notify({
+      tone: summary.blocking > 0 ? "warning" : "info",
+      message:
+        summary.blocking > 0
+          ? `${summary.blocking} blocking issue${summary.blocking === 1 ? "" : "s"} found`
+          : summary.caution > 0
+            ? `${summary.caution} point${summary.caution === 1 ? "" : "s"} to check`
+            : "No obstacles found in the screening checks",
+      detail: summary.disclaimer,
+    });
+  }
+
+  return (
+    <div className="inspector">
+      <div className="inspector__head">
+        <Input
+          value={site.name}
+          aria-label="Site name"
+          onChange={(event) => {
+            renameSite(site.id, event.target.value);
+            markDirty();
+          }}
+        />
+        <IconButton
+          label="Zoom to this site"
+          size="sm"
+          onClick={() => flyTo({ longitude: site.centre[0], latitude: site.centre[1], zoom: 15 })}
+        >
+          <CrosshairIcon size={14} />
+        </IconButton>
+        <IconButton
+          label="Delete this site"
+          size="sm"
+          onClick={() => {
+            removeSite(site.id);
+            selectSite(null);
+            markDirty();
+          }}
+        >
+          <TrashIcon size={14} />
+        </IconButton>
+      </div>
+
+      <SectionLabel>Geometry</SectionLabel>
+      <ParamList
+        rows={[
+          {
+            key: "centre",
+            label: "Centre",
+            value: formatCoordinates(site.centre[1], site.centre[0]),
+          },
+          ...(site.ring
+            ? [
+                {
+                  key: "area",
+                  label: "Area",
+                  value: site.geometryValid ? `${area.value} ${area.unit}` : "invalid",
+                  tone: site.geometryValid ? ("accent" as const) : ("muted" as const),
+                },
+                {
+                  key: "perimeter",
+                  label: "Perimeter",
+                  value: `${perimeter.value} ${perimeter.unit}`,
+                },
+                { key: "corners", label: "Corners", value: String(site.ring.length) },
+              ]
+            : []),
+        ]}
+      />
+
+      {site.ring && !site.geometryValid && (
+        <Callout tone="error">
+          This boundary crosses itself, so it has no defined area. Edit the corners until the
+          outline is simple.
+        </Callout>
+      )}
+
+      {site.ring && (
+        <Button
+          block
+          icon={<PolygonIcon size={13} />}
+          onClick={() =>
+            beginEdit(site.id, {
+              id: site.id,
+              vertices: site.ring as [number, number][],
+              closed: true,
+            })
+          }
+        >
+          Edit boundary
+        </Button>
+      )}
+
+      <SectionLabel>Solar resource</SectionLabel>
+      {site.resource ? (
+        <>
+          <ParamList
+            rows={[
+              {
+                key: "ghi",
+                label: "GHI",
+                value: `${formatNumber(site.resource.ghiKwhM2Year ?? 0, 0)} kWh/m²/yr`,
+                tone: "solar",
+              },
+              ...(site.resource.dniKwhM2Year
+                ? [
+                    {
+                      key: "dni",
+                      label: "DNI",
+                      value: `${formatNumber(site.resource.dniKwhM2Year, 0)} kWh/m²/yr`,
+                    },
+                  ]
+                : []),
+              ...(site.resource.optimalTiltDegrees !== undefined
+                ? [
+                    {
+                      key: "tilt",
+                      label: "Optimal tilt",
+                      value: `${formatNumber(site.resource.optimalTiltDegrees, 1)}°`,
+                      tone: "accent" as const,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+          <ProvenanceBadge
+            fidelity={site.resource.fidelity}
+            source={site.resource.source}
+            vintage={site.resource.vintage}
+            method={site.resource.method}
+          />
+        </>
+      ) : (
+        <Callout tone="note">
+          No resource data yet. Fetching queries PVGIS and NASA POWER, which are free and need no
+          key, plus NREL if you have configured a key.
+        </Callout>
+      )}
+
+      <Button
+        block
+        variant={site.resource ? "secondary" : "primary"}
+        icon={<SunIcon size={13} />}
+        disabled={fetching}
+        onClick={fetchResource}
+      >
+        {fetching ? "Fetching…" : site.resource ? "Refresh resource" : "Fetch solar resource"}
+      </Button>
+
+      <SectionLabel>Screening</SectionLabel>
+      <div className="inspector__technology">
+        {(
+          [
+            ["pv_fixed", "PV fixed"],
+            ["pv_tracker", "PV tracker"],
+            ["csp", "CSP"],
+            ["rooftop", "Rooftop"],
+          ] as Array<[TechnologyProfile, string]>
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className="tool-chip"
+            aria-pressed={technology === value}
+            onClick={() => setTechnology(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <Button block onClick={runScreening}>
+        Run screening checks
+      </Button>
+      <NudgeList nudges={site.nudges} />
+
+      <SectionLabel>Next</SectionLabel>
+      <div className="inspector__actions">
+        <Button block icon={<ReportIcon size={13} />} onClick={() => setView("report")}>
+          Open site report
+        </Button>
+        {site.kind !== "rooftop" && (
+          <Button
+            block
+            onClick={() => {
+              setKind(site.id, "rooftop");
+              markDirty();
+              notify({
+                tone: "info",
+                message: "Marked as rooftop",
+                detail: "Open Design to query Google Solar or pack a drawn roof outline.",
+              });
+            }}
+          >
+            Treat as rooftop
+          </Button>
+        )}
+        <Button
+          block
+          variant="primary"
+          disabled={site.kind !== "rooftop" && (!site.ring || !site.geometryValid)}
+          onClick={() => setView("design")}
+          title={
+            site.kind === "rooftop"
+              ? "Design a rooftop system"
+              : site.ring
+                ? "Design a system for this boundary"
+                : "Greenfield designs need a boundary; mark as rooftop for building-level design"
+          }
+        >
+          Design a system
+        </Button>
+      </div>
+    </div>
+  );
+}

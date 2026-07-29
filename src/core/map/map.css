@@ -1,0 +1,185 @@
+/*
+ * Map canvas and MapLibre overrides.
+ *
+ * MapLibre ships light-themed controls and attribution; the app draws its own in
+ * the design language, so the defaults are hidden rather than restyled.
+ */
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  background: var(--canvas-map);
+}
+
+/* The app provides its own zoom, recentre and attribution surfaces. */
+.map-canvas .maplibregl-ctrl-bottom-right,
+.map-canvas .maplibregl-ctrl-bottom-left,
+.map-canvas .maplibregl-ctrl-top-right,
+.map-canvas .maplibregl-ctrl-top-left {
+  display: none;
+}
+
+.map-canvas canvas {
+  outline: none;
+}
+
+/* --- Map furniture -------------------------------------------------------- */
+
+.map-controls {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.map-controls button {
+  width: var(--control-h);
+  height: var(--control-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+}
+
+.map-controls button:last-child {
+  border-bottom: none;
+}
+
+.map-controls button:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.map-controls button[aria-pressed="true"] {
+  color: var(--primary);
+  background: var(--surface-container-highest);
+}
+
+.scale-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
+.scale-bar__bar {
+  height: 2px;
+  background: var(--on-surface-variant);
+  transition: width var(--motion-fast) var(--easing);
+}
+
+.map-toolbelt {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-default);
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tool-chip:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.tool-chip[aria-pressed="true"] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* --- Live measurement readout, shown while drawing ----------------------- */
+
+.draw-readout {
+  padding: 8px 10px;
+  min-width: 168px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
+.draw-readout__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 2px 0;
+}
+
+.draw-readout__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+.draw-readout__hint {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--outline-variant);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--outline);
+}
+
+.draw-readout__invalid {
+  margin-top: 6px;
+  color: var(--error);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+/* --- Legend -------------------------------------------------------------- */
+
+.map-legend {
+  padding: 8px 10px;
+  min-width: 150px;
+  max-width: 220px;
+}
+
+.map-legend__title {
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  margin-bottom: 6px;
+}
+
+.map-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  padding: 1px 0;
+}
+
+.map-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-xs);
+  flex: 0 0 auto;
+}
+
+.map-legend__units {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--outline);
+}

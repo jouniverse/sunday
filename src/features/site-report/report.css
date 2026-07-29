@@ -1,0 +1,61 @@
+/* Site report: source table, comparisons, monthly chart. */
+
+.report__intro {
+  margin: 0 0 var(--space-3);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+  max-width: 76ch;
+}
+
+.report__actions {
+  display: flex;
+  gap: var(--gap);
+}
+
+.report__units {
+  margin: var(--space-2) 0 0;
+  font-size: 10.5px;
+  color: var(--outline);
+}
+
+.report__method {
+  margin: 0 0 var(--space-2);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--on-surface-variant);
+  max-width: 90ch;
+}
+
+.report__method strong {
+  color: var(--on-surface);
+  font-weight: 500;
+}
+
+/* --- Chart --------------------------------------------------------------- */
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart__legend {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+
+.chart__swatch {
+  width: 10px;
+  height: 3px;
+  border-radius: var(--r-full);
+}

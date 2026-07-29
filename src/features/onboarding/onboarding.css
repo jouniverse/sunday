@@ -1,0 +1,76 @@
+/* First-run setup wizard. */
+
+.onboarding {
+  width: min(720px, 100%);
+}
+
+.onboarding .modal__title {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  color: var(--primary);
+}
+
+.onboarding__progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding__progress-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--outline);
+}
+
+.onboarding__progress-item--current {
+  color: var(--on-surface);
+}
+
+.onboarding__progress-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-sm);
+  font-size: 9.5px;
+  font-family: var(--font-mono);
+}
+
+.onboarding__progress-item--current .onboarding__progress-marker {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.onboarding__title {
+  margin: 0 0 var(--space-2);
+  font: var(--text-title-sm);
+}
+
+.onboarding__body {
+  margin: 0 0 var(--space-4);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+  max-width: 72ch;
+}
+
+.onboarding__unlocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--space-4);
+}
+
+.onboarding__key {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}

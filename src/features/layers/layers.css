@@ -1,0 +1,70 @@
+/* Layer panel: dense rows, provenance cards, opacity sliders. */
+
+.layer-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.layer-row__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.layer-panel__opacity {
+  margin-top: var(--space-2);
+}
+
+.layer-panel__slider {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 4px var(--space-2);
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+}
+
+.layer-panel__slider span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-panel__slider input {
+  flex: 0 0 96px;
+  accent-color: var(--primary);
+}
+
+.layer-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin-top: var(--space-3);
+}
+
+.layer-detail__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: var(--space-2);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+  background: var(--surface-container);
+}
+
+.layer-detail__title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.layer-detail__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}

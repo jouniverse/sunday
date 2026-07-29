@@ -1,0 +1,112 @@
+/*
+ * Base document styles.
+ *
+ * Everything here is app-shell behaviour: a fixed, non-scrolling window with a
+ * map filling the middle. Component styling lives with its component.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--surface);
+  color: var(--on-surface);
+  font: var(--text-body-sm);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* A desktop tool: no rubber-band scrolling, no text selection on chrome. */
+  overscroll-behavior: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* Values the user may want to copy out for a report must stay selectable. */
+.selectable,
+input,
+textarea {
+  user-select: text;
+  cursor: text;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Focus is visible, but only for keyboard users; a mouse click should not ring. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--secondary);
+  outline-offset: 1px;
+}
+
+/* Monospace numerics: tabular figures so columns of measurements line up. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-mono);
+}
+
+/* Section and metadata headers. */
+.label {
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Scrollbars: present but quiet, matching the flat-technical language. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-container-highest);
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline-variant);
+  background-clip: content-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,128 @@
+"""HTTP surface of the solar engine.
+
+Binds to the loopback interface only. When Rust launches it, a per-launch bearer
+token is required so that nothing else running on the machine can drive it.
+"""
+
+from __future__ import annotations
+
+import os
+
+import pvlib
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+
+from . import __version__
+from .engine import (
+    EngineError,
+    degradation,
+    find_optimal_tilt,
+    run_model_chain,
+    sun_path,
+    transpose,
+)
+from .models import (
+    DegradationRequest,
+    DegradationResponse,
+    ModelChainRequest,
+    ModelChainResponse,
+    OptimalTiltRequest,
+    OptimalTiltResponse,
+    SunPathRequest,
+    SunPathResponse,
+    TransposeRequest,
+    TransposeResponse,
+)
+
+TOKEN_ENV = "SUNDAY_ENGINE_TOKEN"
+
+
+def require_token(request: Request) -> None:
+    """Rejects requests without the launch token, when one was configured.
+
+    Started by hand for development there is no token and local calls are
+    allowed; the socket is still loopback-only either way.
+    """
+    expected = os.environ.get(TOKEN_ENV)
+    if not expected:
+        return
+    header = request.headers.get("authorization", "")
+    presented = header.removeprefix("Bearer ").strip()
+    if presented != expected:
+        raise HTTPException(status_code=401, detail="invalid or missing engine token")
+
+
+app = FastAPI(
+    title="Sunday solar engine",
+    version=__version__,
+    summary="pvlib-backed PV modelling for the Sunday desktop app",
+)
+
+
+@app.exception_handler(EngineError)
+async def engine_error_handler(_request: Request, exc: EngineError) -> JSONResponse:
+    # A request pvlib cannot answer is the caller's problem to fix, so it is a
+    # 422 with the reason, not a 500.
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Liveness plus versions. Rust polls this while starting the sidecar."""
+    return {
+        "status": "ok",
+        "engine_version": __version__,
+        "pvlib_version": pvlib.__version__,
+    }
+
+
+@app.post("/model-chain", response_model=ModelChainResponse)
+def post_model_chain(
+    request: ModelChainRequest, _: None = Depends(require_token)
+) -> ModelChainResponse:
+    return run_model_chain(request)
+
+
+@app.post("/optimal-tilt", response_model=OptimalTiltResponse)
+def post_optimal_tilt(
+    request: OptimalTiltRequest, _: None = Depends(require_token)
+) -> OptimalTiltResponse:
+    return find_optimal_tilt(request)
+
+
+@app.post("/sun-path", response_model=SunPathResponse)
+def post_sun_path(
+    request: SunPathRequest, _: None = Depends(require_token)
+) -> SunPathResponse:
+    return sun_path(request)
+
+
+@app.post("/transpose", response_model=TransposeResponse)
+def post_transpose(
+    request: TransposeRequest, _: None = Depends(require_token)
+) -> TransposeResponse:
+    return transpose(request)
+
+
+@app.post("/degradation", response_model=DegradationResponse)
+def post_degradation(
+    request: DegradationRequest, _: None = Depends(require_token)
+) -> DegradationResponse:
+    return degradation(request)
+
+
+def main() -> None:
+    """Entry point for the packaged sidecar binary."""
+    import argparse
+
+    import uvicorn
+
+    parser = argparse.ArgumentParser(description="Sunday solar engine")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8787)
+    args = parser.parse_args()
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
+
+
+if __name__ == "__main__":
+    main()

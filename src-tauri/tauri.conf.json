@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Sunday",
+  "version": "0.1.0",
+  "identifier": "app.sunday.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Sunday",
+        "width": 1600,
+        "height": 1000,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "theme": "Dark",
+        "titleBarStyle": "Visible",
+        "backgroundColor": "#17130C"
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "img-src": "'self' data: blob: asset: http://asset.localhost https://*",
+        "worker-src": "'self' blob:",
+        "connect-src": "'self' ipc: http://ipc.localhost http://127.0.0.1:8787 https://re.jrc.ec.europa.eu https://solar.googleapis.com https://maps.googleapis.com https://developer.nrel.gov https://power.larc.nasa.gov https://nominatim.openstreetmap.org https://overpass-api.de https://*.basemaps.cartocdn.com https://tiles.stadiamaps.com https://*.tile.openstreetmap.org https://services.arcgisonline.com https://storage.googleapis.com"
+      },
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**", "$HOME/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "13.0"
+    },
+    "copyright": "Sunday",
+    "category": "Productivity",
+    "shortDescription": "Solar power system design and yield estimation",
+    "longDescription": "Sunday designs solar power systems from rooftop arrays to utility-scale plants on a geospatial core, and estimates their long-term energy yield from public solar resource data."
+  }
+}

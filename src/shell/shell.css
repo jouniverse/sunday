@@ -1,0 +1,452 @@
+/*
+ * App shell chrome.
+ *
+ * A fixed, non-scrolling frame:
+ *   top bar -> optional subbar -> [left panel | canvas | right panel] -> status bar
+ * The canvas is the only element that grows, because the map is the point.
+ */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* --- Top bar -------------------------------------------------------------- */
+
+.topbar {
+  flex: 0 0 auto;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 0 var(--pad);
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.topbar__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  font: var(--text-body-md);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.topbar__mark {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.topbar__tabs {
+  display: flex;
+  gap: var(--space-1);
+  height: 100%;
+}
+
+.topbar__tab {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 var(--gutter);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--on-surface-variant);
+  font: var(--text-body-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--motion-fast) var(--easing);
+}
+
+.topbar__tab:hover {
+  color: var(--on-surface);
+}
+
+.topbar__tab--active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.topbar__spacer {
+  flex: 1;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* --- Subbar --------------------------------------------------------------- */
+
+.subbar {
+  flex: 0 0 auto;
+  height: var(--subbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--pad);
+  padding: 0 var(--pad);
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.breadcrumb__current {
+  color: var(--on-surface);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breadcrumb__sep {
+  color: var(--outline);
+}
+
+.subbar__spacer {
+  flex: 1;
+}
+
+/* --- Workspace ------------------------------------------------------------ */
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container-low);
+  overflow: hidden;
+  transition: width var(--motion-base) var(--easing);
+}
+
+.panel--left {
+  width: var(--sidebar-expanded);
+  border-right: 1px solid var(--outline-variant);
+}
+
+.panel--left.panel--collapsed {
+  width: var(--sidebar-rail);
+}
+
+.panel--right {
+  width: var(--sidebar-right);
+  border-left: 1px solid var(--outline-variant);
+}
+
+.panel--right.panel--collapsed {
+  width: 0;
+  border-left: none;
+}
+
+.panel__head {
+  flex: 0 0 auto;
+  height: var(--panel-head-h);
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0 var(--gutter);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.panel__title {
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.panel--collapsed .panel__title {
+  display: none;
+}
+
+.panel__spacer {
+  flex: 1;
+}
+
+.panel__body {
+  flex: 1;
+  padding: var(--gap);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.panel--collapsed .panel__body {
+  padding: var(--gap) 0;
+}
+
+/* --- Canvas --------------------------------------------------------------- */
+
+.canvas {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+  background: var(--canvas-map);
+}
+
+/* Floating map furniture: controls, scale bar, legends, tool chips. */
+.canvas__overlay {
+  position: absolute;
+  z-index: var(--z-map-overlay);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+}
+
+.canvas__overlay--bottom-right {
+  bottom: 14px;
+  right: 14px;
+}
+
+.canvas__overlay--bottom-left {
+  bottom: 14px;
+  left: 14px;
+}
+
+.canvas__overlay--top-left {
+  top: 12px;
+  left: 12px;
+}
+
+.canvas__overlay--top-right {
+  top: 12px;
+  right: 12px;
+}
+
+/* --- Scrollable content view (report, analytics, settings) ---------------- */
+
+.content-view {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+.content-view__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-6) 64px;
+}
+
+.content-view__title {
+  font: var(--text-headline-md);
+  letter-spacing: var(--tracking-headline);
+  margin: 0 0 var(--space-2);
+}
+
+.content-view__lede {
+  font: var(--text-body-md);
+  color: var(--on-surface-variant);
+  margin: 0 0 var(--space-6);
+  max-width: 78ch;
+}
+
+.card {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-lg);
+  background: var(--surface-container-low);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.card__title {
+  font: var(--text-title-sm);
+  margin: 0;
+}
+
+.card__grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* --- Status bar ----------------------------------------------------------- */
+
+.statusbar {
+  flex: 0 0 auto;
+  height: var(--status-h);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  background: var(--surface-container-lowest);
+  border-top: 1px solid var(--outline-variant);
+  font-size: 10.5px;
+  color: var(--on-surface-variant);
+}
+
+.statusbar__spacer {
+  flex: 1;
+}
+
+.statusbar__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.statusbar__button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--on-surface-variant);
+  font: inherit;
+  cursor: pointer;
+}
+
+.statusbar__button:hover {
+  color: var(--on-surface);
+}
+
+.statusbar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.statusbar__dot--ok {
+  background: var(--secondary);
+}
+
+.statusbar__dot--warn {
+  background: var(--warning);
+}
+
+.statusbar__dot--error {
+  background: var(--error);
+}
+
+.statusbar__dot--idle {
+  background: var(--outline);
+}
+
+/* --- Layer rows (left panel) --------------------------------------------- */
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--gap);
+  border-radius: var(--r-md);
+}
+
+.layer-row:hover {
+  background: var(--surface-container-high);
+}
+
+.layer-row__icon {
+  flex: 0 0 auto;
+  color: var(--on-surface-variant);
+}
+
+.layer-row--on .layer-row__icon {
+  color: var(--primary);
+}
+
+.layer-row__name {
+  flex: 1;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-row__meta {
+  font-size: 10px;
+  color: var(--outline);
+}
+
+.panel--collapsed .layer-row {
+  justify-content: center;
+  padding: var(--gap) 0;
+}
+
+.panel--collapsed .layer-row__name,
+.panel--collapsed .layer-row__actions,
+.panel--collapsed .ds-switch,
+.panel--collapsed .ds-section__label {
+  display: none;
+}
+
+/* --- Modal --------------------------------------------------------------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: color-mix(in srgb, #000 62%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.modal {
+  width: min(680px, 100%);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.modal__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.modal__title {
+  font: var(--text-title-sm);
+  margin: 0;
+}
+
+.modal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.modal__foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}

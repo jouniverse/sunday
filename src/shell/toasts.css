@@ -1,0 +1,70 @@
+/* Notifications, anchored above the status bar so they never cover it. */
+
+.toasts {
+  position: fixed;
+  bottom: calc(var(--status-h) + var(--space-3));
+  right: var(--space-3);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-width: 380px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap);
+  padding: 10px 8px 10px 12px;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-left-width: 2px;
+  border-radius: var(--r-default);
+  animation: toast-in var(--motion-base) var(--easing);
+}
+
+.toast__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.toast__message {
+  font-size: 12.5px;
+  color: var(--on-surface);
+}
+
+.toast__detail {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--on-surface-variant);
+}
+
+.toast--info {
+  border-left-color: var(--secondary);
+}
+
+.toast--success {
+  border-left-color: var(--success);
+}
+
+.toast--warning {
+  border-left-color: var(--warning);
+}
+
+.toast--error {
+  border-left-color: var(--error);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

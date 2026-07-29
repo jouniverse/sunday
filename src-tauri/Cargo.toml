@@ -1,0 +1,42 @@
+[package]
+name = "sunday"
+version = "0.1.0"
+description = "Sunday — solar power system design and long-term yield estimation"
+authors = ["Sunday"]
+edition = "2021"
+rust-version = "1.85"
+
+[lib]
+name = "sunday_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = ["codegen"] }
+
+[dependencies]
+anyhow = "1.0.104"
+dirs = "6.0.0"
+geo = "0.30.0"
+lru = "0.16.4"
+rand = "0.9.5"
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls", "gzip", "json"] }
+rusqlite = { version = "0.40.1", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tauri = { version = "2.11.5", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2.7.2"
+tauri-plugin-opener = "2.5.4"
+thiserror = "2.0.19"
+tiff = "0.11.0"
+tokio = { version = "1.53.1", features = ["process", "time", "rt", "macros", "io-util"] }
+
+[features]
+# Tauri's default release profile settings live in tauri.conf.json.
+default = []
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

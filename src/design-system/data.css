@@ -1,0 +1,400 @@
+/*
+ * Data-display primitives: parameter lists, KPI stats, data grids, provenance
+ * badges, envelope sliders, callouts.
+ *
+ * These carry most of the app's information density, so their spacing is tight
+ * and their numerics are always tabular.
+ */
+
+/* --- Parameter list ------------------------------------------------------- */
+
+.ds-params {
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin: var(--space-1) 0 var(--space-3);
+}
+
+.ds-params__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 9px 10px;
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.ds-params__row:last-child {
+  border-bottom: none;
+}
+
+.ds-params__key {
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ds-params__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ds-params__value--accent {
+  color: var(--secondary);
+}
+
+.ds-params__value--solar {
+  color: var(--primary);
+}
+
+.ds-params__value--muted {
+  color: var(--on-surface-variant);
+}
+
+/* --- Stat cluster (subbar KPIs) ------------------------------------------- */
+
+.ds-stats {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.ds-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.ds-stat__label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.ds-stat__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ds-stat__unit {
+  font-size: 10.5px;
+  color: var(--on-surface-variant);
+  margin-left: 2px;
+}
+
+.ds-stat--accent .ds-stat__value {
+  color: var(--secondary);
+}
+
+.ds-stat--solar .ds-stat__value {
+  color: var(--primary);
+}
+
+/* --- Data grid ------------------------------------------------------------ */
+
+.ds-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ds-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 0 8px;
+  height: var(--row-h);
+  background: var(--surface-container-high);
+  border-bottom: 1px solid var(--outline-variant);
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.ds-grid td {
+  height: var(--row-h);
+  padding: 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 55%, transparent);
+  white-space: nowrap;
+}
+
+/* Zebra striping: a very subtle graphite shift, purely to aid horizontal scanning. */
+.ds-grid tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--surface-container) 55%, transparent);
+}
+
+.ds-grid tbody tr:hover td {
+  background: var(--surface-container-high);
+}
+
+.ds-grid tbody tr[aria-selected="true"] td {
+  background: color-mix(in srgb, var(--secondary) 14%, transparent);
+}
+
+.ds-grid td.num,
+.ds-grid th.num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ds-grid--clickable tbody tr {
+  cursor: pointer;
+}
+
+/* --- Provenance badge ----------------------------------------------------- */
+
+.ds-provenance {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-sm);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.ds-provenance__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.ds-provenance__dot--measured {
+  background: var(--fidelity-measured);
+}
+
+.ds-provenance__dot--modelled {
+  background: var(--fidelity-modelled);
+}
+
+.ds-provenance__dot--estimated {
+  background: var(--fidelity-estimated);
+}
+
+.ds-provenance__dot--unknown {
+  background: var(--fidelity-unknown);
+}
+
+/* --- Envelope slider ------------------------------------------------------ */
+
+/*
+ * The core interaction of the design workflow: automation supplies a feasible
+ * range and a recommended band, and the designer moves within it. The band is
+ * drawn behind the track so leaving it is visible but never blocked.
+ */
+.ds-envelope {
+  position: relative;
+  height: 22px;
+  margin-top: var(--space-2);
+}
+
+.ds-envelope__track {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--surface-container-highest);
+  border-radius: var(--r-full);
+}
+
+.ds-envelope__band {
+  position: absolute;
+  top: 7px;
+  height: 7px;
+  background: color-mix(in srgb, var(--secondary) 28%, transparent);
+  border-left: 1px solid var(--secondary-container);
+  border-right: 1px solid var(--secondary-container);
+  border-radius: var(--r-sm);
+}
+
+.ds-envelope__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ds-envelope__input::-webkit-slider-runnable-track {
+  height: 22px;
+  background: transparent;
+}
+
+.ds-envelope__input::-webkit-slider-thumb {
+  appearance: none;
+  width: 10px;
+  height: 16px;
+  margin-top: 3px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--primary);
+  cursor: grab;
+}
+
+.ds-envelope__input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  background: var(--primary-container);
+}
+
+.ds-envelope__labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--outline);
+  margin-top: 2px;
+}
+
+.ds-envelope__note {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
+.ds-envelope__note--outside {
+  color: var(--warning);
+}
+
+.ds-envelope__note-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+/* --- Callout -------------------------------------------------------------- */
+
+.ds-callout {
+  display: flex;
+  gap: var(--gap);
+  padding: 9px 10px;
+  border: 1px solid var(--outline-variant);
+  border-left-width: 2px;
+  border-radius: var(--r-default);
+  background: var(--surface-container);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--on-surface-variant);
+}
+
+.ds-callout__icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.ds-callout--info {
+  border-left-color: var(--secondary);
+}
+
+.ds-callout--warning {
+  border-left-color: var(--warning);
+  color: var(--on-surface);
+}
+
+.ds-callout--error {
+  border-left-color: var(--error);
+  color: var(--on-surface);
+}
+
+.ds-callout--note {
+  border-left-color: var(--outline);
+}
+
+/* --- Empty state ---------------------------------------------------------- */
+
+.ds-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--on-surface-variant);
+}
+
+.ds-empty__icon {
+  color: var(--outline-variant);
+}
+
+.ds-empty__title {
+  font: var(--text-body-md);
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+.ds-empty__body {
+  font-size: 11.5px;
+  line-height: 1.55;
+  max-width: 34ch;
+}
+
+/* --- Section -------------------------------------------------------------- */
+
+.ds-section__label {
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--outline);
+  padding: var(--space-3) var(--space-2) var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+/* --- Bar meter (used for GCR, fill factor, coverage) ---------------------- */
+
+.ds-meter {
+  position: relative;
+  height: 6px;
+  background: var(--surface-container-highest);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.ds-meter__band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--secondary) 30%, transparent);
+}
+
+.ds-meter__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--primary);
+  transition: width var(--motion-base) var(--easing);
+}

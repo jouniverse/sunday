@@ -1,0 +1,36 @@
+# IDEs
+.cursor/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Claude
+.claude/
+
+#  Development notes and files
+notes/
+freezer/
+
+# Environment variables
+.env
+.env.local
+
+# Node modules
+node_modules/
+
+# Build files
+build/
+dist/
+src-tauri/target/
+
+# Python sidecar
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local app data: downloaded datasets, caches, converted rasters
+data/downloads/
+data/cache/
+data/derived/

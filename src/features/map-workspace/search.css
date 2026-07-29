@@ -1,0 +1,65 @@
+/* Location search and its results list. */
+
+.location-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.location-search__results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: var(--z-popover);
+  width: 420px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+}
+
+.location-search__results button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-default);
+  text-align: left;
+  cursor: pointer;
+}
+
+.location-search__results button:hover {
+  background: var(--surface-container-highest);
+}
+
+.location-search__name {
+  font-size: 12px;
+  color: var(--on-surface);
+  line-height: 1.35;
+}
+
+.location-search__coords {
+  font-size: 10.5px;
+  color: var(--on-surface-variant);
+}
+
+.location-search__attribution {
+  padding: 6px 8px 2px;
+  font-size: 10px;
+  color: var(--outline);
+  border-top: 1px solid var(--outline-variant);
+  margin-top: 4px;
+}
+
+.location-search__status {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
