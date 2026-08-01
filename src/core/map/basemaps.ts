@@ -14,6 +14,7 @@ export type BasemapId =
   | "streets"
   | "topographic"
   | "terrain-shade"
+  | "countries"
   | "blank";
 
 export interface BasemapDefinition {
@@ -35,6 +36,8 @@ function rasterStyle(options: {
   attribution: string;
   maxzoom?: number;
   background: string;
+  /** Soften bright street tiles so overlays remain readable. */
+  opacity?: number;
 }): StyleSpecification {
   return {
     version: 8,
@@ -50,7 +53,12 @@ function rasterStyle(options: {
     },
     layers: [
       { id: "background", type: "background", paint: { "background-color": options.background } },
-      { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 1 } },
+      {
+        id: "base",
+        type: "raster",
+        source: "base",
+        paint: { "raster-opacity": options.opacity ?? 1 },
+      },
     ],
   };
 }
@@ -75,15 +83,16 @@ export const BASEMAPS: BasemapDefinition[] = [
     attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
     build: () =>
       rasterStyle({
-        // CARTO's dark basemap is the closest match to the app's own surfaces.
+        // Voyager is readable but bright; dial opacity so site overlays stay primary.
         url: [
-          "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-          "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
-          "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+          "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+          "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
+          "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
         ],
         attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
         maxzoom: 20,
-        background: "#17130c",
+        background: "#e8e4db",
+        opacity: 0.78,
       }),
   },
   {
@@ -142,6 +151,44 @@ export const BASEMAPS: BasemapDefinition[] = [
         terrain: { source: "terrain", exaggeration: 1 },
       };
     },
+  },
+  {
+    id: "countries",
+    label: "Countries",
+    purpose: "Dark schematic with country outlines — best for sparse global data layers.",
+    attribution: "Natural Earth / country boundaries",
+    build: () => ({
+      version: 8,
+      sources: {
+        countries: {
+          type: "geojson",
+          // Served from Vite `public/data` in both browser and tauri:dev.
+          data: "/data/countries.geojson",
+        },
+      },
+      layers: [
+        { id: "background", type: "background", paint: { "background-color": "#12100c" } },
+        {
+          id: "countries-fill",
+          type: "fill",
+          source: "countries",
+          paint: {
+            "fill-color": "#1c1914",
+            "fill-opacity": 0.95,
+          },
+        },
+        {
+          id: "countries-line",
+          type: "line",
+          source: "countries",
+          paint: {
+            "line-color": "#6b6152",
+            "line-width": 0.8,
+            "line-opacity": 0.85,
+          },
+        },
+      ],
+    }),
   },
   {
     id: "blank",

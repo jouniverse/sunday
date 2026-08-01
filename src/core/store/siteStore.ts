@@ -56,6 +56,22 @@ export interface DesignParameters {
   systemLosses: number;
 }
 
+/** A named design revision under a site (projects → sites → designs). */
+export interface SavedDesign {
+  id: string;
+  name: string;
+  updatedAt: string;
+  kind: "greenfield" | "rooftop";
+  parameters: DesignParameters;
+  capacityKwDc?: number;
+  annualKwh?: number;
+  /** Google Solar: how many preferred panels were taken. */
+  googlePanelCount?: number;
+  /** Google Solar: zero-based indices of inactive panels among the shown set. */
+  inactivePanelIndices?: number[];
+  notes?: string;
+}
+
 export interface Site {
   id: string;
   name: string;
@@ -70,7 +86,11 @@ export interface Site {
   geometryValid: boolean;
   resource?: SiteResource;
   terrain?: SiteTerrain;
+  /** Working design parameters (mirrors the active saved design when one is selected). */
   design?: DesignParameters;
+  /** Named designs saved for this site. */
+  designs?: SavedDesign[];
+  activeDesignId?: string | null;
   nudges: Nudge[];
   notes: string;
 }
@@ -90,11 +110,24 @@ interface SiteState {
   setTerrain: (id: string, terrain: SiteTerrain) => void;
   setDesign: (id: string, design: DesignParameters) => void;
   patchDesign: (id: string, patch: Partial<DesignParameters>) => void;
+  /** Upserts a named design and sets it active (also updates `design`). */
+  saveNamedDesign: (siteId: string, design: SavedDesign) => void;
+  /** Renames a saved design without changing its parameters. */
+  renameDesign: (siteId: string, designId: string, name: string) => void;
+  selectDesign: (siteId: string, designId: string | null) => void;
+  deleteDesign: (siteId: string, designId: string) => void;
   setNudges: (id: string, nudges: Nudge[]) => void;
   setNotes: (id: string, notes: string) => void;
   replaceAll: (sites: Site[]) => void;
   clear: () => void;
   selectedSite: () => Site | null;
+}
+
+let designCounter = 0;
+
+export function newDesignId(): string {
+  designCounter += 1;
+  return `design-${Date.now().toString(36)}-${designCounter}`;
 }
 
 let siteCounter = 0;
@@ -174,10 +207,16 @@ export const useSiteStore = create<SiteState>((set, get) => ({
     })),
 
   removeSite: (id) =>
-    set((state) => ({
-      sites: state.sites.filter((site) => site.id !== id),
-      selectedSiteId: state.selectedSiteId === id ? null : state.selectedSiteId,
-    })),
+    set((state) => {
+      const sites = state.sites.filter((site) => site.id !== id);
+      let selectedSiteId = state.selectedSiteId;
+      if (selectedSiteId === id) {
+        // Prefer the neighbour that followed the deleted site, else the previous one.
+        const index = state.sites.findIndex((site) => site.id === id);
+        selectedSiteId = sites[Math.min(index, sites.length - 1)]?.id ?? null;
+      }
+      return { sites, selectedSiteId };
+    }),
 
   selectSite: (id) => set({ selectedSiteId: id }),
 
@@ -201,6 +240,68 @@ export const useSiteStore = create<SiteState>((set, get) => ({
       sites: state.sites.map((site) =>
         site.id === id && site.design ? { ...site, design: { ...site.design, ...patch } } : site,
       ),
+    })),
+
+  saveNamedDesign: (siteId, design) =>
+    set((state) => ({
+      sites: state.sites.map((site) => {
+        if (site.id !== siteId) return site;
+        const designs = [...(site.designs ?? [])];
+        const index = designs.findIndex((entry) => entry.id === design.id);
+        if (index >= 0) designs[index] = design;
+        else designs.push(design);
+        return {
+          ...site,
+          designs,
+          activeDesignId: design.id,
+          design: design.parameters,
+        };
+      }),
+    })),
+
+  renameDesign: (siteId, designId, name) =>
+    set((state) => ({
+      sites: state.sites.map((site) => {
+        if (site.id !== siteId) return site;
+        const trimmed = name.trim();
+        if (!trimmed) return site;
+        const designs = (site.designs ?? []).map((entry) =>
+          entry.id === designId ? { ...entry, name: trimmed, updatedAt: new Date().toISOString() } : entry,
+        );
+        return { ...site, designs };
+      }),
+    })),
+
+  selectDesign: (siteId, designId) =>
+    set((state) => ({
+      sites: state.sites.map((site) => {
+        if (site.id !== siteId) return site;
+        if (!designId) return { ...site, activeDesignId: null };
+        const selected = (site.designs ?? []).find((entry) => entry.id === designId);
+        if (!selected) return site;
+        return {
+          ...site,
+          activeDesignId: designId,
+          design: selected.parameters,
+        };
+      }),
+    })),
+
+  deleteDesign: (siteId, designId) =>
+    set((state) => ({
+      sites: state.sites.map((site) => {
+        if (site.id !== siteId) return site;
+        const designs = (site.designs ?? []).filter((entry) => entry.id !== designId);
+        const activeDesignId =
+          site.activeDesignId === designId ? (designs[0]?.id ?? null) : site.activeDesignId;
+        const active = designs.find((entry) => entry.id === activeDesignId);
+        return {
+          ...site,
+          designs,
+          activeDesignId,
+          design: active?.parameters ?? site.design,
+        };
+      }),
     })),
 
   setNudges: (id, nudges) =>

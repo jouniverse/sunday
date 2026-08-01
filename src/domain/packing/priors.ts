@@ -21,7 +21,8 @@ export interface GcrPrior {
 }
 
 /**
- * Ground coverage ratio: module area divided by the ground area it occupies.
+ * Ground coverage ratio: collector width (module face up-slope) divided by row
+ * pitch — the PVWatts / SAM convention, not module area ÷ whole site area.
  *
  * Ranges follow the distribution of GCR1/GCR2 observed across ~19,000 US
  * ground-mounted arrays in GM-SEUS v2.0, which is the largest measured sample

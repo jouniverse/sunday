@@ -81,7 +81,38 @@ impl Sidecar {
     }
 
     pub fn status(&self) -> EngineStatus {
-        self.inner.lock().expect("sidecar mutex").status.clone()
+        let mut inner = self.inner.lock().expect("sidecar mutex");
+        let base_url = format!("http://{HOST}:{}", inner.port);
+        let token = inner.status.token.clone();
+
+        // `status` used to return a stale Stopped cache forever when the user had
+        // already started the engine externally (`npm run engine:dev`). Probe
+        // health whenever we are not supervising a live child we know is Ready.
+        let should_probe = match inner.status.state {
+            EngineState::Ready if inner.child.is_some() => false,
+            _ => true,
+        };
+
+        if should_probe {
+            if let Some(health) = probe(&base_url, token.as_deref()) {
+                inner.status = EngineStatus {
+                    state: EngineState::Ready,
+                    base_url,
+                    token,
+                    detail: None,
+                    pvlib_version: health.pvlib_version,
+                    external: inner.child.is_none(),
+                };
+            } else if inner.status.state == EngineState::Ready && inner.child.is_none() {
+                // External engine went away.
+                inner.status.state = EngineState::Stopped;
+                inner.status.pvlib_version = None;
+                inner.status.external = false;
+                inner.status.detail = None;
+            }
+        }
+
+        inner.status.clone()
     }
 
     /// Starts the sidecar if it is not already reachable.

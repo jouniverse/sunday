@@ -206,7 +206,9 @@ export function EnvelopeSlider({
   const span = max - min || 1;
   const percent = (v: number) => ((Math.min(max, Math.max(min, v)) - min) / span) * 100;
   const within = value >= recommendedMin && value <= recommendedMax;
-  const format = (v: number) => `${v.toFixed(precision)}${unit}`;
+  const unitSuffix = unit ? (unit.startsWith(" ") ? unit : ` ${unit}`) : "";
+  const format = (v: number) => `${v.toFixed(precision)}${unitSuffix}`;
+  const showEnvelopeNote = Boolean(outsideNote) || recommendedMin > min || recommendedMax < max;
 
   return (
     <div>
@@ -237,13 +239,15 @@ export function EnvelopeSlider({
         <span>{format(min)}</span>
         <span>{format(max)}</span>
       </div>
-      <div className={classes("ds-envelope__note", !within && "ds-envelope__note--outside")}>
-        <span className="ds-envelope__note-dot" />
-        {within
-          ? `Within recommended envelope (${format(recommendedMin)}–${format(recommendedMax)})`
-          : (outsideNote ??
-            `Outside recommended envelope (${format(recommendedMin)}–${format(recommendedMax)}) — feasible, but reduces yield`)}
-      </div>
+      {showEnvelopeNote && (
+        <div className={classes("ds-envelope__note", !within && "ds-envelope__note--outside")}>
+          <span className="ds-envelope__note-dot" />
+          {within
+            ? `Within recommended envelope (${format(recommendedMin)}–${format(recommendedMax)})`
+            : (outsideNote ??
+              `Outside recommended envelope (${format(recommendedMin)}–${format(recommendedMax)}) — feasible, but reduces yield`)}
+        </div>
+      )}
     </div>
   );
 }

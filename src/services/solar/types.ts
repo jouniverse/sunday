@@ -50,7 +50,7 @@ export const PROVIDERS: Record<SolarProvider, ProviderInfo> = {
     coverage: "United States and the Americas",
     requiresKey: true,
     attribution: "National Renewable Energy Laboratory",
-    documentation: "https://developer.nrel.gov/docs/solar/",
+    documentation: "https://developer.nlr.gov/docs/solar/",
   },
   nasa_power: {
     id: "nasa_power",
@@ -90,11 +90,16 @@ export interface ResourceReport {
   poaKwhM2Year?: number;
   optimalTiltDegrees?: number;
   optimalAzimuthDegrees?: number;
+  /** Annual mean air temperature near 2 m (°C), when the provider reports it. */
   meanAirTempC?: number;
   /** Specific yield for the provider's own reference system, kWh/kWp/year. */
   specificYieldKwhPerKwp?: number;
   monthlyGhi?: MonthlyValue[];
   monthlyYield?: MonthlyValue[];
+  /** Monthly optimal fixed-tilt angles (°), when the provider reports them. */
+  monthlyOptimalTilt?: MonthlyValue[];
+  /** Monthly mean air temperature near 2 m (°C). */
+  monthlyAirTempC?: MonthlyValue[];
   /** Provenance, required. The UI renders it next to every figure. */
   source: string;
   dataset: string;
@@ -125,6 +130,15 @@ export interface RoofConfiguration {
   segments: Array<{ segmentIndex: number; panelCount: number; yearlyEnergyDcKwh: number }>;
 }
 
+/** One panel placement from Google Solar `solarPanels[]`. */
+export interface GoogleSolarPanel {
+  centre: [number, number];
+  /** PORTRAIT or LANDSCAPE relative to the segment. */
+  orientation: "PORTRAIT" | "LANDSCAPE" | string;
+  segmentIndex: number;
+  yearlyEnergyDcKwh: number;
+}
+
 export interface BuildingInsights {
   provider: "google_solar";
   name: string;
@@ -139,6 +153,8 @@ export interface BuildingInsights {
   panelWidthM: number;
   roofSegments: RoofSegment[];
   configurations: RoofConfiguration[];
+  /** Exact panel centres from Google — first N are the preferred layout. */
+  solarPanels: GoogleSolarPanel[];
   wholeRoofAreaM2?: number;
   maxSunshineHoursPerYear?: number;
   carbonOffsetFactorKgPerMwh?: number;

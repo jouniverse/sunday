@@ -106,8 +106,14 @@ describe("CSV escaping", () => {
     // A site name beginning with = must not execute when the CSV is opened.
     expect(csvField("=SUM(A1:A9)")).toBe("'=SUM(A1:A9)");
     expect(csvField("+1")).toBe("'+1");
-    expect(csvField("-1")).toBe("'-1");
+    expect(csvField("-1+A1")).toBe("'-1+A1");
     expect(csvField("@import")).toBe("'@import");
+  });
+
+  it("leaves plain numeric fields alone so longitudes stay readable", () => {
+    expect(csvField("-118.175601")).toBe("-118.175601");
+    expect(csvField("-1")).toBe("-1");
+    expect(csvField("35.073635")).toBe("35.073635");
   });
 
   it("renders empty for missing values", () => {

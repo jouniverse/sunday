@@ -1,0 +1,59 @@
+.export-modal {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 40);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.export-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--on-surface) 35%, transparent);
+}
+
+.export-modal__card {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+  padding: var(--space-4);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.export-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.export-modal__head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.export-modal__close {
+  border: none;
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.export-modal__lede {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--on-surface-variant);
+}
+
+.export-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

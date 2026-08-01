@@ -27,6 +27,8 @@ interface ProjectState {
   lastSavedAt: string | null;
   /** Set when a file was written by a newer schema than this build understands. */
   loadedFromNewerSchema: boolean;
+  /** Id in the persistent project library, when this document is library-backed. */
+  libraryId: string | null;
 
   markDirty: () => void;
   rename: (name: string) => void;
@@ -49,6 +51,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   dirty: false,
   lastSavedAt: null,
   loadedFromNewerSchema: false,
+  libraryId: null,
 
   markDirty: () => set({ dirty: true }),
   rename: (name) => set({ name, dirty: true }),
@@ -62,6 +65,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dirty: false,
       lastSavedAt: null,
       loadedFromNewerSchema: false,
+      libraryId: null,
     });
   },
 
@@ -130,6 +134,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       dirty: false,
       lastSavedAt: new Date().toISOString(),
       loadedFromNewerSchema: loaded.fromNewerSchema,
+      libraryId: get().libraryId,
     });
     return true;
   },

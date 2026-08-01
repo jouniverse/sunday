@@ -13,6 +13,9 @@ import type {
   BboxResult,
   DatasetSummary,
   EngineStatus,
+  HttpFetchTextRequest,
+  HttpFetchTextResult,
+  LibraryIndex,
   LoadedProject,
   NativeError,
   NearbyFeature,
@@ -96,6 +99,22 @@ export const tauriPlatform: Platform = {
         filters: [{ name: "Sunday project", extensions: ["sunday"] }],
       });
       return typeof picked === "string" ? picked : null;
+    },
+  },
+
+  library: {
+    list: () => call<LibraryIndex>("library_list"),
+    saveEntry: (id: string, project: ProjectDocument) =>
+      call<LibraryIndex>("library_save_entry", { id, project }),
+    deleteEntry: (id: string) => call<LibraryIndex>("library_delete_entry", { id }),
+    setActive: (id: string | null) => call<LibraryIndex>("library_set_active", { id }),
+    async loadEntry(id: string) {
+      const index = await call<LibraryIndex>("library_list");
+      const entry = index.entries.find((row) => row.id === id);
+      if (!entry) {
+        throw new PlatformError("invalid", `Unknown library project ${id}`);
+      }
+      return call<LoadedProject>("project_load", { path: entry.path });
     },
   },
 
@@ -191,5 +210,15 @@ export const tauriPlatform: Platform = {
       }
       return path;
     },
+
+    async confirm(message, title = "Sunday") {
+      const { ask } = await import("@tauri-apps/plugin-dialog");
+      return ask(message, { title, kind: "warning" });
+    },
+  },
+
+  http: {
+    fetchText: (request: HttpFetchTextRequest) =>
+      call<HttpFetchTextResult>("http_fetch_text", { request }),
   },
 };

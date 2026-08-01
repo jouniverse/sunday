@@ -7,6 +7,7 @@
 
 pub mod commands;
 pub mod error;
+pub mod library;
 pub mod project;
 pub mod raster;
 pub mod settings;
@@ -90,6 +91,10 @@ pub fn run() {
             commands::vector_import_features,
             commands::project_save,
             commands::project_load,
+            commands::library_list,
+            commands::library_save_entry,
+            commands::library_delete_entry,
+            commands::library_set_active,
             commands::write_file_text,
             commands::write_file_bytes,
             commands::settings_get,
@@ -99,6 +104,7 @@ pub fn run() {
             commands::engine_status,
             commands::engine_start,
             commands::engine_stop,
+            commands::http_fetch_text,
         ])
         .on_window_event(move |_window, event| {
             // Never leave an orphaned Python process behind.

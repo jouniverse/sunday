@@ -148,3 +148,13 @@
   color: var(--outline);
   font-size: 10.5px;
 }
+
+/* Long NASA POWER / PVGIS source strings must wrap in the narrow inspector. */
+.inspector .ds-provenance {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  align-items: flex-start;
+}

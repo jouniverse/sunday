@@ -8,6 +8,7 @@
 
 import { useState } from "react";
 import { useProjectStore } from "@/core/store/projectStore";
+import { useResourceCacheStore } from "@/core/store/resourceCacheStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import { useSiteStore } from "@/core/store/siteStore";
 import type { Site } from "@/core/store/siteStore";
@@ -34,6 +35,7 @@ import {
 } from "@/services/export";
 import { formatCoordinates, formatNumber } from "@/domain/units";
 import { MonthlyChart } from "./MonthlyChart";
+import { MonthlySeriesChart } from "./MonthlySeriesChart";
 import "./report.css";
 
 const ALL_PROVIDERS: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
@@ -72,21 +74,47 @@ function SiteReportPanel({ site }: { site: Site }) {
   const [report, setReport] = useState<SiteReport | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
-  async function generate() {
+  async function generate(forceRefresh = false) {
     setProgress({ done: 0, total: ALL_PROVIDERS.length });
     try {
+      const latitude = site.centre[1];
+      const longitude = site.centre[0];
+      const cache = useResourceCacheStore.getState();
+      if (!forceRefresh) {
+        const cached = cache.get(latitude, longitude);
+        if (cached) {
+          setReport(cached);
+          notify({
+            tone: "info",
+            message: "Loaded cached multi-source report",
+            detail: "Same data as Fetch solar resource on the Project map. Use Refresh to re-query.",
+          });
+          return;
+        }
+      }
       const result = await generateSiteReport({
-        latitude: site.centre[1],
-        longitude: site.centre[0],
+        latitude,
+        longitude,
         providers: ALL_PROVIDERS,
         getApiKey: (provider) => useKey(provider),
         capacityKwDc: 1,
         optimiseTilt: true,
         onProgress: (done, total) => setProgress({ done, total }),
       });
+      cache.set(latitude, longitude, result);
       setReport(result);
       for (const warning of result.warnings) {
         notify({ tone: "warning", message: warning });
+      }
+      const pvgisFail = result.outcomes.find(
+        (outcome) => outcome.provider === "pvgis" && outcome.status !== "ok",
+      );
+      if (pvgisFail) {
+        notify({
+          tone: "warning",
+          message: "PVGIS failed",
+          detail: pvgisFail.reason ?? undefined,
+        });
       }
     } catch (error) {
       notify({
@@ -136,7 +164,11 @@ function SiteReportPanel({ site }: { site: Site }) {
                 </p>
               </>
             ) : (
-              <Button variant="primary" icon={<SunIcon size={13} />} onClick={generate}>
+              <Button
+                variant="primary"
+                icon={<SunIcon size={13} />}
+                onClick={() => void generate(false)}
+              >
                 Generate report
               </Button>
             )}
@@ -149,7 +181,7 @@ function SiteReportPanel({ site }: { site: Site }) {
               <div className="card__head">
                 <h2 className="card__title">Sources</h2>
                 <div className="report__actions">
-                  <Button size="sm" onClick={generate}>
+                  <Button size="sm" onClick={() => void generate(true)}>
                     Refresh
                   </Button>
                   <Button size="sm" icon={<ExportIcon size={12} />} onClick={() => exportAs("csv")}>
@@ -238,17 +270,19 @@ function SiteReportPanel({ site }: { site: Site }) {
                 </div>
                 {report.comparisons
                   .filter((comparison) => comparison.significant)
-                  .map((comparison) => (
-                    <Callout key={comparison.quantity} tone="warning">
-                      <strong>{comparison.quantity}</strong> ranges from{" "}
-                      {formatNumber(comparison.min, 0)} to {formatNumber(comparison.max, 0)}{" "}
-                      {comparison.unit}, a spread of{" "}
-                      {(comparison.relativeSpread * 100).toFixed(0)}%. Sunday does not average
-                      these: the design workflow uses{" "}
-                      {report.consensus.ghiKwhM2Year?.from.join(", ") ?? "the finest-resolution source"}{" "}
-                      and records that choice.
-                    </Callout>
-                  ))}
+                  .map((comparison) => {
+                    const chosen = consensusSourceFor(comparison.quantity, report);
+                    const digits = comparison.unit === "°" || comparison.unit === "°C" ? 1 : 0;
+                    return (
+                      <Callout key={comparison.quantity} tone="warning">
+                        <strong>{comparison.quantity}</strong> ranges from{" "}
+                        {formatNumber(comparison.min, digits)} to{" "}
+                        {formatNumber(comparison.max, digits)} {comparison.unit}, a spread of{" "}
+                        {(comparison.relativeSpread * 100).toFixed(0)}%. Sunday does not average
+                        these: the design workflow uses {chosen} and records that choice.
+                      </Callout>
+                    );
+                  })}
               </div>
             )}
 
@@ -300,14 +334,41 @@ function SiteReportPanel({ site }: { site: Site }) {
                         },
                       ]
                     : []),
+                  ...(report.consensus.meanAirTempC
+                    ? [
+                        {
+                          key: "temp",
+                          label: "Mean air temperature (2 m)",
+                          value: `${formatNumber(report.consensus.meanAirTempC.value, 1)} °C`,
+                          title: report.consensus.meanAirTempC.note,
+                        },
+                      ]
+                    : []),
                 ]}
               />
               <p className="report__units">
-                Chosen by dataset resolution, not by averaging. Hover a row to see why.
+                Irradiation prefers the finest-resolution source; optimal tilt prefers NASA POWER
+                globally. Hover a row to see why.
               </p>
             </div>
 
             <MonthlyChart reports={report.reports} />
+            <MonthlySeriesChart
+              title="Monthly optimal tilt (NASA POWER)"
+              ariaLabel="Monthly optimal fixed-tilt angle from NASA POWER"
+              unitLabel="Monthly optimal fixed-tilt angle, degrees from horizontal."
+              reports={report.reports}
+              select={(entry) => entry.monthlyOptimalTilt}
+              valueDigits={1}
+            />
+            <MonthlySeriesChart
+              title="Monthly mean air temperature"
+              ariaLabel="Monthly mean air temperature near 2 m"
+              unitLabel="Monthly mean air temperature near 2 m, °C."
+              reports={report.reports}
+              select={(entry) => entry.monthlyAirTempC}
+              valueDigits={1}
+            />
 
             <div className="card">
               <div className="card__head">
@@ -343,4 +404,18 @@ function SiteReportPanel({ site }: { site: Site }) {
 
 function value(input: number | undefined, decimals: number): string {
   return input === undefined ? "—" : formatNumber(input, decimals);
+}
+
+/** Which consensus provider the design workflow records for a comparison row. */
+function consensusSourceFor(quantity: string, report: SiteReport): string {
+  const map: Record<string, { from?: SolarProvider[] } | undefined> = {
+    "Global horizontal irradiation": report.consensus.ghiKwhM2Year,
+    "Direct normal irradiation": report.consensus.dniKwhM2Year,
+    "Specific yield": report.consensus.specificYieldKwhPerKwp,
+    "Optimal tilt": report.consensus.optimalTiltDegrees,
+    "Mean air temperature (2 m)": report.consensus.meanAirTempC,
+  };
+  const from = map[quantity]?.from;
+  if (from && from.length > 0) return from.map((id) => PROVIDERS[id].label).join(", ");
+  return "the preferred source for this quantity";
 }

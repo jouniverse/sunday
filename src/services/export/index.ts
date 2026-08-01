@@ -10,7 +10,7 @@ import type { LngLat } from "@/domain/geometry";
 import type { Site } from "@/core/store/siteStore";
 import type { SiteReport } from "../solar/orchestrator";
 
-export type ExportFormat = "csv" | "json" | "geojson" | "html";
+export type ExportFormat = "csv" | "json" | "geojson" | "html" | "zip";
 
 export interface ExportMeta {
   /** Where the numbers came from; rendered into every format. */
@@ -29,11 +29,14 @@ export interface ExportMeta {
  * Quotes anything containing a delimiter, a quote or a newline, and doubles
  * embedded quotes. Also prefixes a value that starts with a formula character,
  * which stops a spreadsheet from executing text out of an exported report.
+ * Pure numbers (including negative longitudes like `-118.17`) are left alone —
+ * they are not Excel formulas.
  */
 export function csvField(value: unknown): string {
   if (value === null || value === undefined) return "";
   let text = String(value);
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  const isPlainNumber = /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(text);
+  if (!isPlainNumber && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   if (/[",\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
   return text;
 }
@@ -321,13 +324,14 @@ const EXTENSIONS: Record<ExportFormat, { ext: string; name: string }> = {
   json: { ext: "json", name: "JSON" },
   geojson: { ext: "geojson", name: "GeoJSON" },
   html: { ext: "html", name: "Printable report" },
+  zip: { ext: "zip", name: "ZIP archive" },
 };
 
 /** Writes an export through the platform's save dialog. */
 export async function writeExport(
   baseName: string,
   format: ExportFormat,
-  contents: string,
+  contents: string | Uint8Array,
 ): Promise<string | null> {
   const { ext, name } = EXTENSIONS[format];
   const safeName = baseName.replace(/[^\w\-. ]+/g, "_").trim() || "sunday-export";

@@ -5,6 +5,31 @@
   flex-direction: column;
 }
 
+.layer-group__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+
+.layer-group__toggle .ds-section__label {
+  margin-bottom: 0;
+}
+
+.layer-group__chevron {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  padding-right: var(--space-2);
+}
+
 .layer-row__main {
   flex: 1;
   min-width: 0;
@@ -55,6 +80,17 @@
   border: 1px solid var(--outline-variant);
   border-radius: var(--r-md);
   background: var(--surface-container);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Long GEM-style source strings must wrap inside the narrow left panel. */
+.layer-detail__card .ds-provenance {
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  align-items: flex-start;
 }
 
 .layer-detail__title {

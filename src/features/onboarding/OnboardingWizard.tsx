@@ -49,7 +49,7 @@ const STEPS: Step[] = [
       "Where it has coverage it is the highest-fidelity free source available.",
     provider: "nrel",
     unlocks: ["NSRDB measured resource", "PVWatts modelled yield"],
-    keyUrl: "https://developer.nrel.gov/signup/",
+    keyUrl: "https://developer.nlr.gov/signup/",
   },
   {
     id: "google_solar",

@@ -201,7 +201,8 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     label: "Rooftop annual flux",
     group: "resource",
     kind: "raster",
-    purpose: "Per-pixel rooftop irradiance for building-level design.",
+    purpose:
+      "Per-pixel rooftop irradiance for building-level design. Toggle is catalogue-only for now — load flux from Rooftop Design (Wave 3 will paint the Project map).",
     source: "Google Solar API data layers",
     licence: "Google Maps Platform terms",
     availability: { state: "needs-key", provider: "google_solar" },

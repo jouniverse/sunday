@@ -7,7 +7,14 @@
 
 import { create } from "zustand";
 
-export type ViewId = "map" | "design" | "report" | "analytics" | "settings" | "help";
+export type ViewId =
+  | "map"
+  | "design"
+  | "report"
+  | "analytics"
+  | "projects"
+  | "settings"
+  | "help";
 
 export type ModalId = "onboarding" | "export" | "about" | "dataset-import" | null;
 

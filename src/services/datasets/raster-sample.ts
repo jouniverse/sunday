@@ -6,32 +6,41 @@
 
 import type { RasterSource, ZonalResult } from "@/core/platform";
 import { platform } from "@/core/platform";
+import { useLayerStore } from "@/core/store/layerStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import type { LngLat } from "@/domain/geometry";
 
 export type GsaLayer = "ghi" | "dni" | "pvout" | "gti";
 
-const LAYER_FILES: Record<GsaLayer, { file: string; units: string; label: string }> = {
+const LAYER_META: Record<GsaLayer, { units: string; label: string; layerId: string }> = {
   ghi: {
-    file: "GHI.tif",
     units: "kWh/m²/year",
     label: "Global horizontal irradiation",
+    layerId: "gsa-ghi",
   },
   dni: {
-    file: "DNI.tif",
     units: "kWh/m²/year",
     label: "Direct normal irradiation",
+    layerId: "gsa-dni",
   },
   pvout: {
-    file: "PVOUT.tif",
     units: "kWh/kWp/year",
     label: "PV output potential",
+    layerId: "gsa-pvout",
   },
   gti: {
-    file: "GTI.tif",
     units: "kWh/m²/year",
     label: "Global tilted irradiation",
+    layerId: "",
   },
+};
+
+/** Preferred filenames, then convert-solargis-cog.sh outputs (`*_cog.tif`). */
+const LAYER_FILE_CANDIDATES: Record<GsaLayer, string[]> = {
+  ghi: ["GHI.tif", "GHI_cog.tif"],
+  dni: ["DNI.tif", "DNI_cog.tif"],
+  pvout: ["PVOUT.tif", "PVOUT_cog.tif"],
+  gti: ["GTI.tif", "GTI_cog.tif"],
 };
 
 export interface ResolvedRaster {
@@ -39,38 +48,45 @@ export interface ResolvedRaster {
   layer: GsaLayer;
   label: string;
   units: string;
+  fileName: string;
+}
+
+function candidatesFor(layer: GsaLayer, dirOrBase: string, kind: "local" | "http"): ResolvedRaster[] {
+  const meta = LAYER_META[layer];
+  const root = dirOrBase.replace(/\/$/, "");
+  return LAYER_FILE_CANDIDATES[layer].map((file) => ({
+    source:
+      kind === "local"
+        ? ({ kind: "local", path: `${root}/${file}` } as const)
+        : ({ kind: "http", url: `${root}/${file}` } as const),
+    layer,
+    label: meta.label,
+    units: meta.units,
+    fileName: file,
+  }));
 }
 
 /**
- * Builds a RasterSource from the user's configured base URL or local directory.
- * Returns null when neither is set — the greenfield path then falls back to APIs.
+ * Builds candidate RasterSources from the user's configured base URL or local
+ * directory. Callers should try until one samples successfully.
  */
-export function resolveGsaSource(layer: GsaLayer): ResolvedRaster | null {
+export function resolveGsaSources(layer: GsaLayer): ResolvedRaster[] {
   const { rasterBaseUrl, rasterLocalDir } = useSettingsStore.getState().preferences;
-  const meta = LAYER_FILES[layer];
-  const file = meta.file;
 
   if (rasterLocalDir.trim()) {
-    const dir = rasterLocalDir.replace(/\/$/, "");
-    return {
-      source: { kind: "local", path: `${dir}/${file}` },
-      layer,
-      label: meta.label,
-      units: meta.units,
-    };
+    return candidatesFor(layer, rasterLocalDir, "local");
   }
 
   if (rasterBaseUrl.trim()) {
-    const base = rasterBaseUrl.replace(/\/$/, "");
-    return {
-      source: { kind: "http", url: `${base}/${file}` },
-      layer,
-      label: meta.label,
-      units: meta.units,
-    };
+    return candidatesFor(layer, rasterBaseUrl, "http");
   }
 
-  return null;
+  return [];
+}
+
+/** @deprecated Prefer resolveGsaSources — kept for callers that expect a single path. */
+export function resolveGsaSource(layer: GsaLayer): ResolvedRaster | null {
+  return resolveGsaSources(layer)[0] ?? null;
 }
 
 export interface SiteZonalSample {
@@ -85,6 +101,7 @@ export interface SiteZonalSample {
   method: string;
   sourceKind: "local" | "http";
   levelScale: number;
+  fileName: string;
 }
 
 /**
@@ -95,8 +112,8 @@ export async function sampleSiteRaster(
   ring: LngLat[],
   layer: GsaLayer = "ghi",
 ): Promise<SiteZonalSample | null> {
-  const resolved = resolveGsaSource(layer);
-  if (!resolved || ring.length < 3) return null;
+  const candidates = resolveGsaSources(layer);
+  if (candidates.length === 0 || ring.length < 3) return null;
 
   const closed: LngLat[] = [...ring];
   const first = ring[0];
@@ -105,35 +122,59 @@ export async function sampleSiteRaster(
     closed.push(first);
   }
 
-  const result: ZonalResult = await platform().raster.zonalStats(resolved.source, [closed], {
-    geographic: true,
-  });
+  let lastError: unknown;
+  for (const resolved of candidates) {
+    try {
+      const result: ZonalResult = await platform().raster.zonalStats(resolved.source, [closed], {
+        geographic: true,
+      });
 
-  if (result.stats.count === 0) return null;
+      if (result.stats.count === 0) continue;
 
-  // GSA world rasters store average daily totals; site reports speak annually.
-  const looksDaily = result.stats.areaWeightedMean > 0 && result.stats.areaWeightedMean < 20;
-  const scale = looksDaily ? 365 : 1;
+      // GSA world rasters store average daily totals; site reports speak annually.
+      const looksDaily = result.stats.areaWeightedMean > 0 && result.stats.areaWeightedMean < 20;
+      const scale = looksDaily ? 365 : 1;
 
-  return {
-    layer,
-    label: resolved.label,
-    units: resolved.units,
-    mean: result.stats.mean * scale,
-    areaWeightedMean: result.stats.areaWeightedMean * scale,
-    min: result.stats.min * scale,
-    max: result.stats.max * scale,
-    count: result.stats.count,
-    method:
-      `${result.stats.method} over ${resolved.label} COG` +
-      (looksDaily ? "; daily means × 365" : "") +
-      `; overview scale ${result.stats.levelScale}`,
-    sourceKind: resolved.source.kind,
-    levelScale: result.stats.levelScale,
-  };
+      if (LAYER_META[layer].layerId) {
+        useLayerStore.getState().markAvailable(LAYER_META[layer].layerId);
+      }
+
+      return {
+        layer,
+        label: resolved.label,
+        units: resolved.units,
+        mean: result.stats.mean * scale,
+        areaWeightedMean: result.stats.areaWeightedMean * scale,
+        min: result.stats.min * scale,
+        max: result.stats.max * scale,
+        count: result.stats.count,
+        method:
+          `${result.stats.method} over ${resolved.label} (${resolved.fileName})` +
+          (looksDaily ? "; daily means × 365" : "") +
+          `; overview scale ${result.stats.levelScale}`,
+        sourceKind: resolved.source.kind,
+        levelScale: result.stats.levelScale,
+        fileName: resolved.fileName,
+      };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) throw lastError;
+  return null;
 }
 
 export function rastersConfigured(): boolean {
   const { rasterBaseUrl, rasterLocalDir } = useSettingsStore.getState().preferences;
   return Boolean(rasterBaseUrl.trim() || rasterLocalDir.trim());
+}
+
+/** Marks GSA catalogue layers usable once a raster directory/URL is configured. */
+export function markGsaLayersFromSettings(): void {
+  if (!rastersConfigured()) return;
+  const mark = useLayerStore.getState().markAvailable;
+  mark("gsa-ghi");
+  mark("gsa-dni");
+  mark("gsa-pvout");
 }

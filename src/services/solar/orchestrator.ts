@@ -58,18 +58,30 @@ export interface SiteReport {
     dniKwhM2Year?: { value: number; from: SolarProvider[]; note: string };
     specificYieldKwhPerKwp?: { value: number; from: SolarProvider[]; note: string };
     optimalTiltDegrees?: { value: number; from: SolarProvider[]; note: string };
+    meanAirTempC?: { value: number; from: SolarProvider[]; note: string };
   };
   warnings: string[];
 }
 
 /**
- * Provider preference for a consensus figure.
+ * Provider preference for irradiance / yield consensus figures.
  *
  * Ordered by the fidelity of the underlying dataset, which the reviews
  * established: NSRDB at 4 km is measured, PVGIS at 5 km is modelled from
  * satellite, POWER at 1 degree is a regional average.
  */
 const FIDELITY_ORDER: SolarProvider[] = ["nrel", "pvgis", "google_solar", "nasa_power"];
+
+/**
+ * Optimal tilt preference. PVGIS PVcalc can return nonsensical slopes outside
+ * its strongest coverage (e.g. −1° in inland Australia while latitude ≈ 33°).
+ * NASA POWER’s SI_TILTED_AVG_OPTIMAL_ANG tracks the tilt-near-latitude rule
+ * more reliably globally; we still show PVGIS in the comparison table.
+ */
+const TILT_ORDER: SolarProvider[] = ["nasa_power", "nrel", "google_solar", "pvgis"];
+
+/** Near-surface air temperature: MERRA-2 via POWER is the global default. */
+const AIR_TEMP_ORDER: SolarProvider[] = ["nasa_power", "nrel", "pvgis", "google_solar"];
 
 export async function generateSiteReport(request: SiteReportRequest): Promise<SiteReport> {
   const outcomes: ProviderOutcome[] = [];
@@ -241,7 +253,11 @@ function buildComparisons(reports: ResourceReport[]): Comparison[] {
     { quantity: "In-plane irradiation", unit: "kWh/m²/yr", select: (r) => r.poaKwhM2Year },
     { quantity: "Specific yield", unit: "kWh/kWp/yr", select: (r) => r.specificYieldKwhPerKwp },
     { quantity: "Optimal tilt", unit: "°", select: (r) => r.optimalTiltDegrees },
-    { quantity: "Mean air temperature", unit: "°C", select: (r) => r.meanAirTempC },
+    {
+      quantity: "Mean air temperature (2 m)",
+      unit: "°C",
+      select: (r) => r.meanAirTempC,
+    },
   ];
 
   return definitions
@@ -266,7 +282,11 @@ function buildComparisons(reports: ResourceReport[]): Comparison[] {
  * only chooses which one the design workflow proceeds with, and records why.
  */
 function buildConsensus(reports: ResourceReport[]): SiteReport["consensus"] {
-  const pick = (select: (report: ResourceReport) => number | undefined) => {
+  const pick = (
+    select: (report: ResourceReport) => number | undefined,
+    order: SolarProvider[] = FIDELITY_ORDER,
+    reason = "the highest-resolution source that answered",
+  ) => {
     const candidates = reports
       .map((report) => ({ provider: report.provider, value: select(report) }))
       .filter((entry): entry is { provider: SolarProvider; value: number } =>
@@ -275,7 +295,7 @@ function buildConsensus(reports: ResourceReport[]): SiteReport["consensus"] {
     if (candidates.length === 0) return undefined;
 
     const best = [...candidates].sort(
-      (a, b) => FIDELITY_ORDER.indexOf(a.provider) - FIDELITY_ORDER.indexOf(b.provider),
+      (a, b) => order.indexOf(a.provider) - order.indexOf(b.provider),
     )[0] as { provider: SolarProvider; value: number };
 
     return {
@@ -284,7 +304,7 @@ function buildConsensus(reports: ResourceReport[]): SiteReport["consensus"] {
       note:
         candidates.length === 1
           ? `Only ${best.provider} reported this value.`
-          : `Taken from ${best.provider}, the highest-resolution source that answered. ` +
+          : `Taken from ${best.provider}, ${reason}. ` +
             `${candidates.length} sources reported this quantity.`,
     };
   };
@@ -293,6 +313,15 @@ function buildConsensus(reports: ResourceReport[]): SiteReport["consensus"] {
     ghiKwhM2Year: pick((r) => r.ghiKwhM2Year),
     dniKwhM2Year: pick((r) => r.dniKwhM2Year),
     specificYieldKwhPerKwp: pick((r) => r.specificYieldKwhPerKwp),
-    optimalTiltDegrees: pick((r) => r.optimalTiltDegrees),
+    optimalTiltDegrees: pick(
+      (r) => r.optimalTiltDegrees,
+      TILT_ORDER,
+      "the preferred source for global tilt (NASA POWER over PVGIS outside strong coverage)",
+    ),
+    meanAirTempC: pick(
+      (r) => r.meanAirTempC,
+      AIR_TEMP_ORDER,
+      "the preferred meteorology source",
+    ),
   };
 }

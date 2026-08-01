@@ -8,10 +8,9 @@
  */
 
 import { ApiError, query, requestJson } from "../http/client";
+import { solarApiBase } from "./api-base";
 import type { MonthlyValue, ResourceReport } from "./types";
 import { PROVIDERS } from "./types";
-
-const BASE = "https://developer.nrel.gov/api";
 
 interface SolarResourceResponse {
   errors?: string[];
@@ -39,8 +38,18 @@ interface PvWattsResponse {
 }
 
 const MONTH_KEYS = [
-  "jan", "feb", "mar", "apr", "may", "jun",
-  "jul", "aug", "sep", "oct", "nov", "dec",
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "may",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "oct",
+  "nov",
+  "dec",
 ] as const;
 
 /**
@@ -56,7 +65,7 @@ export async function fetchNrelResource(options: {
   signal?: AbortSignal;
 }): Promise<ResourceReport> {
   const provider = PROVIDERS.nrel;
-  const url = `${BASE}/solar/solar_resource/v1.json?${query({
+  const url = `${solarApiBase("nrel")}/solar/solar_resource/v1.json?${query({
     api_key: options.apiKey,
     lat: options.latitude,
     lon: options.longitude,
@@ -86,7 +95,8 @@ export async function fetchNrelResource(options: {
     throw new ApiError({
       provider: provider.label,
       message: "NREL returned no annual irradiation for this location",
-      guidance: "This location is probably outside NSRDB coverage. PVGIS and NASA POWER are global.",
+      guidance:
+        "This location is probably outside NSRDB coverage. PVGIS and NASA POWER are global.",
     });
   }
 
@@ -105,10 +115,7 @@ export async function fetchNrelResource(options: {
     method:
       "NREL solar resource: long-term monthly and annual averages from the National Solar " +
       "Radiation Database, scaled from daily means to annual totals.",
-    caveats: [
-      `Spatial resolution is ${provider.resolution}.`,
-      ...(response.warnings ?? []),
-    ],
+    caveats: [`Spatial resolution is ${provider.resolution}.`, ...(response.warnings ?? [])],
     requestUrl: redactKey(url),
   };
 }
@@ -134,7 +141,7 @@ export async function fetchPvWatts(options: {
   const provider = PROVIDERS.nrel;
   const capacityKwDc = options.capacityKwDc ?? 1;
 
-  const url = `${BASE}/pvwatts/v8.json?${query({
+  const url = `${solarApiBase("nrel")}/pvwatts/v8.json?${query({
     api_key: options.apiKey,
     lat: options.latitude,
     lon: options.longitude,

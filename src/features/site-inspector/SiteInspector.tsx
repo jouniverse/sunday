@@ -14,7 +14,7 @@ import { useSettingsStore } from "@/core/store/settingsStore";
 import type { Site } from "@/core/store/siteStore";
 import { useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
-import { Button, IconButton, Input } from "@/design-system/controls";
+import { Button, Field, IconButton, Input, Select } from "@/design-system/controls";
 import {
   Callout,
   EmptyState,
@@ -26,6 +26,7 @@ import { CrosshairIcon, PolygonIcon, ReportIcon, SunIcon, TrashIcon } from "@/de
 import type { TechnologyProfile } from "@/domain/siting/nudges";
 import { evaluateSite, summariseNudges } from "@/domain/siting/nudges";
 import { formatCoordinates, formatNumber, scaleArea, scaleDistance } from "@/domain/units";
+import { useResourceCacheStore } from "@/core/store/resourceCacheStore";
 import { generateSiteReport } from "@/services/solar/orchestrator";
 import type { SolarProvider } from "@/services/solar/types";
 import { NudgeList } from "./NudgeList";
@@ -74,6 +75,7 @@ export function SiteInspector() {
 }
 
 function SiteDetail({ site }: { site: Site }) {
+  const sites = useSiteStore((state) => state.sites);
   const renameSite = useSiteStore((state) => state.renameSite);
   const removeSite = useSiteStore((state) => state.removeSite);
   const selectSite = useSiteStore((state) => state.selectSite);
@@ -87,6 +89,7 @@ function SiteDetail({ site }: { site: Site }) {
   const endBusy = useUiStore((state) => state.endBusy);
   const markDirty = useProjectStore((state) => state.markDirty);
   const beginEdit = useDrawStore((state) => state.beginEdit);
+  const cancelDraw = useDrawStore((state) => state.cancel);
   const useKey = useSettingsStore((state) => state.useKey);
 
   const [technology, setTechnology] = useState<TechnologyProfile>(
@@ -102,25 +105,37 @@ function SiteDetail({ site }: { site: Site }) {
     setFetching(true);
     startBusy("resource", "Fetching solar resource");
     try {
-      const providers: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
-      const report = await generateSiteReport({
-        latitude: site.centre[1],
-        longitude: site.centre[0],
-        providers,
-        getApiKey: (provider) => useKey(provider),
-        capacityKwDc: 1,
-        optimiseTilt: true,
-      });
+      const latitude = site.centre[1];
+      const longitude = site.centre[0];
+      const cache = useResourceCacheStore.getState();
+      let report = cache.get(latitude, longitude);
+      const fromCache = Boolean(report);
+      if (!report) {
+        const providers: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
+        report = await generateSiteReport({
+          latitude,
+          longitude,
+          providers,
+          getApiKey: (provider) => useKey(provider),
+          capacityKwDc: 1,
+          optimiseTilt: true,
+        });
+        cache.set(latitude, longitude, report);
+      }
 
       const consensus = report.consensus;
       if (!consensus.ghiKwhM2Year) {
+        const failures = report.outcomes
+          .filter((outcome) => outcome.status !== "ok")
+          .map((outcome) => `${outcome.provider}: ${outcome.reason ?? ""}`)
+          .join(" · ");
+        const pvgis = report.reports.find((entry) => entry.provider === "pvgis");
         notify({
           tone: "warning",
           message: "No source returned irradiation for this location",
-          detail: report.outcomes
-            .filter((outcome) => outcome.status !== "ok")
-            .map((outcome) => `${outcome.provider}: ${outcome.reason ?? ""}`)
-            .join(" · "),
+          detail:
+            failures +
+            (pvgis?.requestUrl ? ` · PVGIS URL: ${pvgis.requestUrl}` : ""),
         });
         return;
       }
@@ -128,24 +143,39 @@ function SiteDetail({ site }: { site: Site }) {
       const primary = report.reports.find(
         (entry) => entry.provider === consensus.ghiKwhM2Year?.from[0],
       );
+      const pvgisFailure = report.outcomes.find(
+        (outcome) => outcome.provider === "pvgis" && outcome.status !== "ok",
+      );
       setResource(site.id, {
         ghiKwhM2Year: consensus.ghiKwhM2Year.value,
         dniKwhM2Year: consensus.dniKwhM2Year?.value,
         optimalTiltDegrees: consensus.optimalTiltDegrees?.value,
-        meanAirTempC: primary?.meanAirTempC,
+        meanAirTempC: consensus.meanAirTempC?.value ?? primary?.meanAirTempC,
         source: primary?.source ?? "multiple sources",
         vintage: primary?.vintage,
         fidelity: primary?.fidelity ?? "modelled",
-        method: consensus.ghiKwhM2Year.note,
+        method:
+          (primary?.dataset ? `${primary.dataset} · ` : "") +
+          (consensus.ghiKwhM2Year.note ?? primary?.method ?? "multi-source consensus"),
       });
       markDirty();
 
       for (const warning of report.warnings) {
         notify({ tone: "warning", message: warning });
       }
+      if (pvgisFailure) {
+        notify({
+          tone: "warning",
+          message: "PVGIS did not return data for this site",
+          detail: pvgisFailure.reason ?? "See Report view for the full provider breakdown.",
+        });
+      }
       notify({
         tone: "success",
         message: `Resource fetched from ${report.reports.length} source${report.reports.length === 1 ? "" : "s"}`,
+        detail: fromCache
+          ? "Reused the cached multi-source report from Report / a prior fetch."
+          : undefined,
       });
     } catch (error) {
       notify({
@@ -189,6 +219,23 @@ function SiteDetail({ site }: { site: Site }) {
 
   return (
     <div className="inspector">
+      {sites.length > 1 && (
+        <Field label="Site">
+          <Select
+            aria-label="Select site"
+            value={site.id}
+            options={sites.map((entry) => ({
+              value: entry.id,
+              label:
+                entry.areaM2 > 0
+                  ? `${entry.name} (${scaleArea(entry.areaM2).value} ${scaleArea(entry.areaM2).unit})`
+                  : `${entry.name} (point)`,
+            }))}
+            onChange={(event) => selectSite(event.target.value)}
+          />
+        </Field>
+      )}
+
       <div className="inspector__head">
         <Input
           value={site.name}
@@ -209,8 +256,11 @@ function SiteDetail({ site }: { site: Site }) {
           label="Delete this site"
           size="sm"
           onClick={() => {
+            const draw = useDrawStore.getState();
+            if (draw.editingSiteId === site.id) {
+              cancelDraw();
+            }
             removeSite(site.id);
-            selectSite(null);
             markDirty();
           }}
         >

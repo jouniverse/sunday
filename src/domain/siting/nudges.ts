@@ -169,8 +169,11 @@ function slopeNudges(facts: SiteFacts): Nudge[] {
         severity: "note",
         title: "Terrain slope not sampled",
         detail:
-          "No elevation model has been queried for this site, so grading risk is unassessed.",
-        action: "Enable a terrain layer to sample slope over the boundary.",
+          "No elevation model has been queried for this site, so grading risk is unassessed. " +
+          "DEM slope sampling is not wired yet — toggling Terrain slope only flips the catalogue; " +
+          "MapTiler terrain basemap is visual relief, not a site mean slope.",
+        action:
+          "Use a MapTiler terrain basemap for context, or wait for DEM zonal sampling (see terrain-analysis notes).",
         basis: "Missing input",
       },
     ];
@@ -285,8 +288,10 @@ function resourceNudges(facts: SiteFacts): Nudge[] {
       id: "ghi-unknown",
       severity: "note",
       title: "Solar resource not sampled",
-      detail: "No irradiation value has been read for this site, so yield is unconstrained.",
-      action: "Generate a site report, or load an irradiation raster.",
+      detail:
+        "No irradiation value has been read for this site, so yield is unconstrained. " +
+        "Layer toggles do not sample rasters — use Fetch resource, or Sample site from Solargis COG in Design.",
+      action: "Fetch resource in the inspector, or sample a Solargis COG from Design (Settings → raster path).",
       basis: "Missing input",
     });
     return nudges;

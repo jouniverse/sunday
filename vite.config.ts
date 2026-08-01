@@ -12,6 +12,12 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // MapLibre v6's worker is a sibling ESM chunk. Excluding it from the
+  // optimiser stops Vite from serving a broken `./maplibre-gl-worker.mjs`
+  // relative to `.vite/deps/`; the app registers the worker via setWorkerUrl.
+  optimizeDeps: {
+    exclude: ["maplibre-gl"],
+  },
   // Tauri uses a Safari-based webview on macOS; target its supported baseline.
   build: {
     target: "safari17",
@@ -35,6 +41,22 @@ export default defineConfig({
         target: "http://127.0.0.1:8787",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/solar-engine/, ""),
+      },
+      // Same-origin proxies avoid CORS when the UI runs in the browser under Vite.
+      "/api/pvgis": {
+        target: "https://re.jrc.ec.europa.eu",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/pvgis/, ""),
+      },
+      "/api/nasa-power": {
+        target: "https://power.larc.nasa.gov",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nasa-power/, ""),
+      },
+      "/api/nrel": {
+        target: "https://developer.nlr.gov",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nrel/, ""),
       },
     },
   },

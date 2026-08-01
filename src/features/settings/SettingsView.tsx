@@ -42,7 +42,7 @@ const PROVIDER_CARDS: ProviderCard[] = [
     label: "NREL",
     unlocks: "NSRDB solar resource and PVWatts modelled yield across the Americas.",
     free: "Free, issued instantly.",
-    url: "https://developer.nrel.gov/signup/",
+    url: "https://developer.nlr.gov/signup/",
   },
   {
     id: "maptiler",
@@ -111,19 +111,28 @@ export function SettingsView() {
               mono
               placeholder="https://storage.googleapis.com/your-bucket/gsa/"
               value={settings.preferences.rasterBaseUrl}
-              onChange={(event) =>
-                void settings.setPreferences({ rasterBaseUrl: event.target.value })
-              }
+              onChange={(event) => {
+                void settings.setPreferences({ rasterBaseUrl: event.target.value });
+                void import("@/services/datasets/raster-sample").then((m) =>
+                  m.markGsaLayersFromSettings(),
+                );
+              }}
             />
           </Field>
-          <Field label="Local raster directory" hint="A folder of GeoTIFFs you have downloaded.">
+          <Field
+            label="Local raster directory"
+            hint="A folder of GeoTIFFs (GHI.tif / GHI_cog.tif, etc.)."
+          >
             <Input
               mono
               placeholder="/Users/you/Documents/Sunday/rasters"
               value={settings.preferences.rasterLocalDir}
-              onChange={(event) =>
-                void settings.setPreferences({ rasterLocalDir: event.target.value })
-              }
+              onChange={(event) => {
+                void settings.setPreferences({ rasterLocalDir: event.target.value });
+                void import("@/services/datasets/raster-sample").then((m) =>
+                  m.markGsaLayersFromSettings(),
+                );
+              }}
             />
           </Field>
         </div>
@@ -154,10 +163,10 @@ export function SettingsView() {
                       {layer.licence && ` · ${layer.licence}`}
                     </span>
                   </div>
-                {layer.availability.state === "needs-download" &&
-                  layer.availability.approximateMb > 0 && (
-                  <Chip dot={false}>~{layer.availability.approximateMb} MB</Chip>
-                )}
+                  {layer.availability.state === "needs-download" &&
+                    layer.availability.approximateMb > 0 && (
+                      <Chip dot={false}>~{layer.availability.approximateMb} MB</Chip>
+                    )}
                   {state?.downloaded ? (
                     <Chip tone="ok">
                       <CheckIcon size={11} /> Installed
@@ -250,8 +259,11 @@ export function SettingsView() {
             <h2 className="card__title">Solar engine</h2>
           </div>
           <p className="settings__note">
-            The engine wraps pvlib to provide hourly modelling. Without it, Sunday still works and
-            labels its results as first-order estimates.
+            The solar engine is a local Python sidecar (pvlib) on port 8787. Start it from here, or
+            with <code>npm run engine:dev</code> in a terminal. Start/Stop only manage that local
+            process — they are not a cloud service. Status reflects a live <code>/health</code>{" "}
+            probe. Without the engine, Sunday still works and labels results as first-order
+            estimates.
           </p>
           <ParamList
             rows={[
@@ -270,22 +282,45 @@ export function SettingsView() {
             ]}
           />
           {appInfo?.engine.detail && <Callout tone="note">{appInfo.engine.detail}</Callout>}
-          <Button
-            onClick={async () => {
-              const status = await platform().engine.start();
-              notify({
-                tone: status.state === "ready" ? "success" : "warning",
-                message: `Solar engine is ${status.state}`,
-                detail: status.detail ?? undefined,
-              });
-              platform()
-                .appInfo()
-                .then(setAppInfo)
-                .catch(() => undefined);
-            }}
-          >
-            Start the engine
-          </Button>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <Button
+              onClick={async () => {
+                const status = await platform().engine.start();
+                notify({
+                  tone: status.state === "ready" ? "success" : "warning",
+                  message: `Solar engine is ${status.state}`,
+                  detail: status.detail ?? undefined,
+                });
+                window.dispatchEvent(new Event("sunday:engine-changed"));
+                platform()
+                  .appInfo()
+                  .then(setAppInfo)
+                  .catch(() => undefined);
+              }}
+            >
+              Start solar engine
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                const status = await platform().engine.stop();
+                notify({
+                  tone: "info",
+                  message: `Solar engine is ${status.state}`,
+                  detail:
+                    status.detail ??
+                    "Only an engine Sunday started is stopped; an external `npm run engine:dev` process is left running.",
+                });
+                window.dispatchEvent(new Event("sunday:engine-changed"));
+                platform()
+                  .appInfo()
+                  .then(setAppInfo)
+                  .catch(() => undefined);
+              }}
+            >
+              Stop solar engine
+            </Button>
+          </div>
         </div>
 
         <div className="card">

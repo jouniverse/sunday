@@ -1,12 +1,21 @@
 /**
- * Top bar: brand, primary view tabs, project actions.
+ * Top bar: brand, primary view tabs, project switcher, project actions.
  *
  * Matches the prototype chrome: a 52 px bar with the wordmark, the four primary
  * views, and the settings and help affordances pushed to the right.
  */
 
 import { IconButton } from "@/design-system/controls";
-import { HelpIcon, OpenIcon, SaveIcon, SettingsIcon, SunIcon } from "@/design-system/icons";
+import {
+  ExportIcon,
+  HelpIcon,
+  LayersIcon,
+  OpenIcon,
+  SaveIcon,
+  SettingsIcon,
+  SunIcon,
+} from "@/design-system/icons";
+import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useUiStore } from "@/core/store/uiStore";
 import type { ViewId } from "@/core/store/uiStore";
@@ -21,12 +30,24 @@ const TABS: Array<{ id: ViewId; label: string }> = [
 export function TopBar() {
   const view = useUiStore((state) => state.view);
   const setView = useUiStore((state) => state.setView);
+  const openModal = useUiStore((state) => state.openModal);
   const notify = useUiStore((state) => state.notify);
   const projectName = useProjectStore((state) => state.name);
   const dirty = useProjectStore((state) => state.dirty);
+  const libraryId = useProjectStore((state) => state.libraryId);
+  const entries = useProjectLibraryStore((state) => state.entries);
+  const activeId = useProjectLibraryStore((state) => state.activeId);
+  const switchProject = useProjectLibraryStore((state) => state.switchProject);
+  const saveActiveToLibrary = useProjectLibraryStore((state) => state.saveActiveToLibrary);
+  const createProject = useProjectLibraryStore((state) => state.createProject);
 
   async function handleSave() {
     try {
+      if (libraryId) {
+        await saveActiveToLibrary();
+        notify({ tone: "success", message: `Saved ${useProjectStore.getState().name}` });
+        return;
+      }
       const path = await useProjectStore.getState().save();
       if (path) notify({ tone: "success", message: `Saved to ${path}` });
     } catch (error) {
@@ -61,12 +82,57 @@ export function TopBar() {
     }
   }
 
+  async function handleSwitch(id: string) {
+    if (!id) return;
+    if (id === "__new__") {
+      try {
+        await createProject("Untitled project");
+        notify({ tone: "success", message: "Created a new project" });
+      } catch (error) {
+        notify({
+          tone: "error",
+          message: "Could not create a project",
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return;
+    }
+    try {
+      const ok = await switchProject(id);
+      if (ok) notify({ tone: "success", message: `Switched to ${useProjectStore.getState().name}` });
+    } catch (error) {
+      notify({
+        tone: "error",
+        message: "Could not switch project",
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   return (
     <header className="topbar">
       <div className="topbar__logo">
         <SunIcon size={20} className="topbar__mark" />
         Sunday
       </div>
+
+      <label className="topbar__project">
+        <span className="topbar__project-label">Project</span>
+        <select
+          className="topbar__project-select"
+          aria-label="Switch project"
+          value={activeId ?? ""}
+          onChange={(event) => void handleSwitch(event.target.value)}
+        >
+          {entries.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+              {entry.id === activeId && dirty ? " ·" : ""}
+            </option>
+          ))}
+          <option value="__new__">New project…</option>
+        </select>
+      </label>
 
       <nav className="topbar__tabs" aria-label="Primary views">
         {TABS.map((tab) => (
@@ -85,7 +151,14 @@ export function TopBar() {
       <div className="topbar__spacer" />
 
       <div className="topbar__actions">
-        <IconButton label="Open project" onClick={handleOpen}>
+        <IconButton
+          label="All projects"
+          active={view === "projects"}
+          onClick={() => setView("projects")}
+        >
+          <LayersIcon />
+        </IconButton>
+        <IconButton label="Open project file" onClick={handleOpen}>
           <OpenIcon />
         </IconButton>
         <IconButton
@@ -93,6 +166,9 @@ export function TopBar() {
           onClick={handleSave}
         >
           <SaveIcon />
+        </IconButton>
+        <IconButton label="Export project" onClick={() => openModal("export")}>
+          <ExportIcon />
         </IconButton>
         <IconButton
           label="Settings"

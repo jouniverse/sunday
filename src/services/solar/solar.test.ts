@@ -11,8 +11,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearHttpCache } from "../http/client";
 import { fetchNasaPowerClimatology } from "./nasa-power";
 import { fetchNrelResource, fetchPvWatts, redactKey } from "./nrel";
-import { fetchPvgisPerformance, fetchPvgisRadiation, fromPvgisAzimuth, toPvgisAzimuth } from "./pvgis";
 import { generateSiteReport } from "./orchestrator";
+import {
+  climatologyFromMrcalc,
+  fetchPvgisPerformance,
+  fetchPvgisRadiation,
+  fromPvgisAzimuth,
+  toPvgisAzimuth,
+} from "./pvgis";
 import { compareValues } from "./types";
 
 /** Installs a fetch stub that answers by URL substring. */
@@ -112,11 +118,41 @@ describe("PVGIS radiation", () => {
     expect(report.fidelity).toBe("modelled");
   });
 
+  it("averages multi-year MRcalc rows into a 12-month climatology", async () => {
+    // Real MRcalc returns one row per month per year (e.g. 19×12), not 12 means.
+    const monthly = [2020, 2021].flatMap((year) =>
+      Array.from({ length: 12 }, (_, index) => ({
+        year,
+        month: index + 1,
+        "H(h)_m": year === 2020 ? 100 : 200,
+        "Hb(n)_m": 150,
+        "Hd(h)_m": 40,
+        T2m: 10,
+      })),
+    );
+    stubFetch([{ match: "MRcalc", body: { outputs: { monthly }, meta: PVGIS_MRCALC.meta } }]);
+    const report = await fetchPvgisRadiation({ latitude: 35, longitude: -118 });
+
+    expect(report.monthlyGhi).toHaveLength(12);
+    expect(report.monthlyGhi?.every((point) => point.value === 150)).toBe(true);
+    expect(report.ghiKwhM2Year).toBeCloseTo(1800, 6);
+    expect(report.method).toContain("2020–2021");
+  });
+
   it("explains a location outside coverage instead of returning zeros", async () => {
     stubFetch([{ match: "MRcalc", body: { outputs: { monthly: [] } } }]);
     await expect(fetchPvgisRadiation({ latitude: 85, longitude: 0 })).rejects.toMatchObject({
       guidance: expect.stringContaining("NASA POWER"),
     });
+  });
+});
+
+describe("climatologyFromMrcalc", () => {
+  it("keeps a single-year series as twelve months", () => {
+    const climate = climatologyFromMrcalc(PVGIS_MRCALC.outputs.monthly);
+    expect(climate.monthlyGhi).toHaveLength(12);
+    expect(climate.ghiKwhM2Year).toBeCloseTo(1800, 6);
+    expect(climate.sampleYears).toBe(1);
   });
 });
 
@@ -168,22 +204,32 @@ const POWER_CLIMATOLOGY = {
       ALLSKY_SFC_SW_DNI: monthly(6),
       ALLSKY_SFC_SW_DIFF: monthly(1.5),
       T2M: { ...monthly(17), ANN: 17 },
-      SI_EF_TILTED_SURFACE_OPTIMAL: monthly(5.8),
-      SI_EF_OPTIMAL_ANGLE: { ...monthly(30), ANN: 30 },
+      SI_TILTED_AVG_OPTIMAL: monthly(5.8),
+      SI_TILTED_AVG_OPTIMAL_ANG: { ...monthly(30), ANN: 30 },
     },
   },
 };
 
 function monthly(value: number): Record<string, number> {
   return {
-    JAN: value, FEB: value, MAR: value, APR: value, MAY: value, JUN: value,
-    JUL: value, AUG: value, SEP: value, OCT: value, NOV: value, DEC: value,
+    JAN: value,
+    FEB: value,
+    MAR: value,
+    APR: value,
+    MAY: value,
+    JUN: value,
+    JUL: value,
+    AUG: value,
+    SEP: value,
+    OCT: value,
+    NOV: value,
+    DEC: value,
   };
 }
 
 describe("NASA POWER", () => {
   it("scales daily means by month length rather than summing them", async () => {
-    stubFetch([{ match: "power.larc.nasa.gov", body: POWER_CLIMATOLOGY }]);
+    stubFetch([{ match: "climatology/point", body: POWER_CLIMATOLOGY }]);
     const report = await fetchNasaPowerClimatology({ latitude: 35, longitude: -118 });
 
     // 5 kWh/m2/day over 365.25 days is about 1826, not 60.
@@ -195,7 +241,7 @@ describe("NASA POWER", () => {
   });
 
   it("states which grid cell answered", async () => {
-    stubFetch([{ match: "power.larc.nasa.gov", body: POWER_CLIMATOLOGY }]);
+    stubFetch([{ match: "climatology/point", body: POWER_CLIMATOLOGY }]);
     const report = await fetchNasaPowerClimatology({ latitude: 35, longitude: -118 });
     const caveats = report.caveats.join(" ");
     // The honesty requirement: a 1 degree cell is not a site.
@@ -206,7 +252,7 @@ describe("NASA POWER", () => {
   it("discards fill values rather than averaging them in", async () => {
     const withFill = structuredClone(POWER_CLIMATOLOGY);
     withFill.properties.parameter.ALLSKY_SFC_SW_DWN.JUL = -999;
-    stubFetch([{ match: "power.larc.nasa.gov", body: withFill }]);
+    stubFetch([{ match: "climatology/point", body: withFill }]);
 
     const report = await fetchNasaPowerClimatology({ latitude: 35, longitude: -118 });
     // An incomplete year must not be reported as an annual total.
@@ -216,7 +262,7 @@ describe("NASA POWER", () => {
   });
 
   it("reports a missing-parameter response as an error with guidance", async () => {
-    stubFetch([{ match: "power.larc.nasa.gov", body: { messages: ["Bad request"] } }]);
+    stubFetch([{ match: "climatology/point", body: { messages: ["Bad request"] } }]);
     await expect(
       fetchNasaPowerClimatology({ latitude: 35, longitude: -118 }),
     ).rejects.toMatchObject({ guidance: expect.stringContaining("Bad request") });
@@ -236,8 +282,18 @@ describe("NREL", () => {
 
   function monthlyLower(value: number): Record<string, number> {
     return {
-      jan: value, feb: value, mar: value, apr: value, may: value, jun: value,
-      jul: value, aug: value, sep: value, oct: value, nov: value, dec: value,
+      jan: value,
+      feb: value,
+      mar: value,
+      apr: value,
+      may: value,
+      jun: value,
+      jul: value,
+      aug: value,
+      sep: value,
+      oct: value,
+      nov: value,
+      dec: value,
     };
   }
 
@@ -273,9 +329,7 @@ describe("NREL", () => {
   });
 
   it("explains an out-of-coverage location", async () => {
-    stubFetch([
-      { match: "solar_resource", body: { errors: ["No data for this location"] } },
-    ]);
+    stubFetch([{ match: "solar_resource", body: { errors: ["No data for this location"] } }]);
     await expect(
       fetchNrelResource({ latitude: 60, longitude: 25, apiKey: "K" }),
     ).rejects.toMatchObject({ guidance: expect.stringContaining("Americas") });
@@ -358,7 +412,7 @@ describe("site report orchestration", () => {
     stubFetch([
       { match: "MRcalc", body: PVGIS_MRCALC },
       { match: "PVcalc", body: PVGIS_PVCALC },
-      { match: "power.larc.nasa.gov", body: POWER_CLIMATOLOGY },
+      { match: "climatology/point", body: POWER_CLIMATOLOGY },
     ]);
 
     const report = await generateSiteReport({
@@ -377,7 +431,7 @@ describe("site report orchestration", () => {
     stubFetch([
       { match: "MRcalc", body: PVGIS_MRCALC },
       { match: "PVcalc", body: PVGIS_PVCALC },
-      { match: "power.larc.nasa.gov", body: POWER_CLIMATOLOGY },
+      { match: "climatology/point", body: POWER_CLIMATOLOGY },
     ]);
 
     const report = await generateSiteReport({
@@ -387,16 +441,28 @@ describe("site report orchestration", () => {
       getApiKey: noKeys,
     });
 
-    // PVGIS at 5 km outranks POWER at 1 degree.
+    // PVGIS at 5 km outranks POWER at 1 degree for irradiation.
     expect(report.consensus.ghiKwhM2Year?.from).toEqual(["pvgis"]);
     expect(report.consensus.ghiKwhM2Year?.note).toContain("highest-resolution");
+    // Optimal tilt prefers NASA POWER (PVGIS slopes can be unreliable globally).
+    expect(report.consensus.optimalTiltDegrees?.from).toEqual(["nasa_power"]);
+    expect(report.consensus.optimalTiltDegrees?.value).toBe(30);
+  });
+
+  it("exposes NASA POWER monthly tilt and air temperature series", async () => {
+    stubFetch([{ match: "climatology/point", body: POWER_CLIMATOLOGY }]);
+    const report = await fetchNasaPowerClimatology({ latitude: 35, longitude: -118 });
+    expect(report.monthlyOptimalTilt).toHaveLength(12);
+    expect(report.monthlyOptimalTilt?.[0]?.value).toBe(30);
+    expect(report.monthlyAirTempC).toHaveLength(12);
+    expect(report.monthlyAirTempC?.[0]?.value).toBe(17);
   });
 
   it("survives one provider failing", async () => {
     stubFetch([
       { match: "MRcalc", body: PVGIS_MRCALC },
       { match: "PVcalc", body: PVGIS_PVCALC },
-      { match: "power.larc.nasa.gov", body: { error: "boom" }, status: 500 },
+      { match: "climatology/point", body: { error: "boom" }, status: 500 },
     ]);
 
     const report = await generateSiteReport({
@@ -458,7 +524,7 @@ describe("site report orchestration", () => {
     stubFetch([
       { match: "MRcalc", body: lowPvgis },
       { match: "PVcalc", body: PVGIS_PVCALC },
-      { match: "power.larc.nasa.gov", body: POWER_CLIMATOLOGY }, // ~1826/yr
+      { match: "climatology/point", body: POWER_CLIMATOLOGY }, // ~1826/yr
     ]);
 
     const report = await generateSiteReport({
@@ -476,7 +542,7 @@ describe("site report orchestration", () => {
     stubFetch([
       { match: "MRcalc", body: PVGIS_MRCALC },
       { match: "PVcalc", body: PVGIS_PVCALC },
-      { match: "power.larc.nasa.gov", body: POWER_CLIMATOLOGY },
+      { match: "climatology/point", body: POWER_CLIMATOLOGY },
     ]);
 
     const progress: Array<[number, number]> = [];
@@ -492,5 +558,19 @@ describe("site report orchestration", () => {
       [1, 2],
       [2, 2],
     ]);
+  });
+});
+
+describe("PVGIS radiation database selection", () => {
+  it("prefers SARAH3 inside the European–African footprint", async () => {
+    const { pvgisRadiationDatabase } = await import("./pvgis");
+    expect(pvgisRadiationDatabase(48, 2)).toBe("PVGIS-SARAH3");
+    expect(pvgisRadiationDatabase(0, 20)).toBe("PVGIS-SARAH3");
+  });
+
+  it("forces ERA5 at high latitude", async () => {
+    const { pvgisRadiationDatabase } = await import("./pvgis");
+    expect(pvgisRadiationDatabase(65, 25)).toBe("PVGIS-ERA5");
+    expect(pvgisRadiationDatabase(-62, -70)).toBe("PVGIS-ERA5");
   });
 });

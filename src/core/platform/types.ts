@@ -120,6 +120,30 @@ export interface ProjectApi {
   pickOpenPath(): Promise<string | null>;
 }
 
+/* --- Project library ------------------------------------------------------ */
+
+export interface LibraryEntry {
+  id: string;
+  name: string;
+  path: string;
+  updatedAt: string;
+}
+
+export interface LibraryIndex {
+  activeId: string | null;
+  entries: LibraryEntry[];
+}
+
+export interface ProjectLibraryApi {
+  list(): Promise<LibraryIndex>;
+  /** Persist a document into the library folder and upsert its index row. */
+  saveEntry(id: string, project: ProjectDocument): Promise<LibraryIndex>;
+  deleteEntry(id: string): Promise<LibraryIndex>;
+  setActive(id: string | null): Promise<LibraryIndex>;
+  /** Load the document for a library id (path resolved by the host). */
+  loadEntry(id: string): Promise<LoadedProject>;
+}
+
 /* --- Raster --------------------------------------------------------------- */
 
 export type RasterSource =
@@ -276,6 +300,34 @@ export interface ShellApi {
     contents: string | Uint8Array,
     filters?: Array<{ name: string; extensions: string[] }>,
   ): Promise<string | null>;
+  /**
+   * Native yes/no prompt. Prefer this over `window.confirm`, which Tauri's
+   * webview rejects (`dialog.confirm not allowed`).
+   */
+  confirm(message: string, title?: string): Promise<boolean>;
+}
+
+/* --- Outbound HTTP -------------------------------------------------------- */
+
+export interface HttpFetchTextRequest {
+  url: string;
+  method?: "GET" | "POST";
+  headers?: Record<string, string>;
+  body?: string;
+  timeoutMs?: number;
+}
+
+export interface HttpFetchTextResult {
+  status: number;
+  body: string;
+}
+
+export interface HttpApi {
+  /**
+   * Text/JSON GET/POST via the host. In Tauri this uses reqwest (no WebKit
+   * fetch/CORS). Browser fallback uses `fetch` (and Vite `/api` proxies in DEV).
+   */
+  fetchText(request: HttpFetchTextRequest): Promise<HttpFetchTextResult>;
 }
 
 /* --- The platform --------------------------------------------------------- */
@@ -285,8 +337,10 @@ export interface Platform {
   appInfo(): Promise<AppInfo>;
   settings: SettingsApi;
   project: ProjectApi;
+  library: ProjectLibraryApi;
   raster: RasterApi;
   vector: VectorApi;
   engine: EngineApi;
   shell: ShellApi;
+  http: HttpApi;
 }

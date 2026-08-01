@@ -170,6 +170,40 @@ pub fn project_load(path: String) -> Result<crate::project::LoadedProject> {
 }
 
 // ---------------------------------------------------------------------------
+// Project library
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn library_list(state: State<'_, AppState>) -> Result<crate::library::LibraryIndex> {
+    crate::library::list(&state.paths)
+}
+
+#[tauri::command]
+pub fn library_save_entry(
+    state: State<'_, AppState>,
+    id: String,
+    project: crate::project::Project,
+) -> Result<crate::library::LibraryIndex> {
+    crate::library::save_entry(&state.paths, &id, &project)
+}
+
+#[tauri::command]
+pub fn library_delete_entry(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<crate::library::LibraryIndex> {
+    crate::library::delete_entry(&state.paths, &id)
+}
+
+#[tauri::command]
+pub fn library_set_active(
+    state: State<'_, AppState>,
+    id: Option<String>,
+) -> Result<crate::library::LibraryIndex> {
+    crate::library::set_active(&state.paths, id)
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
@@ -309,6 +343,110 @@ pub fn app_info(state: State<'_, AppState>) -> AppInfo {
         vector_store: state.paths.vector_store().display().to_string(),
         engine: state.sidecar.status(),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Outbound HTTP (solar APIs) — avoids WKWebView fetch URL/CORS failures
+// ---------------------------------------------------------------------------
+
+/// Hosts the frontend may request through the native HTTP bridge.
+/// Keep in sync with `tauri.conf.json` CSP `connect-src` solar/search entries.
+fn http_host_allowed(host: &str) -> bool {
+    matches!(
+        host,
+        "re.jrc.ec.europa.eu"
+            | "power.larc.nasa.gov"
+            | "developer.nlr.gov"
+            | "developer.nrel.gov"
+            | "solar.googleapis.com"
+            | "maps.googleapis.com"
+            | "nominatim.openstreetmap.org"
+            | "overpass-api.de"
+    )
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HttpFetchRequest {
+    pub url: String,
+    #[serde(default)]
+    pub method: Option<String>,
+    #[serde(default)]
+    pub headers: Option<std::collections::HashMap<String, String>>,
+    #[serde(default)]
+    pub body: Option<String>,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HttpFetchResponse {
+    pub status: u16,
+    pub body: String,
+}
+
+/// Fetches text/JSON from an allow-listed HTTPS host via reqwest.
+///
+/// Used for PVGIS and other public solar APIs: Safari/WKWebView rejects some
+/// relative `fetch()` URLs with "The string did not match the expected pattern",
+/// and same-origin Vite proxies are unavailable in packaged builds.
+#[tauri::command]
+pub async fn http_fetch_text(request: HttpFetchRequest) -> Result<HttpFetchResponse> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let parsed = reqwest::Url::parse(&request.url)
+            .map_err(|error| Error::Invalid(format!("invalid URL: {error}")))?;
+        if parsed.scheme() != "https" && parsed.scheme() != "http" {
+            return Err(Error::Invalid(
+                "only http(s) URLs are allowed through the native HTTP bridge".into(),
+            ));
+        }
+        let host = parsed
+            .host_str()
+            .ok_or_else(|| Error::Invalid("URL has no host".into()))?;
+        if !http_host_allowed(host) {
+            return Err(Error::Invalid(format!(
+                "host not allowed for native HTTP: {host}"
+            )));
+        }
+
+        let timeout = std::time::Duration::from_millis(request.timeout_ms.unwrap_or(20_000).max(1));
+        let client = reqwest::blocking::Client::builder()
+            .user_agent(crate::USER_AGENT)
+            .timeout(timeout)
+            .build()?;
+
+        let method = request
+            .method
+            .as_deref()
+            .unwrap_or("GET")
+            .to_ascii_uppercase();
+        let mut builder = match method.as_str() {
+            "GET" => client.get(parsed),
+            "POST" => client.post(parsed),
+            other => {
+                return Err(Error::Invalid(format!(
+                    "unsupported HTTP method for native bridge: {other}"
+                )));
+            }
+        };
+
+        if let Some(headers) = &request.headers {
+            for (key, value) in headers {
+                builder = builder.header(key, value);
+            }
+        }
+        if let Some(body) = &request.body {
+            builder = builder.body(body.clone());
+        }
+
+        let response = builder.send()?;
+        let status = response.status().as_u16();
+        let body = response.text()?;
+        Ok(HttpFetchResponse { status, body })
+    })
+    .await
+    .map_err(|error| Error::Http(format!("native HTTP task failed: {error}")))?
 }
 
 /// Signals that a nominally interpreter-based launch is what a dev build uses.

@@ -1,22 +1,20 @@
 /**
  * Google Solar API client.
  *
- * Ported from the logic of the reviewed first-party reference apps and the
- * official TypeScript sample, with the quirks they documented preserved:
+ * Ported from the freezer `google-solar-gs` reference and the official sample:
  *
- * - `requiredQuality` should default to `BASE`: asking for `HIGH` fails outright
- *   in most of the covered area rather than degrading.
+ * - Prefer HIGH imagery, then MEDIUM, then LOW / BASE when coverage is thinner.
  * - Building insights are keyed to a *building*, not a point, so the returned
  *   centre can be tens of metres from the click.
- * - `imageryDate` is the only honest indicator of how current the geometry is,
- *   and it can be years old.
+ * - `solarPanels[]` carries exact panel centres; configurations are the energy ladder.
+ * - `imageryDate` is the only honest indicator of how current the geometry is.
  *
  * This is the one paid API Sunday uses, so it is never called speculatively: only
- * on an explicit user action.
+ * on an explicit user action. Responses are HTTP-cached (see requestJson TTL).
  */
 
 import { ApiError, query, requestJson } from "../http/client";
-import type { BuildingInsights, RoofConfiguration, RoofSegment } from "./types";
+import type { BuildingInsights, GoogleSolarPanel, RoofConfiguration, RoofSegment } from "./types";
 import { PROVIDERS } from "./types";
 
 const BASE = "https://solar.googleapis.com/v1";
@@ -59,26 +57,80 @@ interface RawBuildingInsights {
         yearlyEnergyDcKwh?: number;
       }>;
     }>;
+    solarPanels?: Array<{
+      center?: LatLng;
+      orientation?: string;
+      segmentIndex?: number;
+      yearlyEnergyDcKwh?: number;
+    }>;
   };
   error?: { code?: number; message?: string; status?: string };
 }
 
+const QUALITY_FALLBACK: ImageryQuality[] = ["HIGH", "MEDIUM", "LOW", "BASE"];
+
 /**
  * Roof geometry, panel capacity and candidate configurations for a building.
+ * Tries HIGH → MEDIUM → LOW → BASE until Google returns a building.
  */
 export async function fetchBuildingInsights(options: {
   latitude: number;
   longitude: number;
   apiKey: string;
   requiredQuality?: ImageryQuality;
+  /** When true (default), walk the quality ladder instead of failing on HIGH. */
+  qualityFallback?: boolean;
+  signal?: AbortSignal;
+}): Promise<BuildingInsights> {
+  const qualities =
+    options.qualityFallback === false
+      ? [options.requiredQuality ?? "BASE"]
+      : options.requiredQuality
+        ? [
+            options.requiredQuality,
+            ...QUALITY_FALLBACK.filter((q) => q !== options.requiredQuality),
+          ]
+        : QUALITY_FALLBACK;
+
+  let lastError: unknown;
+  for (const quality of qualities) {
+    try {
+      return await fetchBuildingInsightsOnce({ ...options, requiredQuality: quality });
+    } catch (error) {
+      lastError = error;
+      if (error instanceof ApiError && error.status === 404) continue;
+      // NOT_FOUND / empty roof → try next quality; other errors (key, quota) stop.
+      if (
+        error instanceof ApiError &&
+        /no building|NOT_FOUND|no roof/i.test(error.message)
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new ApiError({
+        provider: PROVIDERS.google_solar.label,
+        message: "Google Solar returned no building at any imagery quality",
+        guidance:
+          "Coverage is limited to selected urban areas. Draw the roof manually and use PVGIS for the resource instead.",
+      });
+}
+
+async function fetchBuildingInsightsOnce(options: {
+  latitude: number;
+  longitude: number;
+  apiKey: string;
+  requiredQuality: ImageryQuality;
   signal?: AbortSignal;
 }): Promise<BuildingInsights> {
   const provider = PROVIDERS.google_solar;
   const url = `${BASE}/buildingInsights:findClosest?${query({
     "location.latitude": options.latitude,
     "location.longitude": options.longitude,
-    // BASE is the correct default: HIGH simply fails across most of the coverage.
-    requiredQuality: options.requiredQuality ?? "BASE",
+    requiredQuality: options.requiredQuality,
     key: options.apiKey,
   })}`;
 
@@ -86,7 +138,8 @@ export async function fetchBuildingInsights(options: {
     provider: provider.label,
     url,
     signal: options.signal,
-    cacheTtlMs: 24 * 60 * 60 * 1000,
+    // Paid API — cache aggressively so revisiting Design does not re-bill.
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   });
 
   if (response.error) {
@@ -130,6 +183,15 @@ export async function fetchBuildingInsights(options: {
     })),
   }));
 
+  const solarPanels: GoogleSolarPanel[] = (potential.solarPanels ?? [])
+    .filter((panel) => panel.center?.latitude !== undefined && panel.center?.longitude !== undefined)
+    .map((panel) => ({
+      centre: [panel.center!.longitude, panel.center!.latitude] as [number, number],
+      orientation: panel.orientation ?? "LANDSCAPE",
+      segmentIndex: panel.segmentIndex ?? 0,
+      yearlyEnergyDcKwh: panel.yearlyEnergyDcKwh ?? 0,
+    }));
+
   const imageryDate = response.imageryDate
     ? `${response.imageryDate.year}-${String(response.imageryDate.month).padStart(2, "0")}-${String(
         response.imageryDate.day,
@@ -145,15 +207,18 @@ export async function fetchBuildingInsights(options: {
         : `Imagery is from ${imageryDate}.`,
     );
   }
+  caveats.push(`Imagery quality used: ${response.imageryQuality ?? options.requiredQuality}.`);
   if (response.imageryQuality && response.imageryQuality !== "HIGH") {
     caveats.push(
-      `Imagery quality is ${response.imageryQuality}, so segment geometry is coarser than the ` +
-        "best available and panel counts should be treated as indicative.",
+      "Segment geometry is coarser than HIGH; panel counts should be treated as indicative.",
     );
   }
   caveats.push(
+    "Panel centres come from Google Solar and may sit slightly off other basemaps (systematic CRS offset).",
+  );
+  caveats.push(
     "Yields are Google's own DC estimates for its reference panel; Sunday recomputes AC energy " +
-      "for the module you select.",
+      "for the module you select when packing locally.",
   );
 
   return {
@@ -161,13 +226,14 @@ export async function fetchBuildingInsights(options: {
     name: response.name ?? "Unnamed building",
     centre: [response.center.longitude, response.center.latitude],
     imageryDate,
-    imageryQuality: response.imageryQuality,
-    maxPanelCount: potential.maxArrayPanelsCount ?? 0,
+    imageryQuality: response.imageryQuality ?? options.requiredQuality,
+    maxPanelCount: potential.maxArrayPanelsCount ?? solarPanels.length,
     panelCapacityWatts: potential.panelCapacityWatts ?? 400,
     panelHeightM: potential.panelHeightMeters ?? 1.87,
     panelWidthM: potential.panelWidthMeters ?? 1.05,
     roofSegments: segments,
     configurations,
+    solarPanels,
     wholeRoofAreaM2: potential.wholeRoofStats?.areaMeters2,
     maxSunshineHoursPerYear: potential.maxSunshineHoursPerYear,
     carbonOffsetFactorKgPerMwh: potential.carbonOffsetFactorKgPerMwh,
@@ -221,8 +287,9 @@ export async function fetchDataLayerUrls(options: {
     "location.longitude": options.longitude,
     radiusMeters: options.radiusMeters,
     view: options.view ?? "IMAGERY_AND_ANNUAL_FLUX_LAYERS",
-    requiredQuality: options.requiredQuality ?? "BASE",
-    pixelSizeMeters: options.pixelSizeMeters,
+    requiredQuality: options.requiredQuality ?? "HIGH",
+    exactQualityRequired: false,
+    pixelSizeMeters: options.pixelSizeMeters ?? 0.5,
     key: options.apiKey,
   })}`;
 
@@ -231,7 +298,12 @@ export async function fetchDataLayerUrls(options: {
       imageryDate?: { year: number; month: number; day: number };
       error?: { message?: string; status?: string };
     }
-  >({ provider: provider.label, url, signal: options.signal });
+  >({
+    provider: provider.label,
+    url,
+    signal: options.signal,
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
+  });
 
   if (response.error) {
     throw new ApiError({

@@ -9,6 +9,7 @@
 import { useMemo } from "react";
 import { MapView } from "@/core/map/MapView";
 import { availableBasemaps, scaleBarFor } from "@/core/map/basemaps";
+import { measure } from "@/core/map/draw/engine";
 import { useDrawStore } from "@/core/map/draw/store";
 import { useLayerStore } from "@/core/store/layerStore";
 import { useMapStore } from "@/core/store/mapStore";
@@ -149,11 +150,13 @@ function MapToolbelt() {
   const setTerrain3d = useMapStore((state) => state.setTerrain3d);
   const configuredKeys = useSettingsStore((state) => state.configuredKeys);
 
-  const canUndo = useDrawStore((state) => state.canUndo());
-  const canRedo = useDrawStore((state) => state.canRedo());
+  const pastLength = useDrawStore((state) => state.history.past.length);
+  const futureLength = useDrawStore((state) => state.history.future.length);
   const undo = useDrawStore((state) => state.undo);
   const redo = useDrawStore((state) => state.redo);
   const drawing = useDrawStore((state) => state.state.mode !== "idle");
+  const canUndo = pastLength > 0;
+  const canRedo = futureLength > 0;
 
   const basemaps = availableBasemaps(configuredKeys);
   const terrainCapable = basemaps.find((entry) => entry.id === basemap)?.supportsTerrain ?? false;
@@ -291,7 +294,11 @@ function ScaleBar() {
  */
 function DrawReadout() {
   const mode = useDrawStore((state) => state.state.mode);
-  const measurements = useDrawStore((state) => state.measurements());
+  // Select the shape itself — never call measurements() inside the selector.
+  // A fresh object every snapshot makes React 19 treat the store as changed and
+  // re-enter an infinite render loop.
+  const shape = useDrawStore((state) => state.state.shape);
+  const measurements = useMemo(() => measure(shape), [shape]);
 
   if (mode === "idle") return null;
 

@@ -7,12 +7,13 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import type { Site } from "@/core/store/siteStore";
-import { useSiteStore } from "@/core/store/siteStore";
+import { newDesignId, useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
-import { Button, Field, Select, Stepper } from "@/design-system/controls";
+import { Button, Field, Input, Select, Stepper } from "@/design-system/controls";
 import {
   Callout,
   EmptyState,
@@ -24,7 +25,7 @@ import {
   Stat,
   StatCluster,
 } from "@/design-system/data";
-import { CompassIcon, ExportIcon, PanelIcon, PolygonIcon } from "@/design-system/icons";
+import { CompassIcon, PanelIcon, PolygonIcon } from "@/design-system/icons";
 import { COST_DEFAULTS, computeLcoe, computeOwnerCashFlow } from "@/domain/finance/cashflow";
 import {
   computeFillFactor,
@@ -44,9 +45,13 @@ import {
   scalePower,
 } from "@/domain/units";
 import { modelledOrFirstOrder } from "@/services/engine/client";
-import { defaultMeta, exportSitesCsv, writeExport } from "@/services/export";
+import { defaultMeta, toCsv, writeExport } from "@/services/export";
+import { exportDesignHtml } from "@/services/export/design-html";
+import { buildZip } from "@/services/export/zip";
 import { SidePanel } from "@/shell/SidePanel";
-import { ArrayPreview } from "./ArrayPreview";
+import { ArrayMapPreview, satelliteImageUrl } from "./ArrayMapPreview";
+import { ArrayPreview, computeArrayStrips } from "./ArrayPreview";
+import { DesignExportMenu, type DesignExportFormat } from "./DesignExportMenu";
 import { RooftopDesignView } from "./RooftopDesignView";
 import "./design.css";
 
@@ -78,7 +83,7 @@ export function DesignView() {
   }
 
   if (site.kind === "rooftop") {
-    return <RooftopDesignView site={site} />;
+    return <RooftopDesignView key={site.id} site={site} />;
   }
 
   if (!site.ring || !site.geometryValid) {
@@ -96,21 +101,35 @@ export function DesignView() {
     );
   }
 
-  return <DesignWorkspace site={site} />;
+  return <DesignWorkspace key={site.id} site={site} />;
 }
 
 function DesignWorkspace({ site }: { site: Site }) {
-  const setDesign = useSiteStore((state) => state.setDesign);
+  const saveNamedDesign = useSiteStore((state) => state.saveNamedDesign);
+  const selectDesign = useSiteStore((state) => state.selectDesign);
+  const renameDesign = useSiteStore((state) => state.renameDesign);
+  const renameSite = useSiteStore((state) => state.renameSite);
   const markDirty = useProjectStore((state) => state.markDirty);
   const notify = useUiStore((state) => state.notify);
   const leftCollapsed = useUiStore((state) => state.leftPanelCollapsed);
   const toggleLeft = useUiStore((state) => state.toggleLeftPanel);
+  const rightCollapsed = useUiStore((state) => state.rightPanelCollapsed);
+  const toggleRight = useUiStore((state) => state.toggleRightPanel);
+  const setRightCollapsed = useUiStore((state) => state.setRightPanelCollapsed);
   const currency = useSettingsStore((state) => state.preferences.currency);
   const projectName = useProjectStore((state) => state.name);
 
   const latitude = site.centre[1];
   const [moduleId, setModuleId] = useState(site.design?.moduleId ?? "topcon-620");
   const [mount, setMount] = useState<MountType>(site.design?.mount ?? "fixed_tilt");
+  /** schematic | blend (satellite + schematic) | satellite-only */
+  const [previewMode, setPreviewMode] = useState<"schematic" | "blend" | "satellite">("schematic");
+  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
+  const [designNameDraft, setDesignNameDraft] = useState(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return active?.name ?? "";
+  });
+  const [siteNameDraft, setSiteNameDraft] = useState(site.name);
 
   const module =
     moduleById(moduleId) ?? (MODULE_LIBRARY[0] as NonNullable<ReturnType<typeof moduleById>>);
@@ -119,7 +138,12 @@ function DesignWorkspace({ site }: { site: Site }) {
     [latitude, module, mount],
   );
 
-  const [tilt, setTilt] = useState(site.design?.tiltDegrees ?? envelope.tilt.suggested);
+  // Prefer a measured/modelled optimal tilt from the site report (NASA POWER
+  // consensus) over the latitude rule-of-thumb when available.
+  const resourceTilt = site.resource?.optimalTiltDegrees;
+  const [tilt, setTilt] = useState(
+    site.design?.tiltDegrees ?? resourceTilt ?? envelope.tilt.suggested,
+  );
   const [gcr, setGcr] = useState(site.design?.groundCoverageRatio ?? envelope.gcr.suggested);
   const [azimuth, setAzimuth] = useState(
     site.design?.azimuthDegrees ?? equatorFacingAzimuth(latitude),
@@ -129,9 +153,9 @@ function DesignWorkspace({ site }: { site: Site }) {
   // A new module or mount changes what is feasible, so re-anchor to the new
   // envelope rather than leaving the sliders somewhere now-invalid.
   useEffect(() => {
-    setTilt(envelope.tilt.suggested);
+    setTilt(resourceTilt ?? envelope.tilt.suggested);
     setGcr(envelope.gcr.suggested);
-  }, [envelope]);
+  }, [envelope, resourceTilt]);
 
   const packing = useMemo(
     () =>
@@ -158,6 +182,7 @@ function DesignWorkspace({ site }: { site: Site }) {
     caveats: string[];
   } | null>(null);
   const [running, setRunning] = useState(false);
+  const setResource = useSiteStore((state) => state.setResource);
   const [zonal, setZonal] = useState<{
     ghi: number;
     method: string;
@@ -178,7 +203,7 @@ function DesignWorkspace({ site }: { site: Site }) {
     }
     setSampling(true);
     try {
-      const { sampleSiteRaster, rastersConfigured } = await import(
+      const { sampleSiteRaster, rastersConfigured, markGsaLayersFromSettings } = await import(
         "@/services/datasets/raster-sample"
       );
       if (!rastersConfigured()) {
@@ -189,12 +214,14 @@ function DesignWorkspace({ site }: { site: Site }) {
         });
         return;
       }
+      markGsaLayersFromSettings();
       const sample = await sampleSiteRaster(site.ring, "ghi");
       if (!sample) {
         notify({
           tone: "warning",
           message: "Raster sample returned no pixels",
-          detail: "Check that the COG covers this site and that the path or URL is reachable.",
+          detail:
+            "Check that the COG covers this site. Expected GHI.tif or GHI_cog.tif in the configured directory.",
         });
         return;
       }
@@ -204,6 +231,13 @@ function DesignWorkspace({ site }: { site: Site }) {
         min: sample.min,
         max: sample.max,
       });
+      setResource(site.id, {
+        ghiKwhM2Year: sample.areaWeightedMean,
+        source: `Solargis / Global Solar Atlas (${sample.fileName})`,
+        fidelity: "modelled",
+        method: sample.method,
+      });
+      markDirty();
       notify({
         tone: "success",
         message: `Site GHI ${Math.round(sample.areaWeightedMean)} kWh/m²/year from COG`,
@@ -264,8 +298,11 @@ function DesignWorkspace({ site }: { site: Site }) {
     }
   }
 
-  function saveDesign() {
-    setDesign(site.id, {
+  const savedDesigns = site.designs ?? [];
+  const activeDesign = savedDesigns.find((entry) => entry.id === site.activeDesignId) ?? null;
+
+  function designParameters() {
+    return {
       moduleId,
       mount,
       tiltDegrees: tilt,
@@ -273,9 +310,252 @@ function DesignWorkspace({ site }: { site: Site }) {
       groundCoverageRatio: gcr,
       balanceOfSystemFraction: bosFraction,
       systemLosses: defaultSystemLosses(),
+    };
+  }
+
+  function persistDesign(options: { asNew: boolean }) {
+    const id = options.asNew ? newDesignId() : (site.activeDesignId ?? newDesignId());
+    const fallback = `Design ${savedDesigns.filter((entry) => entry.kind === "greenfield").length + (options.asNew || !site.activeDesignId ? 1 : 0)}`;
+    const name =
+      designNameDraft.trim() ||
+      savedDesigns.find((entry) => entry.id === id)?.name ||
+      fallback;
+    saveNamedDesign(site.id, {
+      id,
+      name,
+      updatedAt: new Date().toISOString(),
+      kind: "greenfield",
+      parameters: designParameters(),
+      capacityKwDc: packing.capacityKwDc,
+      annualKwh: energy?.annualKwh,
     });
+    setDesignNameDraft(name);
     markDirty();
-    notify({ tone: "success", message: `Design saved to ${site.name}` });
+    void useProjectLibraryStore.getState().saveActiveToLibrary().catch(() => undefined);
+    notify({
+      tone: "success",
+      message: options.asNew ? `Saved new design “${name}”` : `Updated design “${name}”`,
+      detail: "Projects → sites → designs.",
+    });
+  }
+
+  function loadSavedDesign(designId: string) {
+    if (!designId) {
+      selectDesign(site.id, null);
+      setDesignNameDraft("");
+      setAzimuth(equatorFacingAzimuth(latitude));
+      return;
+    }
+    const selected = savedDesigns.find((entry) => entry.id === designId);
+    if (!selected) return;
+    selectDesign(site.id, designId);
+    setDesignNameDraft(selected.name);
+    setModuleId(selected.parameters.moduleId);
+    setMount(selected.parameters.mount);
+    setTilt(selected.parameters.tiltDegrees);
+    setAzimuth(selected.parameters.azimuthDegrees);
+    setGcr(selected.parameters.groundCoverageRatio);
+    setBosFraction(selected.parameters.balanceOfSystemFraction);
+  }
+
+  function designSummaryPayload() {
+    return {
+      siteId: site.id,
+      siteName: site.name,
+      designId: site.activeDesignId ?? null,
+      designName: activeDesign?.name ?? (designNameDraft || null),
+      moduleId,
+      mount,
+      tiltDegrees: tilt,
+      azimuthDegrees: azimuth,
+      groundCoverageRatio: gcr,
+      balanceOfSystemFraction: bosFraction,
+      packing: {
+        moduleCount: packing.moduleCount,
+        capacityKwDc: packing.capacityKwDc,
+        fillFactor: packing.fillFactor,
+        densityKwPerHectare: packing.densityKwPerHectare,
+        method: packing.method,
+      },
+      energy,
+      note: "Packing module count is GCR/area-based. Modelled annual energy includes azimuth via the pvlib / first-order path.",
+    };
+  }
+
+  function captureSchematicDataUrl(): string | null {
+    const svg = document.querySelector<SVGSVGElement>(".array-preview");
+    if (!svg) return null;
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const xml = new XMLSerializer().serializeToString(clone);
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
+  }
+
+  function buildHtmlExport(): string {
+    const capacityScaled = scalePower(packing.capacityKwDc);
+    const images = [];
+    // Prefer SVG schematic when available; satellite uses a static Esri export
+    // so HTML never embeds a CORS-tainted black canvas.
+    const schematic = captureSchematicDataUrl();
+    if (schematic) {
+      images.push({
+        title: "Array schematic",
+        src: schematic,
+        caption: "Plan view of row strips inside the site boundary.",
+      });
+    }
+    const satellite = satelliteImageUrl(site);
+    if (satellite) {
+      images.push({
+        title: "Site satellite",
+        src: satellite,
+        caption: "Esri World Imagery for the site extent.",
+      });
+    }
+    return exportDesignHtml({
+      title: "Greenfield design summary",
+      siteName: site.name,
+      meta: defaultMeta(projectName),
+      sections: [
+        {
+          title: "System summary",
+          rows: [
+            { label: "DC capacity", value: `${capacityScaled.value} ${capacityScaled.unit}` },
+            { label: "Modules", value: String(packing.moduleCount) },
+            {
+              label: "Annual output",
+              value: energy
+                ? `${scaleEnergy(energy.annualKwh).value} ${scaleEnergy(energy.annualKwh).unit}`
+                : "Not modelled yet",
+            },
+            {
+              label: "Site area",
+              value: `${scaleArea(site.areaM2).value} ${scaleArea(site.areaM2).unit}`,
+            },
+          ],
+        },
+        {
+          title: "Parameters",
+          rows: [
+            { label: "Module", value: module.name },
+            { label: "Mount", value: mount },
+            { label: "Tilt", value: `${tilt}°` },
+            { label: "Azimuth", value: `${azimuth}° (${compassPoint(azimuth)})` },
+            { label: "GCR", value: formatPercent(gcr) },
+            { label: "BOS share", value: formatPercent(bosFraction) },
+          ],
+        },
+        {
+          title: "Results",
+          rows: energy
+            ? [
+                {
+                  label: "Specific yield",
+                  value: `${formatNumber(energy.specificYieldKwhPerKwp, 0)} kWh/kWp`,
+                },
+                { label: "Capacity factor", value: formatPercent(energy.capacityFactor) },
+                { label: "Method", value: energy.method },
+              ]
+            : [{ label: "Status", value: "Run Estimate annual output first" }],
+        },
+      ],
+      images,
+      notes: [
+        "Module packing count comes from GCR and site area. Annual energy changes with azimuth for fixed arrays.",
+        "Print this page to PDF from the browser or system print dialog.",
+      ],
+    });
+  }
+
+  function buildGeoJson(): string {
+    const strips = computeArrayStrips({
+      site,
+      module,
+      tiltDegrees: tilt,
+      gcr,
+      azimuth,
+      mount,
+    });
+    return JSON.stringify(
+      {
+        type: "FeatureCollection",
+        features: (strips?.stripsLngLat ?? []).map((ring, index) => ({
+          type: "Feature",
+          properties: {
+            index,
+            mount,
+            gcr,
+            azimuth,
+            pitch_m: strips?.pitchM,
+          },
+          geometry: {
+            type: "Polygon",
+            coordinates: [[...ring, ring[0]]],
+          },
+        })),
+      },
+      null,
+      2,
+    );
+  }
+
+  function buildDesignCsv(): string {
+    const summary = designSummaryPayload();
+    const row: Record<string, unknown> = {
+      site_id: summary.siteId,
+      site_name: summary.siteName,
+      design_id: summary.designId ?? "",
+      design_name: summary.designName ?? "",
+      module_id: summary.moduleId,
+      mount: summary.mount,
+      tilt_deg: summary.tiltDegrees,
+      azimuth_deg: summary.azimuthDegrees,
+      ground_coverage_ratio: summary.groundCoverageRatio,
+      bos_fraction: summary.balanceOfSystemFraction,
+      module_count: summary.packing.moduleCount,
+      capacity_kw_dc: summary.packing.capacityKwDc,
+      fill_factor: summary.packing.fillFactor,
+      density_kw_per_ha: summary.packing.densityKwPerHectare,
+      packing_method: summary.packing.method,
+      annual_kwh: energy?.annualKwh ?? "",
+      specific_yield_kwh_per_kwp: energy?.specificYieldKwhPerKwp ?? "",
+      capacity_factor: energy?.capacityFactor ?? "",
+      energy_method: energy?.method ?? "",
+      note: summary.note,
+    };
+    return toCsv([row]);
+  }
+
+  async function runExport(format: DesignExportFormat) {
+    const base = `${site.name}-design`;
+    if (format === "html") {
+      const path = await writeExport(base, "html", buildHtmlExport());
+      if (path) notify({ tone: "success", message: `Exported HTML to ${path}` });
+      return;
+    }
+    if (format === "geojson") {
+      const path = await writeExport(`${site.name}-array`, "geojson", buildGeoJson());
+      if (path) notify({ tone: "success", message: `Exported GeoJSON to ${path}` });
+      return;
+    }
+    if (format === "json") {
+      const path = await writeExport(base, "json", JSON.stringify(designSummaryPayload(), null, 2));
+      if (path) notify({ tone: "success", message: `Exported JSON to ${path}` });
+      return;
+    }
+    if (format === "csv") {
+      const path = await writeExport(base, "csv", buildDesignCsv());
+      if (path) notify({ tone: "success", message: `Exported CSV to ${path}` });
+      return;
+    }
+    const zip = buildZip([
+      { name: `${base}.json`, data: JSON.stringify(designSummaryPayload(), null, 2) },
+      { name: `${base}.csv`, data: buildDesignCsv() },
+      { name: `${site.name}-array.geojson`, data: buildGeoJson() },
+      { name: `${base}.html`, data: buildHtmlExport() },
+    ]);
+    const path = await writeExport(base, "zip", zip);
+    if (path) notify({ tone: "success", message: `Exported ZIP to ${path}` });
   }
 
   const finance = useMemo(() => {
@@ -294,10 +574,38 @@ function DesignWorkspace({ site }: { site: Site }) {
   return (
     <>
       <div className="subbar">
-        <div className="breadcrumb">
+        <div className="breadcrumb design-breadcrumb">
           <span>Design</span>
           <span className="breadcrumb__sep">/</span>
-          <span className="breadcrumb__current">{site.name}</span>
+          <input
+            className="design-breadcrumb__input"
+            aria-label="Site name"
+            value={siteNameDraft}
+            onChange={(event) => setSiteNameDraft(event.target.value)}
+            onBlur={() => {
+              const next = siteNameDraft.trim();
+              if (next && next !== site.name) {
+                renameSite(site.id, next);
+                markDirty();
+              } else {
+                setSiteNameDraft(site.name);
+              }
+            }}
+          />
+          <span className="breadcrumb__sep">/</span>
+          <input
+            className="design-breadcrumb__input design-breadcrumb__input--design"
+            aria-label="Design name"
+            placeholder="Working design"
+            value={designNameDraft}
+            onChange={(event) => setDesignNameDraft(event.target.value)}
+            onBlur={() => {
+              if (site.activeDesignId && designNameDraft.trim()) {
+                renameDesign(site.id, site.activeDesignId, designNameDraft.trim());
+                markDirty();
+              }
+            }}
+          />
         </div>
         <div className="subbar__spacer" />
         <StatCluster>
@@ -327,219 +635,318 @@ function DesignWorkspace({ site }: { site: Site }) {
           collapsed={leftCollapsed}
           onToggle={toggleLeft}
         >
-          <p className="design__lede">
-            Automation computes a feasible envelope from the site and its latitude. Fine-tune inside
-            it; leaving the recommended band is allowed and always labelled.
-          </p>
-
-          <Field label="Module">
-            <Select
-              value={moduleId}
-              onChange={(event) => setModuleId(event.target.value)}
-              options={MODULE_LIBRARY.map((entry) => ({
-                value: entry.id,
-                label: `${entry.name} · ${(entry.efficiency * 100).toFixed(1)}%`,
-              }))}
-            />
-          </Field>
-
-          <Field label="Mounting">
-            <Select
-              value={mount}
-              onChange={(event) => setMount(event.target.value as MountType)}
-              options={MOUNTS}
-            />
-          </Field>
-
-          {mount === "fixed_tilt" && (
-            <Field label="Tilt angle">
-              <Stepper
-                value={tilt}
-                onChange={setTilt}
-                step={1}
-                min={envelope.tilt.min}
-                max={envelope.tilt.max}
-                unit="°"
-                label="Tilt angle"
-              />
-              <EnvelopeSlider
-                value={tilt}
-                onChange={setTilt}
-                min={envelope.tilt.min}
-                max={envelope.tilt.max}
-                recommendedMin={envelope.tilt.recommendedMin}
-                recommendedMax={envelope.tilt.recommendedMax}
-                step={1}
-                unit="°"
-                label="Tilt angle"
-              />
-            </Field>
-          )}
-
-          <Field label="Ground coverage ratio">
-            <Stepper
-              value={gcr}
-              onChange={setGcr}
-              step={0.01}
-              min={envelope.gcr.min}
-              max={envelope.gcr.max}
-              precision={2}
-              label="Ground coverage ratio"
-            />
-            <EnvelopeSlider
-              value={gcr}
-              onChange={setGcr}
-              min={envelope.gcr.min}
-              max={envelope.gcr.max}
-              recommendedMin={envelope.gcr.recommendedMin}
-              recommendedMax={envelope.gcr.recommendedMax}
-              step={0.01}
-              unit=""
-              precision={2}
-              label="Ground coverage ratio"
-              outsideNote="Outside built practice for this mount — feasible, but expect more row shading or wasted land."
-            />
-          </Field>
-
-          <Field
-            label="Row pitch"
-            hint={`${packing.row.pitchM.toFixed(2)} m centre to centre, ${packing.row.gapM.toFixed(2)} m clear between rows.`}
-          >
-            <div />
-          </Field>
-
-          <Field label="Array orientation">
-            <div className="design__compass">
-              <CompassIcon size={28} />
-              <div>
-                <div className="design__azimuth mono">{azimuth.toFixed(0)}°</div>
-                <div className="design__azimuth-label">{compassPoint(azimuth)}</div>
-              </div>
-              <Stepper
-                value={azimuth}
-                onChange={setAzimuth}
-                step={5}
-                min={0}
-                max={360}
-                unit="°"
-                label="Array azimuth"
-              />
+          {leftCollapsed ? (
+            <div className="design-rail-placeholder" title="System parameters">
+              <PanelIcon size={16} />
             </div>
-          </Field>
+          ) : (
+            <>
+              <p className="design__lede">
+                Automation computes a feasible envelope from the site and its latitude. Fine-tune
+                inside it; leaving the recommended band is allowed and always labelled.
+              </p>
 
-          <Field
-            label="Roads, pads and margins"
-            hint="Share of the site not available to the array."
-          >
-            <Stepper
-              value={bosFraction * 100}
-              onChange={(value) => setBosFraction(value / 100)}
-              step={1}
-              min={0}
-              max={40}
-              unit="%"
-              label="Balance of system share"
-            />
-          </Field>
+              <Field label="Saved designs" hint="Select a saved design, or save as new to keep variants.">
+                <Select
+                  value={site.activeDesignId ?? ""}
+                  onChange={(event) => loadSavedDesign(event.target.value)}
+                  options={[
+                    { value: "", label: "Working design (unsaved)" },
+                    ...savedDesigns.map((entry) => ({
+                      value: entry.id,
+                      label: `${entry.name}${entry.capacityKwDc ? ` · ${entry.capacityKwDc.toFixed(1)} kW` : ""}`,
+                    })),
+                  ]}
+                />
+              </Field>
+              <Field label="Design name">
+                <Input
+                  value={designNameDraft}
+                  onChange={(event) => setDesignNameDraft(event.target.value)}
+                  placeholder="e.g. Fixed 32° south"
+                />
+              </Field>
 
-          <SectionLabel>Why these bounds</SectionLabel>
-          {envelope.rationale.map((line) => (
-            <p key={line} className="design__rationale">
-              {line}
-            </p>
-          ))}
+              <Field label="Module">
+                <Select
+                  value={moduleId}
+                  onChange={(event) => setModuleId(event.target.value)}
+                  options={MODULE_LIBRARY.map((entry) => ({
+                    value: entry.id,
+                    label: `${entry.name} · ${(entry.efficiency * 100).toFixed(1)}%`,
+                  }))}
+                />
+              </Field>
+
+              <Field label="Mounting">
+                <Select
+                  value={mount}
+                  onChange={(event) => setMount(event.target.value as MountType)}
+                  options={MOUNTS}
+                />
+              </Field>
+
+              {mount === "fixed_tilt" && (
+                <Field label="Tilt angle">
+                  <Stepper
+                    value={tilt}
+                    onChange={setTilt}
+                    step={1}
+                    min={envelope.tilt.min}
+                    max={envelope.tilt.max}
+                    unit="°"
+                    label="Tilt angle"
+                  />
+                  <EnvelopeSlider
+                    value={tilt}
+                    onChange={setTilt}
+                    min={envelope.tilt.min}
+                    max={envelope.tilt.max}
+                    recommendedMin={envelope.tilt.recommendedMin}
+                    recommendedMax={envelope.tilt.recommendedMax}
+                    step={1}
+                    unit="°"
+                    label="Tilt angle"
+                  />
+                </Field>
+              )}
+
+              <Field
+                label="Ground coverage ratio (GCR)"
+                hint="Collector width ÷ row pitch (not the fraction of the whole site covered by modules)."
+              >
+                <Stepper
+                  value={gcr}
+                  onChange={setGcr}
+                  step={0.01}
+                  min={envelope.gcr.min}
+                  max={envelope.gcr.max}
+                  precision={2}
+                  label="Ground coverage ratio"
+                />
+                <EnvelopeSlider
+                  value={gcr}
+                  onChange={setGcr}
+                  min={envelope.gcr.min}
+                  max={envelope.gcr.max}
+                  recommendedMin={envelope.gcr.recommendedMin}
+                  recommendedMax={envelope.gcr.recommendedMax}
+                  step={0.01}
+                  unit=""
+                  precision={2}
+                  label="Ground coverage ratio"
+                  outsideNote="Outside built practice for this mount — feasible, but expect more row shading or wasted land."
+                />
+              </Field>
+
+              <Field
+                label="Row pitch"
+                hint={`${packing.row.pitchM.toFixed(2)} m centre to centre, ${packing.row.gapM.toFixed(2)} m clear between rows.`}
+              >
+                <div />
+              </Field>
+
+              <Field
+                label="Array orientation"
+                hint="Module packing count comes from GCR and site area. Annual energy does change with azimuth — equator-facing is best; large deviations cut yield substantially."
+              >
+                <div className="design__compass">
+                  <CompassIcon size={28} />
+                  <div>
+                    <div className="design__azimuth mono">{azimuth.toFixed(0)}°</div>
+                    <div className="design__azimuth-label">{compassPoint(azimuth)}</div>
+                  </div>
+                  <Stepper
+                    value={azimuth}
+                    onChange={setAzimuth}
+                    step={5}
+                    min={0}
+                    max={360}
+                    unit="°"
+                    label="Array azimuth"
+                  />
+                </div>
+              </Field>
+
+              <Field
+                label="Roads, pads and margins"
+                hint="Share of the site not available to the array."
+              >
+                <Stepper
+                  value={bosFraction * 100}
+                  onChange={(value) => setBosFraction(value / 100)}
+                  step={1}
+                  min={0}
+                  max={40}
+                  unit="%"
+                  label="Balance of system share"
+                />
+              </Field>
+
+              <SectionLabel>Why these bounds</SectionLabel>
+              {envelope.rationale.map((line) => (
+                <p key={line} className="design__rationale">
+                  {line}
+                </p>
+              ))}
+            </>
+          )}
         </SidePanel>
 
         <main className="canvas canvas--schematic">
-          <ArrayPreview
-            site={site}
-            module={module}
-            tiltDegrees={tilt}
-            gcr={gcr}
-            azimuth={azimuth}
-          />
-
-          <div className="canvas__overlay canvas__overlay--bottom-right design__summary">
-            <h3 className="design__summary-title">System summary</h3>
-            <ParamList
-              rows={[
-                { key: "area", label: "Site area", value: `${area.value} ${area.unit}` },
-                {
-                  key: "modules",
-                  label: "Module count",
-                  value: packing.moduleCount.toLocaleString(),
-                },
-                {
-                  key: "capacity",
-                  label: "Capacity DC",
-                  value: `${capacity.value} ${capacity.unit}`,
-                  tone: "accent",
-                },
-                {
-                  key: "fill",
-                  label: "Fill factor",
-                  value: formatPercent(packing.fillFactor),
-                },
-                {
-                  key: "density",
-                  label: "Density",
-                  value: `${formatNumber(packing.densityKwPerHectare, 0)} kW/ha`,
-                },
-                {
-                  key: "land",
-                  label: "Land use",
-                  value: `${formatNumber(packing.landUseM2PerKw, 1)} m²/kW`,
-                  tone: packing.landUseWithinRuleOfThumb ? "default" : "muted",
-                },
+          <div className="canvas-toolbar design-canvas-toolbar">
+            <Select
+              aria-label="Preview mode"
+              value={previewMode}
+              onChange={(event) =>
+                setPreviewMode(event.target.value as "schematic" | "blend" | "satellite")
+              }
+              options={[
+                { value: "schematic", label: "Schematic" },
+                { value: "satellite", label: "Satellite" },
+                { value: "blend", label: "Satellite + Schematic" },
               ]}
             />
-
-            <div className="design__meter">
-              <span className="label">Coverage against built practice</span>
-              <Meter
-                value={gcr}
-                max={envelope.gcr.max}
-                bandMin={envelope.gcr.recommendedMin}
-                bandMax={envelope.gcr.recommendedMax}
-                label="Ground coverage ratio against built practice"
-              />
+            <div className="design-canvas-toolbar__actions">
+              <DesignExportMenu onExport={runExport} />
             </div>
-
-            {packing.notes.map((note) => (
-              <Callout key={note} tone="warning">
-                {note}
-              </Callout>
-            ))}
-
-            <Button block disabled={sampling} onClick={sampleRasterResource}>
-              {sampling
-                ? "Sampling COG…"
-                : zonal
-                  ? "Resample site from Solargis COG"
-                  : "Sample site from Solargis COG"}
-            </Button>
-            {zonal && (
-              <Callout tone="note">
-                COG GHI {Math.round(zonal.ghi)} kWh/m²/year (range {Math.round(zonal.min)}–
-                {Math.round(zonal.max)}). {zonal.method}
-              </Callout>
+          </div>
+          <div className="design-preview-stack">
+            {previewMode === "schematic" ? (
+              <div className="design-preview-stack__schematic">
+                <ArrayPreview
+                  site={site}
+                  module={module}
+                  tiltDegrees={tilt}
+                  gcr={gcr}
+                  azimuth={azimuth}
+                  mount={mount}
+                />
+              </div>
+            ) : (
+              <div className="design-preview-stack__map">
+                <ArrayMapPreview
+                  site={site}
+                  module={module}
+                  tiltDegrees={tilt}
+                  gcr={gcr}
+                  azimuth={azimuth}
+                  mount={mount}
+                  showStrips={previewMode === "blend"}
+                />
+              </div>
             )}
-            <Button
-              block
-              variant="primary"
-              icon={<PanelIcon size={13} />}
-              disabled={running}
-              onClick={runEnergyModel}
-            >
-              {running ? "Modelling…" : "Estimate annual output"}
-            </Button>
-            <Button block onClick={saveDesign}>
-              Save design to site
-            </Button>
+          </div>
+
+          <div
+            className={`design-summary-panel${summaryCollapsed ? " design-summary-panel--collapsed" : ""}`}
+          >
+            <div className="design-summary-panel__head">
+              <h3 className="design__summary-title">System summary</h3>
+              <Button size="sm" variant="ghost" onClick={() => setSummaryCollapsed((v) => !v)}>
+                {summaryCollapsed ? "Expand" : "Minimize"}
+              </Button>
+            </div>
+            {!summaryCollapsed && (
+              <>
+                <ParamList
+                  rows={[
+                    { key: "area", label: "Site area", value: `${area.value} ${area.unit}` },
+                    {
+                      key: "modules",
+                      label: "Module count",
+                      value: packing.moduleCount.toLocaleString(),
+                    },
+                    {
+                      key: "capacity",
+                      label: "Capacity DC",
+                      value: `${capacity.value} ${capacity.unit}`,
+                      tone: "accent",
+                    },
+                    {
+                      key: "gcr",
+                      label: "GCR (row)",
+                      value: formatPercent(gcr),
+                    },
+                    {
+                      key: "fill",
+                      label: "Fill factor (site)",
+                      value: formatPercent(packing.fillFactor),
+                    },
+                    {
+                      key: "density",
+                      label: "Density",
+                      value: `${formatNumber(packing.densityKwPerHectare, 0)} kW/ha`,
+                    },
+                    {
+                      key: "land",
+                      label: "Land use",
+                      value: `${formatNumber(packing.landUseM2PerKw, 1)} m²/kW`,
+                      tone: packing.landUseWithinRuleOfThumb ? "default" : "muted",
+                    },
+                  ]}
+                />
+
+                <div className="design__meter">
+                  <span className="label">Row GCR against built practice</span>
+                  <Meter
+                    value={gcr}
+                    max={envelope.gcr.max}
+                    bandMin={envelope.gcr.recommendedMin}
+                    bandMax={envelope.gcr.recommendedMax}
+                    label="Ground coverage ratio against built practice"
+                  />
+                </div>
+
+                {packing.notes.map((note) => (
+                  <Callout key={note} tone="warning">
+                    {note}
+                  </Callout>
+                ))}
+
+                <Button block disabled={sampling} onClick={sampleRasterResource}>
+                  {sampling
+                    ? "Sampling COG…"
+                    : zonal
+                      ? "Resample site from Solargis COG"
+                      : "Sample site from Solargis COG"}
+                </Button>
+                {zonal && (
+                  <Callout tone="note">
+                    COG GHI {Math.round(zonal.ghi)} kWh/m²/year (range {Math.round(zonal.min)}–
+                    {Math.round(zonal.max)}). {zonal.method}
+                  </Callout>
+                )}
+                <Button
+                  block
+                  variant="primary"
+                  icon={<PanelIcon size={13} />}
+                  disabled={running}
+                  onClick={runEnergyModel}
+                >
+                  {running ? "Modelling…" : "Estimate annual output"}
+                </Button>
+                <div className="design-button-stack">
+                  <Button block variant="primary" onClick={() => persistDesign({ asNew: false })}>
+                    Save design
+                  </Button>
+                  <Button block onClick={() => persistDesign({ asNew: true })}>
+                    Save as new design
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </main>
 
-        <SidePanel side="right" title="Results" collapsed={false} onToggle={() => undefined}>
+        {rightCollapsed ? (
+          <div className="design-results-reopen">
+            <Button size="sm" onClick={() => setRightCollapsed(false)}>
+              Show results
+            </Button>
+          </div>
+        ) : null}
+        <SidePanel side="right" title="Results" collapsed={rightCollapsed} onToggle={toggleRight}>
           {energy ? (
             <>
               <ParamList
@@ -616,17 +1023,6 @@ function DesignWorkspace({ site }: { site: Site }) {
                 </>
               )}
 
-              <Button
-                block
-                icon={<ExportIcon size={13} />}
-                onClick={async () => {
-                  const csv = exportSitesCsv([site], defaultMeta(projectName));
-                  const path = await writeExport(`${site.name}-design`, "csv", csv);
-                  if (path) notify({ tone: "success", message: `Exported to ${path}` });
-                }}
-              >
-                Export design
-              </Button>
             </>
           ) : (
             <Callout tone="note">

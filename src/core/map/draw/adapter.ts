@@ -42,17 +42,51 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
   const onClick = (event: MapMouseEvent) => {
     const draw = useDrawStore.getState();
     const tool = useMapStore.getState().tool;
+    const point = asLngLat(event);
+
+    // Marking a location wins over a leftover draft polygon (not over editing an
+    // existing site boundary from the inspector).
+    if (tool === "place-point" && draw.editingSiteId === null) {
+      if (draw.state.mode !== "idle") {
+        draw.cancel();
+      }
+      useSiteStore.getState().addPointSite(point);
+      useMapStore.getState().setTool("pan");
+      redraw();
+      return;
+    }
 
     if (draw.state.mode === "idle") {
-      if (tool === "place-point") {
-        const point = asLngLat(event);
-        useSiteStore.getState().addPointSite(point);
-        useMapStore.getState().setTool("pan");
-        redraw();
+      // Click an existing site while panning to select it — no need to delete
+      // the current selection first.
+      if (tool === "pan") {
+        const hit = map.queryRenderedFeatures(event.point, {
+          layers: ["sites-fill", "sites-point"].filter((id) => map.getLayer(id)),
+        });
+        const id = hit[0]?.properties?.id;
+        if (typeof id === "string") {
+          useSiteStore.getState().selectSite(id);
+          redraw();
+        }
       }
       return;
     }
-    draw.click(asLngLat(event), configFor(draw.editingSiteId));
+
+    const wasDrawing = draw.state.mode === "drawing";
+    draw.click(point, configFor(draw.editingSiteId));
+    const after = useDrawStore.getState();
+    // Re-clicking the first vertex closes the ring into editing mode. That
+    // gesture is "finish" for a new site — commit rather than leave a draft
+    // that blocks markers and never appears in the inspector.
+    if (
+      wasDrawing &&
+      after.state.mode === "editing" &&
+      after.editingSiteId === null &&
+      after.state.shape?.closed
+    ) {
+      commitShape();
+      return;
+    }
     redraw();
   };
 
@@ -172,15 +206,34 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
   const unsubscribeTool = useMapStore.subscribe((state, previous) => {
     if (state.tool === previous.tool) return;
     const draw = useDrawStore.getState();
-    if (state.tool === "draw-polygon" && draw.state.mode === "idle") {
-      draw.begin(`draft-${Date.now()}`);
-      map.getCanvas().style.cursor = "crosshair";
+    const canvas = map.getCanvas();
+    if (state.tool === "draw-polygon") {
+      if (draw.state.mode === "idle") {
+        draw.begin(`draft-${Date.now()}`);
+      }
+      canvas.style.cursor = "crosshair";
       redraw();
-    } else if (state.tool !== "draw-polygon" && draw.state.mode === "drawing") {
+      return;
+    }
+    if (state.tool === "place-point") {
+      // Leave inspector edits alone; clear stray drafts so marker clicks work.
+      if (draw.editingSiteId === null && draw.state.mode !== "idle") {
+        draw.cancel();
+      }
+      canvas.style.cursor = "crosshair";
+      redraw();
+      return;
+    }
+    // Drop in-progress drafts when leaving the polygon tool. Keep editing when
+    // the inspector opened an existing site boundary (editingSiteId set).
+    if (
+      draw.state.mode === "drawing" ||
+      (draw.state.mode === "editing" && draw.editingSiteId === null)
+    ) {
       draw.cancel();
-      map.getCanvas().style.cursor = "";
       redraw();
     }
+    canvas.style.cursor = "";
   });
 
   map.on("click", onClick);

@@ -131,7 +131,13 @@ async function call<TRequest, TResponse>(endpoint: string, body: TRequest): Prom
           "get a pvlib-modelled result.",
       );
     }
-    throw error;
+    // CORS / network failures surface as TypeError ("Load failed"), not PlatformError.
+    const message = error instanceof Error ? error.message : String(error);
+    throw new EngineUnavailable(
+      message,
+      "Sunday will fall back to a labelled first-order estimate. Start the solar engine " +
+        "(`npm run engine:dev`) and ensure CORS is enabled on the sidecar.",
+    );
   }
 }
 

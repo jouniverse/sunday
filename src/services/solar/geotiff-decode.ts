@@ -94,8 +94,50 @@ export async function decodeGeoTiffBuffer(buffer: ArrayBuffer): Promise<DecodedR
     min,
     max,
     nodata: nodata !== null && Number.isFinite(nodata) ? nodata : null,
-    bounds: boundsFromGeoKeys(fileDirectory, width, height),
+    bounds:
+      boundsFromGeoKeys(fileDirectory, width, height) ??
+      boundsFromImageBbox(image, width, height),
     method: "geotiff.js decode of Google Solar data-layer GeoTIFF",
+  };
+}
+
+/** Prefer geotiff.js getBoundingBox when ModelTiepoint tags are missing. */
+function boundsFromImageBbox(
+  image: { getBoundingBox?: () => number[] },
+  _width: number,
+  _height: number,
+): DecodedRaster["bounds"] {
+  try {
+    const bbox = image.getBoundingBox?.();
+    if (!bbox || bbox.length < 4) return null;
+    const west = bbox[0] as number;
+    const south = bbox[1] as number;
+    const east = bbox[2] as number;
+    const north = bbox[3] as number;
+    if (![west, south, east, north].every(Number.isFinite)) return null;
+    // Reject clearly non-geographic ranges (e.g. projected metres).
+    if (Math.abs(west) > 180 || Math.abs(east) > 180 || Math.abs(south) > 90 || Math.abs(north) > 90) {
+      return null;
+    }
+    return { west, south, east, north };
+  } catch {
+    return null;
+  }
+}
+
+/** Fallback when a GeoTIFF has no georeference: square around a centre. */
+export function boundsAroundPoint(
+  longitude: number,
+  latitude: number,
+  radiusMeters: number,
+): NonNullable<DecodedRaster["bounds"]> {
+  const dLat = radiusMeters / 111_320;
+  const dLng = radiusMeters / (111_320 * Math.cos((latitude * Math.PI) / 180) || 1);
+  return {
+    west: longitude - dLng,
+    east: longitude + dLng,
+    south: latitude - dLat,
+    north: latitude + dLat,
   };
 }
 
@@ -198,4 +240,126 @@ export function imageDataToDataUrl(image: ImageData): string {
   if (!ctx) throw new Error("2D canvas unavailable");
   ctx.putImageData(image, 0, 0);
   return canvas.toDataURL("image/png");
+}
+
+export interface DecodedRgbRaster {
+  width: number;
+  height: number;
+  dataUrl: string;
+  bounds: DecodedRaster["bounds"];
+  method: string;
+}
+
+/** Decodes a 3-band Google Solar RGB GeoTIFF into a PNG data URL. */
+export async function decodeGoogleSolarRgb(options: {
+  url: string;
+  apiKey: string;
+  signal?: AbortSignal;
+}): Promise<DecodedRgbRaster> {
+  const authorised = authorizeLayerUrl(options.url, options.apiKey);
+  const response = await fetch(authorised, { signal: options.signal });
+  if (!response.ok) {
+    throw new Error(
+      `Google Solar RGB GeoTIFF fetch failed (${response.status}). Check the key and coverage.`,
+    );
+  }
+  const buffer = await response.arrayBuffer();
+  const tiff = await fromArrayBuffer(buffer);
+  const image = await tiff.getImage();
+  const width = image.getWidth();
+  const height = image.getHeight();
+  const rasters = await image.readRasters({ interleave: false });
+  const r = rasters[0];
+  const g = rasters[1] ?? rasters[0];
+  const b = rasters[2] ?? rasters[0];
+  if (!r || !g || !b) throw new Error("RGB GeoTIFF is missing bands");
+
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < width * height; i += 1) {
+    const offset = i * 4;
+    data[offset] = Number(r[i]);
+    data[offset + 1] = Number(g[i]);
+    data[offset + 2] = Number(b[i]);
+    data[offset + 3] = 255;
+  }
+  const copy = new Uint8ClampedArray(data.length);
+  copy.set(data);
+  const imageData = new ImageData(copy, width, height);
+  const fileDirectory = image.fileDirectory as {
+    ModelPixelScale?: number[];
+    ModelTiepoint?: number[];
+  };
+
+  return {
+    width,
+    height,
+    dataUrl: imageDataToDataUrl(imageData),
+    bounds:
+      boundsFromGeoKeys(fileDirectory, width, height) ??
+      boundsFromImageBbox(image, width, height),
+    method: "geotiff.js RGB decode of Google Solar imagery layer",
+  };
+}
+
+/**
+ * Decodes one band from a multi-band flux GeoTIFF (e.g. monthly flux month 1–12).
+ * `bandIndex` is 0-based.
+ */
+export async function decodeGoogleSolarBand(options: {
+  url: string;
+  apiKey: string;
+  bandIndex: number;
+  signal?: AbortSignal;
+}): Promise<DecodedRaster> {
+  const authorised = authorizeLayerUrl(options.url, options.apiKey);
+  const response = await fetch(authorised, { signal: options.signal });
+  if (!response.ok) {
+    throw new Error(
+      `Google Solar GeoTIFF fetch failed (${response.status}). Check the key and that the URL has not expired.`,
+    );
+  }
+  const buffer = await response.arrayBuffer();
+  const tiff = await fromArrayBuffer(buffer);
+  const image = await tiff.getImage();
+  const width = image.getWidth();
+  const height = image.getHeight();
+  const rasters = await image.readRasters({ interleave: false });
+  const band = rasters[options.bandIndex] ?? rasters[0];
+  if (!band) throw new Error("GeoTIFF has no bands");
+
+  const values = band instanceof Float32Array ? band : Float32Array.from(band as ArrayLike<number>);
+  const fileDirectory = image.fileDirectory as {
+    GDAL_NODATA?: string;
+    ModelPixelScale?: number[];
+    ModelTiepoint?: number[];
+  };
+  const nodataRaw = fileDirectory.GDAL_NODATA;
+  const nodata = nodataRaw !== undefined ? Number(nodataRaw) : null;
+
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < values.length; i += 1) {
+    const value = values[i] as number;
+    if (!Number.isFinite(value)) continue;
+    if (nodata !== null && value === nodata) continue;
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    min = 0;
+    max = 0;
+  }
+
+  return {
+    width,
+    height,
+    values,
+    min,
+    max,
+    nodata: nodata !== null && Number.isFinite(nodata) ? nodata : null,
+    bounds:
+      boundsFromGeoKeys(fileDirectory, width, height) ??
+      boundsFromImageBbox(image, width, height),
+    method: `geotiff.js band ${options.bandIndex} of Google Solar data-layer GeoTIFF`,
+  };
 }

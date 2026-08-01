@@ -8,7 +8,13 @@
  * The retry policy matters. PVGIS and NASA POWER both rate-limit, and a client
  * that hammers a public service on failure is a client that gets blocked — a
  * specific anti-pattern the API reviews warned about.
+ *
+ * In Tauri, JSON/text requests go through the Rust HTTP bridge (reqwest). That
+ * avoids WKWebView `fetch` failures ("The string did not match the expected
+ * pattern") and CORS when the webview origin is `http://localhost:1420`.
  */
+
+import { isTauri, platform } from "@/core/platform";
 
 export interface RequestOptions {
   /** Provider name, used in error messages and cache keys. */
@@ -103,20 +109,119 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Performs a request with retry, timeout and caching. Returns parsed JSON. */
 export async function requestJson<T>(options: RequestOptions): Promise<T> {
-  return request<T>(options, (response) => response.json() as Promise<T>);
+  return requestBody(options, (body) => JSON.parse(body) as T);
 }
 
 /** Same policy, but returns raw text — PVGIS can answer with CSV. */
 export async function requestText(options: RequestOptions): Promise<string> {
-  return request<string>(options, (response) => response.text());
+  return requestBody(options, (body) => body);
 }
 
 /** Same policy, for binary payloads such as Google Solar GeoTIFFs. */
 export async function requestBytes(options: RequestOptions): Promise<ArrayBuffer> {
-  return request<ArrayBuffer>({ ...options, noCache: true }, (response) => response.arrayBuffer());
+  return requestViaFetch({ ...options, noCache: true }, (response) => response.arrayBuffer());
 }
 
-async function request<T>(
+async function requestBody<T>(
+  options: RequestOptions,
+  parseBody: (body: string) => T,
+): Promise<T> {
+  // Tauri: native reqwest. Browser: Vite proxy / CORS-friendly fetch.
+  if (isTauri()) {
+    return requestViaNative(options, parseBody);
+  }
+  return requestViaFetch(options, async (response) => parseBody(await response.text()));
+}
+
+async function requestViaNative<T>(
+  options: RequestOptions,
+  parseBody: (body: string) => T,
+): Promise<T> {
+  const key = cacheKey(options);
+  if (!options.noCache) {
+    const hit = cache.get(key);
+    if (hit && hit.expiresAt > Date.now()) return hit.value as T;
+  }
+
+  const attempts = Math.max(1, options.attempts ?? 3);
+  const timeoutMs = options.timeoutMs ?? 20_000;
+  let lastError: ApiError | null = null;
+  const url = resolveFetchUrl(options.url);
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (options.signal?.aborted) {
+      throw new ApiError({
+        provider: options.provider,
+        message: "Request cancelled",
+        guidance: "The request was cancelled.",
+      });
+    }
+
+    try {
+      const result = await platform().http.fetchText({
+        url,
+        method: options.method ?? "GET",
+        headers: {
+          Accept: "application/json",
+          ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}),
+          ...options.headers,
+        },
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        timeoutMs,
+      });
+
+      if (result.status < 200 || result.status >= 300) {
+        const detail = result.body.slice(0, 400);
+        const error = new ApiError({
+          provider: options.provider,
+          status: result.status,
+          message: `${options.provider} returned ${result.status}${detail ? `: ${detail}` : ""}`,
+          guidance: guidanceFor(options.provider, result.status),
+          retryable: isRetryableStatus(result.status),
+        });
+        if (!error.retryable || attempt === attempts) throw error;
+        lastError = error;
+      } else {
+        const value = parseBody(result.body);
+        if (!options.noCache) {
+          cache.set(key, {
+            value,
+            expiresAt: Date.now() + (options.cacheTtlMs ?? DEFAULT_TTL_MS),
+          });
+        }
+        return value;
+      }
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (!error.retryable || attempt === attempts) throw error;
+        lastError = error;
+      } else {
+        const wrapped = new ApiError({
+          provider: options.provider,
+          message: `Could not reach ${options.provider}: ${error instanceof Error ? error.message : String(error)}`,
+          guidance: guidanceFor(options.provider, null),
+          retryable: true,
+        });
+        if (attempt === attempts) throw wrapped;
+        lastError = wrapped;
+      }
+    }
+
+    const backoff = 400 * 2 ** (attempt - 1);
+    await sleep(backoff + Math.random() * 200);
+  }
+
+  throw (
+    lastError ??
+    new ApiError({
+      provider: options.provider,
+      message: `${options.provider} request failed`,
+      guidance: guidanceFor(options.provider, null),
+    })
+  );
+}
+
+async function requestViaFetch<T>(
   options: RequestOptions,
   parse: (response: Response) => Promise<T>,
 ): Promise<T> {
@@ -134,12 +239,11 @@ async function request<T>(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    // Honour a caller's cancellation as well as our own timeout.
     const onExternalAbort = () => controller.abort();
     options.signal?.addEventListener("abort", onExternalAbort);
 
     try {
-      const response = await fetch(options.url, {
+      const response = await fetch(resolveFetchUrl(options.url), {
         method: options.method ?? "GET",
         headers: {
           Accept: "application/json",
@@ -176,7 +280,6 @@ async function request<T>(
         if (!error.retryable || attempt === attempts) throw error;
         lastError = error;
       } else if (options.signal?.aborted) {
-        // Cancelled by the caller: not a failure to report.
         throw new ApiError({
           provider: options.provider,
           message: "Request cancelled",
@@ -200,8 +303,6 @@ async function request<T>(
       options.signal?.removeEventListener("abort", onExternalAbort);
     }
 
-    // Exponential backoff with jitter, so concurrent requests do not resynchronise
-    // into a thundering herd against a rate-limited public API.
     const backoff = 400 * 2 ** (attempt - 1);
     await sleep(backoff + Math.random() * 200);
   }
@@ -224,4 +325,20 @@ export function query(params: Record<string, string | number | boolean | undefin
     search.set(key, String(value));
   }
   return search.toString();
+}
+
+/**
+ * Makes relative API paths absolute against the page origin.
+ *
+ * Used for browser Vite proxies. Absolute https URLs are returned unchanged
+ * (Tauri native bridge and packaged builds).
+ */
+export function resolveFetchUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  if (typeof window === "undefined" || !window.location?.origin) return url;
+  try {
+    return new URL(url, window.location.origin).href;
+  } catch {
+    return url;
+  }
 }

@@ -10,6 +10,8 @@
 import { Map as MapLibreMap, type MapMouseEvent } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+// Must run before any Map is constructed — see maplibre-worker.ts.
+import "./maplibre-worker";
 import { useLayerStore } from "../store/layerStore";
 import { useMapStore } from "../store/mapStore";
 import { useSettingsStore } from "../store/settingsStore";
@@ -84,7 +86,16 @@ export function MapView() {
     const uninstallDraw = installDrawAdapter(map);
     const uninstallPlants = installPlantClickHandler(map);
 
+    // MapWorkspace stays mounted but is often `display: none` while other tabs
+    // are open. Resize when the canvas becomes visible again so hit-testing and
+    // cursors stay aligned after project / view switches.
+    const observer = new ResizeObserver(() => {
+      map.resize();
+    });
+    observer.observe(containerRef.current);
+
     return () => {
+      observer.disconnect();
       uninstallDraw();
       uninstallPlants();
       map.remove();

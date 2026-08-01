@@ -7,14 +7,17 @@
  */
 
 import { useEffect, useState } from "react";
-import { platform } from "@/core/platform";
-import type { EngineStatus } from "@/core/platform";
 import { basemapById } from "@/core/map/basemaps";
+import type { EngineStatus } from "@/core/platform";
+import { platform } from "@/core/platform";
 import { useMapStore } from "@/core/store/mapStore";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { Spinner } from "@/design-system/controls";
 import { formatCoordinates } from "@/domain/units";
+
+/** How often to re-check the local pvlib sidecar. */
+const ENGINE_POLL_MS = 5_000;
 
 export function StatusBar() {
   const cursor = useMapStore((state) => state.cursor);
@@ -28,14 +31,30 @@ export function StatusBar() {
 
   useEffect(() => {
     let cancelled = false;
-    platform()
-      .engine.status()
-      .then((status) => {
-        if (!cancelled) setEngine(status);
-      })
-      .catch(() => setEngine(null));
+
+    const refresh = () => {
+      platform()
+        .engine.status()
+        .then((status) => {
+          if (!cancelled) setEngine(status);
+        })
+        .catch(() => {
+          if (!cancelled) setEngine(null);
+        });
+    };
+
+    refresh();
+    const interval = window.setInterval(refresh, ENGINE_POLL_MS);
+    const onFocus = () => refresh();
+    const onEngineChanged = () => refresh();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("sunday:engine-changed", onEngineChanged);
+
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("sunday:engine-changed", onEngineChanged);
     };
   }, []);
 

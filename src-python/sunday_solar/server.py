@@ -58,6 +58,17 @@ app = FastAPI(
     summary="pvlib-backed PV modelling for the Sunday desktop app",
 )
 
+# Loopback-only server: open CORS so the Vite UI (and Tauri webview) can POST
+# JSON without failing the browser OPTIONS preflight with 405.
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
+
 
 @app.exception_handler(EngineError)
 async def engine_error_handler(_request: Request, exc: EngineError) -> JSONResponse:

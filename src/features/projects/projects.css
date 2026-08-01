@@ -1,0 +1,146 @@
+/* All Projects library view. */
+
+.projects__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.projects__table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--space-5);
+  font-size: 13px;
+}
+
+.projects__table th {
+  text-align: left;
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.projects__table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--outline-variant);
+  vertical-align: middle;
+}
+
+.projects__row {
+  cursor: pointer;
+}
+
+.projects__row:hover {
+  background: var(--surface-container-high);
+}
+
+.projects__row--active {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.projects__name {
+  color: var(--on-surface);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+}
+
+.projects__row:hover .projects__name {
+  color: var(--primary);
+}
+
+.projects__meta {
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.projects__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.projects__active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin-bottom: var(--space-5);
+  max-width: 420px;
+}
+
+.projects__sites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.projects__site {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+  background: var(--surface-container);
+}
+
+.projects__site-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.projects__site-name {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--on-surface);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.projects__designs {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-left: 2px solid var(--outline-variant);
+}
+
+.projects__design-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.projects__design-name {
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.projects__design-name:hover {
+  color: var(--primary);
+}

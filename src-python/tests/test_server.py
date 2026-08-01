@@ -26,6 +26,20 @@ def test_health_reports_versions(client: TestClient) -> None:
     assert body["engine_version"]
 
 
+def test_model_chain_options_preflight(client: TestClient) -> None:
+    """Browser POSTs with JSON trigger an OPTIONS preflight first."""
+    response = client.options(
+        "/model-chain",
+        headers={
+            "Origin": "http://localhost:1420",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "*"
+
+
 def test_model_chain_returns_a_method_block(client: TestClient) -> None:
     response = client.post(
         "/model-chain",

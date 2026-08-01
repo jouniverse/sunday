@@ -7,6 +7,7 @@
  * layer waiting to be misused.
  */
 
+import { useState } from "react";
 import { Chip, Switch } from "@/design-system/controls";
 import {
   BoltIcon,
@@ -53,6 +54,12 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
   const setOpacity = useLayerStore((state) => state.setOpacity);
   const setView = useUiStore((state) => state.setView);
   const notify = useUiStore((state) => state.notify);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    context: true,
+    resource: true,
+    infrastructure: true,
+    land: true,
+  });
 
   const groups: Array<LayerDefinition["group"]> = ["context", "resource", "infrastructure", "land"];
 
@@ -61,51 +68,67 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
       {groups.map((group) => {
         const layers = LAYER_CATALOGUE.filter((layer) => layer.group === group);
         if (layers.length === 0) return null;
+        const open = openGroups[group] ?? true;
 
         return (
-          <section key={group}>
-            {!collapsed && <SectionLabel>{GROUP_LABELS[group]}</SectionLabel>}
-            {layers.map((layer) => {
-              const state = runtime[layer.id] ?? { visible: false, opacity: 1 };
-              const usable = isLayerUsable(layer);
-              const reason = unavailableReason(layer);
+          <section key={group} className="layer-group">
+            {!collapsed && (
+              <button
+                type="button"
+                className="layer-group__toggle"
+                aria-expanded={open}
+                onClick={() =>
+                  setOpenGroups((prev) => ({ ...prev, [group]: !(prev[group] ?? true) }))
+                }
+              >
+                <SectionLabel>{GROUP_LABELS[group]}</SectionLabel>
+                <span className="layer-group__chevron" aria-hidden>
+                  {open ? "▾" : "▸"}
+                </span>
+              </button>
+            )}
+            {(collapsed || open) &&
+              layers.map((layer) => {
+                const state = runtime[layer.id] ?? { visible: false, opacity: 1 };
+                const usable = isLayerUsable(layer);
+                const reason = unavailableReason(layer);
 
-              return (
-                <div
-                  key={layer.id}
-                  className={`layer-row${state.visible ? " layer-row--on" : ""}`}
-                  title={collapsed ? layer.label : layer.purpose}
-                >
-                  <span className="layer-row__icon">{iconFor(layer)}</span>
-                  {!collapsed && (
-                    <div className="layer-row__main">
-                      <span className="layer-row__name">{layer.label}</span>
-                      {layer.vintage && <span className="layer-row__meta">{layer.vintage}</span>}
-                    </div>
-                  )}
-                  {!collapsed && (
-                    <Switch
-                      checked={state.visible}
-                      label={`Show ${layer.label}`}
-                      disabled={!usable}
-                      onChange={() => {
-                        if (!usable) {
-                          // Never fail silently: say what is missing and where to fix it.
-                          notify({
-                            tone: "info",
-                            message: `${layer.label} is not available yet`,
-                            detail: reason ?? undefined,
-                          });
-                          setView("settings");
-                          return;
-                        }
-                        toggle(layer.id);
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={layer.id}
+                    className={`layer-row${state.visible ? " layer-row--on" : ""}`}
+                    title={collapsed ? layer.label : layer.purpose}
+                  >
+                    <span className="layer-row__icon">{iconFor(layer)}</span>
+                    {!collapsed && (
+                      <div className="layer-row__main">
+                        <span className="layer-row__name">{layer.label}</span>
+                        {layer.vintage && <span className="layer-row__meta">{layer.vintage}</span>}
+                      </div>
+                    )}
+                    {!collapsed && (
+                      <Switch
+                        checked={state.visible}
+                        label={`Show ${layer.label}`}
+                        disabled={!usable}
+                        onChange={() => {
+                          if (!usable) {
+                            // Never fail silently: say what is missing and where to fix it.
+                            notify({
+                              tone: "info",
+                              message: `${layer.label} is not available yet`,
+                              detail: reason ?? undefined,
+                            });
+                            setView("settings");
+                            return;
+                          }
+                          toggle(layer.id);
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
           </section>
         );
       })}

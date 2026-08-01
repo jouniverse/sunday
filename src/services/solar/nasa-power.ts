@@ -10,10 +10,9 @@
  */
 
 import { ApiError, query, requestJson } from "../http/client";
+import { solarApiBase } from "./api-base";
 import type { MonthlyValue, ResourceReport } from "./types";
 import { PROVIDERS } from "./types";
-
-const BASE = "https://power.larc.nasa.gov/api/temporal";
 
 /** Solar grid spacing, degrees. Used to report the answering cell honestly. */
 const SOLAR_GRID_DEGREES = 1.0;
@@ -38,8 +37,18 @@ interface PowerResponse {
 const FILL_VALUE = -999;
 
 const MONTH_KEYS = [
-  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
 ] as const;
 
 /**
@@ -55,16 +64,18 @@ export async function fetchNasaPowerClimatology(options: {
   signal?: AbortSignal;
 }): Promise<ResourceReport> {
   const provider = PROVIDERS.nasa_power;
+  // SI_EF_TILTED_SURFACE is a parameter *set*: POWER expands it to
+  // SI_TILTED_AVG_* keys (optimal irradiance + optimal angle among them).
+  // Requesting SI_EF_OPTIMAL_ANGLE directly returns HTTP 422.
   const parameters = [
     "ALLSKY_SFC_SW_DWN", // GHI
     "ALLSKY_SFC_SW_DNI", // DNI
     "ALLSKY_SFC_SW_DIFF", // diffuse
     "T2M", // air temperature at 2 m
-    "SI_EF_TILTED_SURFACE_OPTIMAL", // optimal-tilt insolation
-    "SI_EF_OPTIMAL_ANGLE", // the optimal angle itself
+    "SI_EF_TILTED_SURFACE",
   ].join(",");
 
-  const url = `${BASE}/climatology/point?${query({
+  const url = `${solarApiBase("nasa_power")}/climatology/point?${query({
     parameters,
     community: "re",
     latitude: options.latitude,
@@ -96,8 +107,8 @@ export async function fetchNasaPowerClimatology(options: {
   const ghi = annualFromDailyMeans(parameterData.ALLSKY_SFC_SW_DWN);
   const dni = annualFromDailyMeans(parameterData.ALLSKY_SFC_SW_DNI);
   const diffuse = annualFromDailyMeans(parameterData.ALLSKY_SFC_SW_DIFF);
-  const tilted = annualFromDailyMeans(parameterData.SI_EF_TILTED_SURFACE_OPTIMAL);
-  const optimalAngle = annualMean(parameterData.SI_EF_OPTIMAL_ANGLE);
+  const tilted = annualFromDailyMeans(parameterData.SI_TILTED_AVG_OPTIMAL);
+  const optimalAngle = annualMean(parameterData.SI_TILTED_AVG_OPTIMAL_ANG);
 
   const answeringCell = describeCell(options.latitude, options.longitude, response);
 
@@ -112,6 +123,9 @@ export async function fetchNasaPowerClimatology(options: {
     optimalTiltDegrees: optimalAngle ?? undefined,
     meanAirTempC: annualMean(parameterData.T2M) ?? undefined,
     monthlyGhi: monthlySeries(parameterData.ALLSKY_SFC_SW_DWN),
+    // Angles and temperatures are already monthly means — do not scale by days.
+    monthlyOptimalTilt: monthlyMeans(parameterData.SI_TILTED_AVG_OPTIMAL_ANG),
+    monthlyAirTempC: monthlyMeans(parameterData.T2M),
     source: provider.attribution,
     dataset: (response.header?.sources ?? []).join(", ") || provider.dataset,
     vintage: describePeriod(response),
@@ -134,7 +148,10 @@ function describeCell(latitude: number, longitude: number, response: PowerRespon
   if (Array.isArray(returned) && returned.length >= 2) {
     const [lon, lat] = returned as [number, number];
     const offsetKm = Math.round(
-      Math.hypot((lat - latitude) * 111, (lon - longitude) * 111 * Math.cos((latitude * Math.PI) / 180)),
+      Math.hypot(
+        (lat - latitude) * 111,
+        (lon - longitude) * 111 * Math.cos((latitude * Math.PI) / 180),
+      ),
     );
     return `The value returned is for the cell centred at ${lat.toFixed(2)}°, ${lon.toFixed(2)}°, about ${offsetKm} km from the requested point.`;
   }
@@ -190,6 +207,18 @@ function monthlySeries(series: Record<string, number> | undefined): MonthlyValue
     if (typeof value !== "number" || value <= FILL_VALUE) return;
     // Convert to a monthly total for comparability with the other providers.
     values.push({ month: index + 1, value: value * (DAYS_IN_MONTH[index] as number) });
+  });
+  return values.length > 0 ? values : undefined;
+}
+
+/** Monthly means as reported (tilt °, temperature °C) — no day-length scaling. */
+function monthlyMeans(series: Record<string, number> | undefined): MonthlyValue[] | undefined {
+  if (!series) return undefined;
+  const values: MonthlyValue[] = [];
+  MONTH_KEYS.forEach((key, index) => {
+    const value = series[key];
+    if (typeof value !== "number" || value <= FILL_VALUE) return;
+    values.push({ month: index + 1, value });
   });
   return values.length > 0 ? values : undefined;
 }

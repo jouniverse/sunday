@@ -42,6 +42,34 @@
   color: var(--primary);
 }
 
+.topbar__project {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: var(--space-3);
+  min-width: 0;
+}
+
+.topbar__project-label {
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.topbar__project-select {
+  max-width: 180px;
+  min-width: 120px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-sm);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: 12.5px;
+}
+
 .topbar__tabs {
   display: flex;
   gap: var(--space-1);
@@ -126,6 +154,7 @@
   flex: 1;
   display: flex;
   min-height: 0;
+  position: relative;
 }
 
 .panel {
@@ -194,13 +223,50 @@
   padding: var(--gap) 0;
 }
 
+/* Design/rooftop rails: hide form chrome when collapsed (MapWorkspace keeps icons). */
+.panel--collapsed.panel--left .panel__body:empty {
+  display: none;
+}
+
+.design-rail-placeholder {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
+  color: var(--on-surface-variant);
+}
+
 /* --- Canvas --------------------------------------------------------------- */
 
-.canvas {
+.canvas,
+.canvas-host {
   flex: 1;
   position: relative;
   min-width: 0;
+  min-height: 0;
   background: var(--canvas-map);
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+}
+
+.canvas-toolbar__label {
+  font: var(--text-label-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+
+.canvas-toolbar .design-canvas-toolbar__actions {
+  margin-left: auto;
 }
 
 /* Floating map furniture: controls, scale bar, legends, tool chips. */
