@@ -23,6 +23,33 @@
   outline: none;
 }
 
+/* Suppress MapLibre’s grab/hand; Sunday’s cursor stays on the map. */
+.map-canvas .maplibregl-canvas-container.maplibregl-interactive,
+.map-canvas .maplibregl-canvas-container.maplibregl-interactive:active,
+.map-canvas .maplibregl-canvas-container.maplibregl-interactive .maplibregl-canvas,
+.map-canvas .maplibregl-canvas {
+  cursor: var(--cursor-app) !important;
+}
+
+/* Digitising tools: precise crosshair while drawing / placing. */
+.map-canvas--precise,
+.map-canvas--precise .maplibregl-canvas-container.maplibregl-interactive,
+.map-canvas--precise .maplibregl-canvas-container.maplibregl-interactive:active,
+.map-canvas--precise .maplibregl-canvas-container.maplibregl-interactive .maplibregl-canvas,
+.map-canvas--precise .maplibregl-canvas {
+  cursor: var(--cursor-precise) !important;
+}
+
+/* Design / rooftop MapLibre canvases — never show MapLibre’s grab hand. */
+.array-map-preview .maplibregl-canvas-container.maplibregl-interactive,
+.array-map-preview .maplibregl-canvas-container.maplibregl-interactive:active,
+.array-map-preview .maplibregl-canvas,
+.rooftop-panel-map .maplibregl-canvas-container.maplibregl-interactive,
+.rooftop-panel-map .maplibregl-canvas-container.maplibregl-interactive:active,
+.rooftop-panel-map .maplibregl-canvas {
+  cursor: var(--cursor-app) !important;
+}
+
 /* --- Map furniture -------------------------------------------------------- */
 
 .map-controls {

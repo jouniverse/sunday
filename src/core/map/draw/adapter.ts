@@ -96,14 +96,8 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
 
     draw.move(asLngLat(event), configFor(draw.editingSiteId));
 
-    // Cursor tells the user what a click will do before they commit to it.
-    const state = useDrawStore.getState().state;
-    const canvas = map.getCanvas();
-    if (draggingVertex) canvas.style.cursor = "grabbing";
-    else if (state.hoverVertex !== null) canvas.style.cursor = "grab";
-    else if (state.hoverMidpoint !== null) canvas.style.cursor = "copy";
-    else if (state.mode === "drawing") canvas.style.cursor = "crosshair";
-    else canvas.style.cursor = "";
+    // Cursor class on `.map-canvas` owns the look; clear inline styles so CSS wins.
+    map.getCanvas().style.cursor = "";
 
     redraw();
   };
@@ -124,7 +118,7 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
   const onMouseUp = () => {
     if (!draggingVertex) return;
     draggingVertex = false;
-    map.dragPan.enable();
+    if (!map.dragPan.isEnabled()) map.dragPan.enable();
     map.getCanvas().style.cursor = "";
 
     const draw = useDrawStore.getState();
@@ -211,7 +205,9 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
       if (draw.state.mode === "idle") {
         draw.begin(`draft-${Date.now()}`);
       }
-      canvas.style.cursor = "crosshair";
+      // Ensure pan is available after a stuck vertex-drag (project/view switches).
+      if (!map.dragPan.isEnabled()) map.dragPan.enable();
+      canvas.style.cursor = "";
       redraw();
       return;
     }
@@ -220,7 +216,8 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
       if (draw.editingSiteId === null && draw.state.mode !== "idle") {
         draw.cancel();
       }
-      canvas.style.cursor = "crosshair";
+      if (!map.dragPan.isEnabled()) map.dragPan.enable();
+      canvas.style.cursor = "";
       redraw();
       return;
     }
@@ -233,6 +230,7 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
       draw.cancel();
       redraw();
     }
+    if (!map.dragPan.isEnabled()) map.dragPan.enable();
     canvas.style.cursor = "";
   });
 

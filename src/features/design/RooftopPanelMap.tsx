@@ -53,7 +53,7 @@ export function panelRectangle(
   ];
 }
 
-function energyColour(energy: number, min: number, max: number, active: boolean): string {
+export function energyColour(energy: number, min: number, max: number, active: boolean): string {
   if (!active) return "#5a564e";
   const span = max - min || 1;
   const t = Math.min(1, Math.max(0, (energy - min) / span));
@@ -195,7 +195,7 @@ export function RooftopPanelMap({
       });
 
       map.on("mousemove", PANEL_LAYER, (event: MapLayerMouseEvent) => {
-        map.getCanvas().style.cursor = "pointer";
+        map.getCanvas().style.cursor = "";
         const feature = event.features?.[0];
         if (!feature || !popupRef.current) return;
         const energy = feature.properties?.energy;
@@ -421,5 +421,75 @@ export function allPanelsExport(
       orientation: panel.orientation,
       active: inactive.has(index) ? "no" : "yes",
     };
+  });
+}
+
+/**
+ * Composite RGB base + energy-coloured active panels for HTML export.
+ * Inactive panels are drawn dimmer so the report still shows the full layout.
+ */
+export async function composeRgbPanelsDataUrl(options: {
+  rgbDataUrl: string;
+  bounds: { west: number; south: number; east: number; north: number };
+  insights: BuildingInsights;
+  panelCount: number;
+  inactive: Set<number>;
+  width?: number;
+}): Promise<string | null> {
+  const width = options.width ?? 900;
+  const { west, south, east, north } = options.bounds;
+  const spanLng = east - west || 1e-9;
+  const spanLat = north - south || 1e-9;
+  const height = Math.round(width * (spanLat / spanLng));
+
+  const image = await loadImage(options.rgbDataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(image, 0, 0, width, height);
+
+  const slice = options.insights.solarPanels.slice(0, Math.max(0, options.panelCount));
+  const active = slice.filter((_, index) => !options.inactive.has(index));
+  const energies = active.map((panel) => panel.yearlyEnergyDcKwh);
+  const min = energies.length ? Math.min(...energies) : 0;
+  const max = energies.length ? Math.max(...energies) : 1;
+
+  const toPx = (lng: number, lat: number): [number, number] => [
+    ((lng - west) / spanLng) * width,
+    ((north - lat) / spanLat) * height,
+  ];
+
+  // Report image shows active panels only — inactive are omitted so the ramp
+  // stays unambiguous and the layout the user kept is what prints.
+  slice.forEach((panel, index) => {
+    if (options.inactive.has(index)) return;
+    const ring = panelRectangle(panel, options.insights.panelHeightM, options.insights.panelWidthM);
+    ctx.beginPath();
+    ring.forEach(([lng, lat], i) => {
+      const [x, y] = toPx(lng, lat);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = energyColour(panel.yearlyEnergyDcKwh, min, max, true);
+    ctx.globalAlpha = 0.78;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#422c00";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not decode RGB imagery"));
+    image.src = src;
   });
 }

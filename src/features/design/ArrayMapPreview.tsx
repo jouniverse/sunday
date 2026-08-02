@@ -1,10 +1,10 @@
 /**
- * MapLibre preview for greenfield Design: satellite under optional array strips.
+ * MapLibre preview for greenfield Design: satellite or dark schematic under
+ * array strips.
  *
- * Replaces the old CSS-transform blend of an SVG schematic over a frozen map
- * snapshot. Pan/zoom is a real map camera; strips are GeoJSON on the same CRS.
- * Large sites draw a capped sample of strips plus a translucent site fill so the
- * UI stays responsive.
+ * Per notes/design-schematic-rendering.md: WebGL + GeoJSON (setData) instead of
+ * SVG DOM polygons, so the full layout can pan/zoom without truncation. Source
+ * and layers are created once; parameter changes push MultiPolygon GeoJSON.
  */
 
 import { Map as MapLibreMap, type GeoJSONSource } from "maplibre-gl";
@@ -15,10 +15,12 @@ import type { Site } from "@/core/store/siteStore";
 import type { ModuleSpec, MountType } from "@/domain/packing/priors";
 import { computeArrayStrips } from "./ArrayPreview";
 
+export { satelliteImageUrl } from "@/core/map/satelliteExport";
+
 const SITE_SOURCE = "sunday-array-site";
 const STRIPS_SOURCE = "sunday-array-strips";
-/** Soft cap for map display — packing maths still uses the full strip set. */
-const DISPLAY_STRIP_CAP = 2_500;
+
+export type ArrayMapBasemap = "satellite" | "schematic";
 
 export function ArrayMapPreview({
   site,
@@ -28,6 +30,7 @@ export function ArrayMapPreview({
   azimuth,
   mount = "fixed_tilt",
   showStrips,
+  basemap = "satellite",
   onCaptureReady,
 }: {
   site: Site;
@@ -37,37 +40,73 @@ export function ArrayMapPreview({
   azimuth: number;
   mount?: MountType;
   showStrips: boolean;
+  /** Dark blank canvas for schematic-only; Esri imagery for satellite modes. */
+  basemap?: ArrayMapBasemap;
   onCaptureReady?: (capture: () => string | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const readyRef = useRef(false);
 
+  // Full strip set — WebGL can hold tens of thousands; no viewport truncation.
   const layout = useMemo(
-    () => computeArrayStrips({ site, module, tiltDegrees, gcr, azimuth, mount }),
+    () =>
+      computeArrayStrips({
+        site,
+        module,
+        tiltDegrees,
+        gcr,
+        azimuth,
+        mount,
+        maxStrips: Number.POSITIVE_INFINITY,
+      }),
     [site, module, tiltDegrees, gcr, azimuth, mount],
   );
 
   const stripsGeoJson = useMemo(() => {
-    if (!layout) return emptyFc();
-    const strips = layout.stripsLngLat.slice(0, DISPLAY_STRIP_CAP);
+    if (!layout || layout.stripsLngLat.length === 0) return emptyFc();
+    // One MultiPolygon feature is cheaper for setData than N Feature polygons.
     return {
       type: "FeatureCollection" as const,
-      features: strips.map((ring, index) => ({
-        type: "Feature" as const,
-        properties: { index },
-        geometry: {
-          type: "Polygon" as const,
-          coordinates: [[...ring, ring[0]!]],
+      features: [
+        {
+          type: "Feature" as const,
+          properties: { count: layout.stripsLngLat.length },
+          geometry: {
+            type: "MultiPolygon" as const,
+            coordinates: layout.stripsLngLat.map((ring) => [[...ring, ring[0]!]]),
+          },
         },
-      })),
+      ],
     };
   }, [layout]);
 
   const siteGeoJson = useMemo(() => siteToGeoJson(site), [site]);
 
+  // Keep latest data in refs so the load handler and updates always see current values.
+  const stripsGeoJsonRef = useRef(stripsGeoJson);
+  stripsGeoJsonRef.current = stripsGeoJson;
+  const siteGeoJsonRef = useRef(siteGeoJson);
+  siteGeoJsonRef.current = siteGeoJson;
+  const showStripsRef = useRef(showStrips);
+  showStripsRef.current = showStrips;
+
+  function pushStrips(map: MapLibreMap) {
+    const source = map.getSource(STRIPS_SOURCE) as GeoJSONSource | undefined;
+    if (!source) return;
+    source.setData(stripsGeoJsonRef.current);
+    const visibility = showStripsRef.current ? "visible" : "none";
+    if (map.getLayer("strips-fill")) map.setLayoutProperty("strips-fill", "visibility", visibility);
+    if (map.getLayer("strips-line")) map.setLayoutProperty("strips-line", "visibility", visibility);
+  }
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const style = basemapById("satellite").build({});
+    readyRef.current = false;
+    const style =
+      basemap === "schematic"
+        ? basemapById("blank").build({})
+        : basemapById("satellite").build({});
     const map = new MapLibreMap({
       container: containerRef.current,
       style,
@@ -78,34 +117,43 @@ export function ArrayMapPreview({
     mapRef.current = map;
 
     map.on("load", () => {
-      map.addSource(SITE_SOURCE, { type: "geojson", data: siteGeoJson });
+      map.addSource(SITE_SOURCE, { type: "geojson", data: siteGeoJsonRef.current });
       map.addLayer({
         id: "site-fill",
         type: "fill",
         source: SITE_SOURCE,
-        paint: { "fill-color": "#c4a35a", "fill-opacity": 0.18 },
+        paint: {
+          "fill-color": basemap === "schematic" ? "#3a342c" : "#c4a35a",
+          "fill-opacity": basemap === "schematic" ? 0.35 : 0.18,
+        },
       });
       map.addLayer({
         id: "site-line",
         type: "line",
         source: SITE_SOURCE,
-        paint: { "line-color": "#e6c27a", "line-width": 2 },
+        paint: {
+          "line-color": basemap === "schematic" ? "#9c8f7d" : "#e6c27a",
+          "line-width": 2,
+          ...(basemap === "schematic" ? { "line-dasharray": [2, 1.5] as [number, number] } : {}),
+        },
       });
-      map.addSource(STRIPS_SOURCE, { type: "geojson", data: stripsGeoJson });
+      map.addSource(STRIPS_SOURCE, { type: "geojson", data: stripsGeoJsonRef.current });
       map.addLayer({
         id: "strips-fill",
         type: "fill",
         source: STRIPS_SOURCE,
-        layout: { visibility: showStrips ? "visible" : "none" },
-        paint: { "fill-color": "#2a4650", "fill-opacity": 0.72 },
+        layout: { visibility: showStripsRef.current ? "visible" : "none" },
+        paint: { "fill-color": "#2a4650", "fill-opacity": 0.78 },
       });
       map.addLayer({
         id: "strips-line",
         type: "line",
         source: STRIPS_SOURCE,
-        layout: { visibility: showStrips ? "visible" : "none" },
-        paint: { "line-color": "#96cfe2", "line-width": 0.6 },
+        layout: { visibility: showStripsRef.current ? "visible" : "none" },
+        paint: { "line-color": "#96cfe2", "line-width": 0.5 },
       });
+      readyRef.current = true;
+      pushStrips(map);
       fitSite(map, site);
       requestAnimationFrame(() => map.resize());
     });
@@ -115,8 +163,6 @@ export function ArrayMapPreview({
 
     onCaptureReady?.(() => {
       try {
-        // May be tainted by cross-origin tiles; callers should fall back to
-        // the static Esri export URL when this returns null.
         return map.getCanvas().toDataURL("image/jpeg", 0.85);
       } catch {
         return null;
@@ -125,88 +171,43 @@ export function ArrayMapPreview({
 
     return () => {
       observer.disconnect();
+      readyRef.current = false;
       map.remove();
       mapRef.current = null;
     };
+    // Remount when basemap mode changes so style layers match.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [site.id]);
+  }, [site.id, basemap]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
+    if (!map || !readyRef.current) return;
     (map.getSource(SITE_SOURCE) as GeoJSONSource | undefined)?.setData(siteGeoJson);
     fitSite(map, site);
   }, [site, siteGeoJson]);
 
+  // Push geometry whenever packing parameters change — no rAF early-return that
+  // can drop updates when the style is still loading.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-    (map.getSource(STRIPS_SOURCE) as GeoJSONSource | undefined)?.setData(stripsGeoJson);
-  }, [stripsGeoJson]);
+    if (!map || !readyRef.current) return;
+    pushStrips(map);
+  }, [stripsGeoJson, showStrips]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-    const visibility = showStrips ? "visible" : "none";
-    if (map.getLayer("strips-fill")) map.setLayoutProperty("strips-fill", "visibility", visibility);
-    if (map.getLayer("strips-line")) map.setLayoutProperty("strips-line", "visibility", visibility);
-  }, [showStrips]);
-
-  const truncated =
-    layout != null && (layout.truncated || layout.stripCount > DISPLAY_STRIP_CAP);
+  const stripCount = layout?.stripCount ?? 0;
 
   return (
     <div className="array-map-preview">
-      {truncated && (
-        <p className="array-preview__banner">
-          Showing {Math.min(layout?.stripCount ?? 0, DISPLAY_STRIP_CAP).toLocaleString()} of{" "}
-          {layout?.stripCount.toLocaleString()} row strips for performance. Module count and
-          capacity still use the full packing.
+      <div className="array-map-preview__map" ref={containerRef} />
+      {stripCount > 0 && (
+        <p className="array-preview__banner array-preview__banner--footer">
+          {stripCount.toLocaleString()} row strips · WebGL schematic
+          {basemap === "schematic" ? " on dark canvas" : " over imagery"} · scroll to zoom, drag to
+          pan
         </p>
       )}
-      <div className="array-map-preview__map" ref={containerRef} />
     </div>
   );
-}
-
-/** Static Esri World Imagery export — reliable for HTML embeds (no canvas CORS). */
-export function satelliteImageUrl(site: Site, size = 900): string | null {
-  if (!site.ring || site.ring.length < 2) {
-    const [lon, lat] = site.centre;
-    const d = 0.01;
-    return esriExport(lon - d, lat - d, lon + d, lat + d, size);
-  }
-  let minLng = Infinity;
-  let minLat = Infinity;
-  let maxLng = -Infinity;
-  let maxLat = -Infinity;
-  for (const [lng, lat] of site.ring) {
-    minLng = Math.min(minLng, lng);
-    minLat = Math.min(minLat, lat);
-    maxLng = Math.max(maxLng, lng);
-    maxLat = Math.max(maxLat, lat);
-  }
-  const padLng = (maxLng - minLng) * 0.12 || 0.002;
-  const padLat = (maxLat - minLat) * 0.12 || 0.002;
-  return esriExport(minLng - padLng, minLat - padLat, maxLng + padLng, maxLat + padLat, size);
-}
-
-function esriExport(
-  west: number,
-  south: number,
-  east: number,
-  north: number,
-  size: number,
-): string {
-  const params = new URLSearchParams({
-    bbox: `${west},${south},${east},${north}`,
-    bboxSR: "4326",
-    imageSR: "4326",
-    size: `${size},${Math.round(size * 0.7)}`,
-    format: "jpg",
-    f: "image",
-  });
-  return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?${params}`;
 }
 
 function emptyFc(): GeoJSON.FeatureCollection {

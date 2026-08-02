@@ -76,21 +76,42 @@ const report: SiteReport = {
       method: "PVGIS grid-connected PV model",
       caveats: ["About 5 km resolution."],
       requestUrl: "https://re.jrc.ec.europa.eu/api/v5_3/PVcalc?lat=35",
+      monthlyGhi: Array.from({ length: 12 }, (_, index) => ({
+        month: index + 1,
+        value: 120 + index * 8,
+      })),
     },
     {
       provider: "nasa_power",
       latitude: 35.005,
       longitude: -118.195,
       ghiKwhM2Year: 1980,
+      optimalTiltDegrees: 32,
+      meanAirTempC: 17,
       source: "NASA POWER",
       dataset: "CERES SYN1deg",
       fidelity: "modelled",
       method: "Climatology means",
       caveats: [],
+      monthlyGhi: Array.from({ length: 12 }, (_, index) => ({
+        month: index + 1,
+        value: 110 + index * 7,
+      })),
+      monthlyOptimalTilt: Array.from({ length: 12 }, (_, index) => ({
+        month: index + 1,
+        value: 20 + index,
+      })),
+      monthlyAirTempC: Array.from({ length: 12 }, (_, index) => ({
+        month: index + 1,
+        value: 10 + index,
+      })),
     },
   ],
   comparisons: [],
-  consensus: {},
+  consensus: {
+    optimalTiltDegrees: { value: 32, from: ["nasa_power"], note: "NASA POWER" },
+    meanAirTempC: { value: 17, from: ["nasa_power"], note: "NASA POWER" },
+  },
   warnings: ["Global horizontal irradiation differs by 4% between sources."],
 };
 
@@ -216,6 +237,13 @@ describe("report export", () => {
     expect(html).toContain("Global horizontal irradiation differs");
     expect(html).toContain("Inside a protected area");
     expect(html).toContain("Screening only.");
+  });
+
+  it("embeds satellite imagery and monthly charts in the HTML report", () => {
+    const html = exportReportHtml(report, meta, site);
+    expect(html).toContain("Site location");
+    expect(html).toContain("World_Imagery/MapServer/export");
+    expect(html).toContain("Monthly irradiation");
   });
 
   it("escapes untrusted text rather than injecting it", () => {

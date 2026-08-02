@@ -59,6 +59,11 @@ export function computeArrayStrips(options: {
   gcr: number;
   azimuth: number;
   mount?: MountType;
+  /**
+   * Cap on drawn strips. Omit for the interactive SVG budget; pass `Infinity`
+   * (or a very large number) for full HTML export schematics.
+   */
+  maxStrips?: number;
 }): ArrayStripLayout | null {
   const { site, module, tiltDegrees, gcr, azimuth, mount = "fixed_tilt" } = options;
   if (!site.ring || site.ring.length < 3) return null;
@@ -79,10 +84,11 @@ export function computeArrayStrips(options: {
   const bounds = polygonBounds2D(rotated);
 
   const strips: Array<{ x: number; y: number; width: number; height: number }> = [];
-  // SVG cannot paint tens of thousands of polygons smoothly. Cap display strips;
-  // packing capacity still uses computeFillFactor, not this preview count.
+  // Interactive SVG cannot paint tens of thousands of polygons smoothly.
+  // Packing capacity still uses computeFillFactor, not this preview count.
   const areaHa = Math.max(0.1, site.areaM2 / 10_000);
-  const maxStrips = Math.min(3_000, Math.max(800, Math.round(areaHa * 120)));
+  const maxStrips =
+    options.maxStrips ?? Math.min(3_000, Math.max(800, Math.round(areaHa * 120)));
   let truncated = false;
 
   for (let y = bounds.minY; y + row.projectedWidthM <= bounds.maxY; y += pitchM) {
@@ -214,13 +220,6 @@ export function ArrayPreview({
 
   return (
     <div className="array-preview-wrap">
-      {layout.truncated && (
-        <p className="array-preview__banner">
-          Schematic truncated at {layout.maxStrips.toLocaleString()} row strips — packing fill and
-          module count still use the full site. GCR is collector width ÷ pitch. Azimuth rotates this
-          layout; annual energy changes with azimuth (equator-facing is best).
-        </p>
-      )}
       <svg
         className="array-preview"
         viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
@@ -232,7 +231,6 @@ export function ArrayPreview({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
-        style={{ cursor: dragRef.current ? "grabbing" : "grab" }}
       >
         <defs>
           <pattern id="preview-grid" width="24" height="24" patternUnits="userSpaceOnUse">
@@ -290,7 +288,7 @@ export function ArrayPreview({
           </text>
         </g>
 
-        <g transform={`translate(${MARGIN} ${VIEW_HEIGHT - 18})`}>
+        <g transform={`translate(${MARGIN} ${VIEW_HEIGHT - 36})`}>
           <line
             x1="0"
             y1="0"
@@ -315,6 +313,79 @@ export function ArrayPreview({
           {mount === "dual_axis" ? " · dual-axis footprints" : ""} · scroll to zoom, drag to pan
         </text>
       </svg>
+      {layout.truncated && (
+        <p className="array-preview__banner array-preview__banner--footer">
+          Viewport shows {layout.maxStrips.toLocaleString()} of the row strips for performance —
+          packing fill and module count still use the full site. HTML export includes the complete
+          schematic.
+        </p>
+      )}
     </div>
   );
+}
+
+/**
+ * Full (uncapped) schematic SVG markup for HTML export.
+ *
+ * Returned as inline SVG (not a data: URL) — large arrays exceed practical
+ * data-URL length limits and silently disappear in WebKit exports.
+ */
+export function buildFullSchematicSvg(options: {
+  site: Site;
+  module: ModuleSpec;
+  tiltDegrees: number;
+  gcr: number;
+  azimuth: number;
+  mount?: MountType;
+}): string | null {
+  const layout = computeArrayStrips({ ...options, maxStrips: Number.POSITIVE_INFINITY });
+  if (!layout || !options.site.ring) return null;
+
+  const { polygon } = ringToLocalFrame(options.site.ring);
+  const bounds = polygonBounds2D(polygon);
+  const spanX = Math.max(bounds.maxX - bounds.minX, 1);
+  const spanY = Math.max(bounds.maxY - bounds.minY, 1);
+  const fitScale = Math.min((VIEW_WIDTH - MARGIN * 2) / spanX, (VIEW_HEIGHT - MARGIN * 2) / spanY);
+  const project = (point: Point2D): [number, number] => [
+    MARGIN + (point.x - bounds.minX) * fitScale,
+    VIEW_HEIGHT - MARGIN - (point.y - bounds.minY) * fitScale,
+  ];
+  const boundary = polygon.map(project).map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const fill = options.mount === "dual_axis" ? "#243d48" : "#2a4650";
+  // Prefer compact path groups over thousands of separate polygon tags.
+  const stripPaths = layout.stripsLocal
+    .map((corners) => {
+      const pts = corners.map(project);
+      if (pts.length === 0) return "";
+      const [first, ...rest] = pts;
+      if (!first) return "";
+      return (
+        `M${first[0].toFixed(1)} ${first[1].toFixed(1)}` +
+        rest.map(([x, y]) => `L${x.toFixed(1)} ${y.toFixed(1)}`).join("") +
+        "Z"
+      );
+    })
+    .filter(Boolean)
+    .join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}" width="100%" role="img" aria-label="Array schematic">
+  <rect width="${VIEW_WIDTH}" height="${VIEW_HEIGHT}" fill="#131009"/>
+  <polygon points="${boundary}" fill="none" stroke="#4f4536" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <path d="${stripPaths}" fill="${fill}" stroke="#96cfe2" stroke-width="0.5"/>
+  <text x="${MARGIN}" y="28" font-size="11" fill="#9c8f7d" font-family="IBM Plex Mono,monospace">Pitch ${layout.pitchM.toFixed(2)} m · ${layout.stripCount.toLocaleString()} strips</text>
+</svg>`;
+}
+
+/** @deprecated Prefer buildFullSchematicSvg + inline HTML embed. */
+export function buildFullSchematicSvgDataUrl(options: {
+  site: Site;
+  module: ModuleSpec;
+  tiltDegrees: number;
+  gcr: number;
+  azimuth: number;
+  mount?: MountType;
+}): string | null {
+  const svg = buildFullSchematicSvg(options);
+  if (!svg) return null;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

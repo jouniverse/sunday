@@ -360,6 +360,17 @@ function SiteReportPanel({ site }: { site: Site }) {
               reports={report.reports}
               select={(entry) => entry.monthlyOptimalTilt}
               valueDigits={1}
+              referenceLines={
+                report.consensus.optimalTiltDegrees
+                  ? [
+                      {
+                        value: report.consensus.optimalTiltDegrees.value,
+                        label: "Annual / consensus",
+                        colour: "var(--primary)",
+                      },
+                    ]
+                  : undefined
+              }
             />
             <MonthlySeriesChart
               title="Monthly mean air temperature"
@@ -368,6 +379,17 @@ function SiteReportPanel({ site }: { site: Site }) {
               reports={report.reports}
               select={(entry) => entry.monthlyAirTempC}
               valueDigits={1}
+              referenceLines={
+                report.consensus.meanAirTempC
+                  ? [
+                      {
+                        value: report.consensus.meanAirTempC.value,
+                        label: "Annual mean",
+                        colour: "var(--secondary)",
+                      },
+                    ]
+                  : undefined
+              }
             />
 
             <div className="card">

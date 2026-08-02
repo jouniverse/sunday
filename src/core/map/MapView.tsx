@@ -32,7 +32,9 @@ export function MapView() {
 
   const basemap = useMapStore((state) => state.basemap);
   const terrain3d = useMapStore((state) => state.terrain3d);
+  const tool = useMapStore((state) => state.tool);
   const configuredKeys = useSettingsStore((state) => state.configuredKeys);
+  const preciseCursor = tool === "draw-polygon" || tool === "place-point";
 
   // --- Map creation. Runs once; the style is swapped in a later effect. ---
   useEffect(() => {
@@ -203,5 +205,11 @@ export function MapView() {
     }),
   );
 
-  return <div className="map-canvas" ref={containerRef} data-testid="map-canvas" />;
+  return (
+    <div
+      className={preciseCursor ? "map-canvas map-canvas--precise" : "map-canvas"}
+      ref={containerRef}
+      data-testid="map-canvas"
+    />
+  );
 }

@@ -54,6 +54,12 @@
   color: var(--on-surface-variant);
 }
 
+.chart__swatch--dashed {
+  background: transparent !important;
+  border: 1.5px dashed var(--on-surface);
+  box-sizing: border-box;
+}
+
 .chart__swatch {
   width: 10px;
   height: 3px;

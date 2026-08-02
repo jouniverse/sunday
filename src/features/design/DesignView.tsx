@@ -49,8 +49,9 @@ import { defaultMeta, toCsv, writeExport } from "@/services/export";
 import { exportDesignHtml } from "@/services/export/design-html";
 import { buildZip } from "@/services/export/zip";
 import { SidePanel } from "@/shell/SidePanel";
-import { ArrayMapPreview, satelliteImageUrl } from "./ArrayMapPreview";
-import { ArrayPreview, computeArrayStrips } from "./ArrayPreview";
+import { satelliteSnapshot } from "@/core/map/satelliteExport";
+import { ArrayMapPreview } from "./ArrayMapPreview";
+import { buildFullSchematicSvg, computeArrayStrips } from "./ArrayPreview";
 import { DesignExportMenu, type DesignExportFormat } from "./DesignExportMenu";
 import { RooftopDesignView } from "./RooftopDesignView";
 import "./design.css";
@@ -382,34 +383,33 @@ function DesignWorkspace({ site }: { site: Site }) {
     };
   }
 
-  function captureSchematicDataUrl(): string | null {
-    const svg = document.querySelector<SVGSVGElement>(".array-preview");
-    if (!svg) return null;
-    const clone = svg.cloneNode(true) as SVGSVGElement;
-    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    const xml = new XMLSerializer().serializeToString(clone);
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
-  }
-
   function buildHtmlExport(): string {
     const capacityScaled = scalePower(packing.capacityKwDc);
     const images = [];
-    // Prefer SVG schematic when available; satellite uses a static Esri export
-    // so HTML never embeds a CORS-tainted black canvas.
-    const schematic = captureSchematicDataUrl();
+    // Inline SVG — data: URLs silently fail for large schematics in WebKit.
+    const schematic = buildFullSchematicSvg({
+      site,
+      module,
+      tiltDegrees: tilt,
+      gcr,
+      azimuth,
+      mount,
+    });
     if (schematic) {
       images.push({
         title: "Array schematic",
-        src: schematic,
-        caption: "Plan view of row strips inside the site boundary.",
+        inlineSvg: schematic,
+        caption: "Full plan view of row strips inside the site boundary.",
       });
     }
-    const satellite = satelliteImageUrl(site);
+    const satellite = satelliteSnapshot(site);
     if (satellite) {
       images.push({
         title: "Site satellite",
-        src: satellite,
-        caption: "Esri World Imagery for the site extent.",
+        src: satellite.url,
+        caption:
+          "Esri World Imagery for the site extent. Amber outline marks the site boundary.",
+        outlineNorm: satellite.outlineNorm,
       });
     }
     return exportDesignHtml({
@@ -812,30 +812,18 @@ function DesignWorkspace({ site }: { site: Site }) {
             </div>
           </div>
           <div className="design-preview-stack">
-            {previewMode === "schematic" ? (
-              <div className="design-preview-stack__schematic">
-                <ArrayPreview
-                  site={site}
-                  module={module}
-                  tiltDegrees={tilt}
-                  gcr={gcr}
-                  azimuth={azimuth}
-                  mount={mount}
-                />
-              </div>
-            ) : (
-              <div className="design-preview-stack__map">
-                <ArrayMapPreview
-                  site={site}
-                  module={module}
-                  tiltDegrees={tilt}
-                  gcr={gcr}
-                  azimuth={azimuth}
-                  mount={mount}
-                  showStrips={previewMode === "blend"}
-                />
-              </div>
-            )}
+            <div className="design-preview-stack__map">
+              <ArrayMapPreview
+                site={site}
+                module={module}
+                tiltDegrees={tilt}
+                gcr={gcr}
+                azimuth={azimuth}
+                mount={mount}
+                showStrips={previewMode !== "satellite"}
+                basemap={previewMode === "schematic" ? "schematic" : "satellite"}
+              />
+            </div>
           </div>
 
           <div

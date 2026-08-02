@@ -3,7 +3,7 @@
  *
  * Opens via the same save dialog as other exports; the user prints to PDF from
  * the browser / OS print sheet. Optional images (schematic, satellite, flux)
- * are embedded as data URLs.
+ * are embedded as data URLs or https URLs.
  */
 
 import type { ExportMeta } from "./index";
@@ -23,9 +23,19 @@ export interface DesignHtmlSection {
 
 export interface DesignHtmlImage {
   title: string;
-  /** data: URL or https URL */
-  src: string;
+  /** data: URL or https URL — omit when `inlineSvg` is provided. */
+  src?: string;
+  /**
+   * Raw SVG markup embedded inline. Prefer this for large schematics — data:
+   * URLs hit length limits and disappear in WebKit.
+   */
+  inlineSvg?: string;
   caption?: string;
+  /**
+   * Optional site outline in normalised image coordinates (0–1, y down).
+   * Rendered as an SVG overlay so we never need canvas CORS for Esri tiles.
+   */
+  outlineNorm?: Array<[number, number]> | null;
 }
 
 export function exportDesignHtml(options: {
@@ -56,15 +66,28 @@ export function exportDesignHtml(options: {
     .join("");
 
   const imagesHtml = (options.images ?? [])
-    .filter((image) => image.src)
-    .map(
-      (image) => `
+    .filter((image) => image.src || image.inlineSvg)
+    .map((image) => {
+      const outline = image.outlineNorm;
+      const overlay =
+        outline && outline.length >= 3
+          ? `<svg class="fig__outline" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points="${outline.map(([x, y]) => `${x},${y}`).join(" ")}" />
+    </svg>`
+          : "";
+      const body = image.inlineSvg
+        ? `<div class="fig__frame fig__frame--svg">${image.inlineSvg}</div>`
+        : `<div class="fig__frame">
+      <img src="${escapeHtml(image.src ?? "")}" alt="${escapeHtml(image.title)}" />
+      ${overlay}
+    </div>`;
+      return `
   <h2>${escapeHtml(image.title)}</h2>
   <figure class="fig">
-    <img src="${escapeHtml(image.src)}" alt="${escapeHtml(image.title)}" />
+    ${body}
     ${image.caption ? `<figcaption>${escapeHtml(image.caption)}</figcaption>` : ""}
-  </figure>`,
-    )
+  </figure>`;
+    })
     .join("");
 
   return `<!doctype html>
@@ -83,8 +106,13 @@ export function exportDesignHtml(options: {
   .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
   .warn { border-left: 3px solid #b8860b; background: #fdf6e3; padding: 8px 12px; font-size: 12px; margin: 8px 0; }
   .fig { margin: 0 0 16px; }
-  .fig img { max-width: 100%; height: auto; border: 1px solid #ddd4c4; background: #f7f3ea; }
-  .fig figcaption { font-size: 11px; color: #6b6152; margin-top: 6px; }
+  .fig__frame { position: relative; display: inline-block; max-width: 100%; border: 1px solid #ddd4c4; background: #f7f3ea; line-height: 0; }
+  .fig__frame img { max-width: 100%; height: auto; display: block; }
+  .fig__frame--svg { width: 100%; background: #131009; }
+  .fig__frame--svg svg { display: block; width: 100%; height: auto; }
+  .fig__outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .fig__outline polygon { fill: rgba(247, 191, 89, 0.22); stroke: #f7bf59; stroke-width: 0.004; }
+  .fig figcaption { font-size: 11px; color: #6b6152; margin-top: 6px; line-height: 1.4; }
   footer { margin-top: 32px; font-size: 10px; color: #8a8070; line-height: 1.6; }
   @media print { body { padding: 12px; } }
 </style>

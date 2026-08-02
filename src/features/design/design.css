@@ -85,6 +85,13 @@
   min-height: 240px;
 }
 
+.array-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 .array-preview__banner {
   margin: 0;
   padding: 6px 12px;
@@ -94,6 +101,15 @@
   background: color-mix(in srgb, var(--tertiary) 18%, var(--surface-container));
   border-bottom: 1px solid var(--outline-variant);
   flex: 0 0 auto;
+  z-index: 2;
+}
+
+/* Below the canvas so System Summary (top-right) never covers the warning. */
+.array-preview__banner--footer {
+  border-bottom: none;
+  border-top: 1px solid var(--outline-variant);
+  /* Leave room above the schematic scale bar drawn inside the SVG. */
+  padding-bottom: 8px;
 }
 
 .array-preview {
@@ -101,6 +117,7 @@
   flex: 1;
   min-height: 0;
   display: block;
+  cursor: var(--cursor-app);
 }
 
 .design__lede {
@@ -336,11 +353,34 @@
   color: var(--on-surface);
 }
 
+.rooftop-map-controls__panel-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--r-md);
+  background: var(--surface-container-low);
+}
+
+.rooftop-map-controls__activate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--outline-variant);
+}
+
 .rooftop-map-controls__slider {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 120px;
+}
+
+.rooftop-map-controls__slider--disabled {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 /* Standalone range — do not reuse .ds-envelope__input (absolute inset:0). */
@@ -367,7 +407,7 @@
   border: none;
   border-radius: var(--r-sm);
   background: var(--primary);
-  cursor: grab;
+  cursor: inherit;
 }
 
 .rooftop-map-controls__select {

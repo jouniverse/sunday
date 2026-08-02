@@ -119,6 +119,15 @@
   --z-popover: 30;
   --z-modal: 40;
   --z-toast: 50;
+
+  /*
+   * App cursor — sharp white pointer (notes/ui-design/.../cursor-1-white.svg),
+   * recreated as a compact 20×20 SVG. Served from Vite `public/cursors/`
+   * (URL path `/cursors/cursor.svg`, not a repo-root `./cursor/` folder).
+   * Hotspot at the tip (~1,1).
+   */
+  --cursor-app: url("/cursors/cursor.svg") 1 1, default;
+  --cursor-precise: crosshair;
 }
 
 /*

@@ -137,6 +137,7 @@
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--on-surface-variant);
+  margin-top: 5px;
 }
 
 .ds-field__hint {

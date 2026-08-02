@@ -229,7 +229,8 @@ export function installPlantClickHandler(map: MapLibreMap): () => void {
   };
 
   const onEnter = () => {
-    map.getCanvas().style.cursor = "pointer";
+    // Keep the Sunday app cursor; do not switch to the browser hand.
+    map.getCanvas().style.cursor = "";
   };
   const onLeave = () => {
     map.getCanvas().style.cursor = "";

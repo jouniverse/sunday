@@ -5,10 +5,12 @@
  * it: provenance travels with the data, and no export ever contains an API key.
  */
 
+import { satelliteImageUrlAt, satelliteSnapshot } from "@/core/map/satelliteExport";
 import { platform } from "@/core/platform";
 import type { LngLat } from "@/domain/geometry";
 import type { Site } from "@/core/store/siteStore";
 import type { SiteReport } from "../solar/orchestrator";
+import { buildMonthlyChartSvg } from "./monthly-charts";
 
 export type ExportFormat = "csv" | "json" | "geojson" | "html" | "zip";
 
@@ -209,6 +211,43 @@ export function exportReportHtml(
     { key: "optimal_tilt_deg", label: "Optimal tilt" },
   ];
 
+  const snapshot = site ? satelliteSnapshot(site) : null;
+  const satellite =
+    snapshot?.url ?? satelliteImageUrlAt(report.longitude, report.latitude);
+  const satelliteOutline = snapshot?.outlineNorm ?? null;
+
+  const tiltConsensus = report.consensus.optimalTiltDegrees?.value;
+  const tempConsensus = report.consensus.meanAirTempC?.value;
+
+  const ghiChart = buildMonthlyChartSvg({
+    title: "Monthly irradiation",
+    unitLabel: "Monthly global horizontal irradiation, kWh/m² per month.",
+    reports: report.reports,
+    select: (entry) => entry.monthlyGhi,
+  });
+  const tiltChart = buildMonthlyChartSvg({
+    title: "Monthly optimal tilt (NASA POWER)",
+    unitLabel: "Monthly optimal fixed-tilt angle, degrees from horizontal.",
+    reports: report.reports,
+    select: (entry) => entry.monthlyOptimalTilt,
+    valueDigits: 1,
+    referenceLines:
+      tiltConsensus !== undefined
+        ? [{ value: tiltConsensus, label: "Annual / consensus", colour: "#422c00" }]
+        : undefined,
+  });
+  const tempChart = buildMonthlyChartSvg({
+    title: "Monthly mean air temperature",
+    unitLabel: "Monthly mean air temperature near 2 m, °C.",
+    reports: report.reports,
+    select: (entry) => entry.monthlyAirTempC,
+    valueDigits: 1,
+    referenceLines:
+      tempConsensus !== undefined
+        ? [{ value: tempConsensus, label: "Annual mean", colour: "#422c00" }]
+        : undefined,
+  });
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -229,6 +268,13 @@ export function exportReportHtml(
   .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
   .warn { border-left: 3px solid #b8860b; background: #fdf6e3; padding: 8px 12px; font-size: 12px; margin: 6px 0; }
   .method { font-size: 11px; color: #6b6152; line-height: 1.5; }
+  .fig img { max-width: 100%; height: auto; display: block; }
+  .fig__frame { position: relative; display: inline-block; max-width: 100%; border: 1px solid #ddd6c8; line-height: 0; }
+  .fig__outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .fig__outline polygon { fill: rgba(247, 191, 89, 0.22); stroke: #f7bf59; stroke-width: 0.004; }
+  .fig figcaption { font-size: 11px; color: #6b6152; margin-top: 6px; }
+  .chart-legend { font-size: 11px; color: #6b6152; margin-bottom: 6px; }
+  .chart-block { break-inside: avoid; }
   footer { margin-top: 32px; font-size: 10px; color: #8a8070; line-height: 1.6; }
   @media print { body { padding: 0; } h2 { break-after: avoid; } table { break-inside: auto; } tr { break-inside: avoid; } }
 </style>
@@ -240,6 +286,27 @@ export function exportReportHtml(
   Generated ${escapeHtml(report.generatedAt)} &middot;
   Sunday ${escapeHtml(meta.appVersion)} &middot; Project ${escapeHtml(meta.projectName)}
 </p>
+
+${
+  satellite
+    ? `<h2>Site location</h2>
+<figure class="fig">
+  <div class="fig__frame">
+    <img src="${escapeHtml(satellite)}" alt="Site satellite imagery" />
+    ${
+      satelliteOutline && satelliteOutline.length >= 3
+        ? `<svg class="fig__outline" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true"><polygon points="${satelliteOutline
+            .map(([x, y]) => `${x},${y}`)
+            .join(" ")}" /></svg>`
+        : ""
+    }
+  </div>
+  <figcaption>Esri World Imagery for the site extent${
+    satelliteOutline ? ". Amber outline marks the site boundary." : "."
+  }</figcaption>
+</figure>`
+    : ""
+}
 
 ${
   site && site.areaM2 > 0
@@ -298,6 +365,10 @@ ${
 </table>`
     : ""
 }
+
+${ghiChart ?? ""}
+${tiltChart ?? ""}
+${tempChart ?? ""}
 
 <h2>Methods</h2>
 ${report.reports

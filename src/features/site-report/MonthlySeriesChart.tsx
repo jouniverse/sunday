@@ -24,6 +24,7 @@ export function MonthlySeriesChart({
   reports,
   select,
   valueDigits = 0,
+  referenceLines,
 }: {
   title: string;
   ariaLabel: string;
@@ -31,6 +32,7 @@ export function MonthlySeriesChart({
   reports: ResourceReport[];
   select: (report: ResourceReport) => MonthlyValue[] | undefined;
   valueDigits?: number;
+  referenceLines?: Array<{ value: number; label: string; colour?: string }>;
 }) {
   const clipId = useId();
   const series = reports
@@ -44,7 +46,10 @@ export function MonthlySeriesChart({
 
   if (series.length === 0) return null;
 
-  const values = series.flatMap((entry) => entry.points.map((point) => point.value));
+  const values = [
+    ...series.flatMap((entry) => entry.points.map((point) => point.value)),
+    ...(referenceLines ?? []).map((line) => line.value),
+  ];
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values, 0);
   const span = Math.max(maxValue - minValue, 1e-6);
@@ -68,6 +73,15 @@ export function MonthlySeriesChart({
             <span key={entry.provider} className="chart__legend-item">
               <span className="chart__swatch" style={{ background: entry.colour }} />
               {entry.label}
+            </span>
+          ))}
+          {(referenceLines ?? []).map((line) => (
+            <span key={line.label} className="chart__legend-item">
+              <span
+                className="chart__swatch chart__swatch--dashed"
+                style={{ borderColor: line.colour ?? "var(--on-surface)" }}
+              />
+              {line.label}
             </span>
           ))}
         </div>
@@ -148,6 +162,28 @@ export function MonthlySeriesChart({
                   </title>
                 </circle>
               ))}
+            </g>
+          ))}
+          {(referenceLines ?? []).map((line) => (
+            <g key={line.label}>
+              <line
+                x1={PADDING.left}
+                x2={WIDTH - PADDING.right}
+                y1={y(line.value)}
+                y2={y(line.value)}
+                stroke={line.colour ?? "var(--on-surface)"}
+                strokeWidth="1.2"
+                strokeDasharray="5 4"
+              />
+              <text
+                x={WIDTH - PADDING.right}
+                y={y(line.value) - 4}
+                textAnchor="end"
+                fontSize="10"
+                fill={line.colour ?? "var(--on-surface)"}
+              >
+                {line.label} {formatNumber(line.value, valueDigits)}
+              </text>
             </g>
           ))}
         </g>

@@ -28,7 +28,30 @@ body {
   /* A desktop tool: no rubber-band scrolling, no text selection on chrome. */
   overscroll-behavior: none;
   user-select: none;
-  cursor: default;
+}
+
+/*
+ * Sunday cursor everywhere. Important beats MapLibre grab/hand, range-slider
+ * grab, and leftover inline styles from popups / focus traps.
+ */
+html,
+body,
+#root {
+  cursor: var(--cursor-app) !important;
+}
+
+*,
+*::before,
+*::after {
+  cursor: inherit !important;
+}
+
+button:disabled,
+[aria-disabled="true"],
+.ds-switch:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed !important;
 }
 
 /* Values the user may want to copy out for a report must stay selectable. */
@@ -36,7 +59,6 @@ body {
 input,
 textarea {
   user-select: text;
-  cursor: text;
 }
 
 button {

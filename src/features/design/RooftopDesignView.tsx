@@ -43,7 +43,12 @@ import {
 import type { BuildingInsights } from "@/services/solar/types";
 import { SidePanel } from "@/shell/SidePanel";
 import { DesignExportMenu, type DesignExportFormat } from "./DesignExportMenu";
-import { activePanelsExport, allPanelsExport, RooftopPanelMap } from "./RooftopPanelMap";
+import {
+  activePanelsExport,
+  allPanelsExport,
+  composeRgbPanelsDataUrl,
+  RooftopPanelMap,
+} from "./RooftopPanelMap";
 import "./design.css";
 
 export function RooftopDesignView({ site }: { site: Site }) {
@@ -78,12 +83,15 @@ export function RooftopDesignView({ site }: { site: Site }) {
     height: number;
     method: string;
     imageryDate?: string;
+    /** True when min/max/mean were computed under the Google Solar roof MASK. */
+    roofMasked?: boolean;
   } | null>(null);
   const [rgbOverlay, setRgbOverlay] = useState<{
     dataUrl: string;
     bounds: { west: number; south: number; east: number; north: number };
   } | null>(null);
   const [fluxRaster, setFluxRaster] = useState<DecodedRaster | null>(null);
+  const [roofMaskRaster, setRoofMaskRaster] = useState<DecodedRaster | null>(null);
   const [monthlyFluxUrl, setMonthlyFluxUrl] = useState<string | null>(null);
   const [fluxMonth, setFluxMonth] = useState(0);
   const [showRgb, setShowRgb] = useState(true);
@@ -226,7 +234,9 @@ export function RooftopDesignView({ site }: { site: Site }) {
         });
         return;
       }
-      const { boundsAroundPoint } = await import("@/services/solar/geotiff-decode");
+      const { boundsAroundPoint, fluxStatsUnderMask } = await import(
+        "@/services/solar/geotiff-decode"
+      );
       let raster =
         fluxMonth > 0 && layers.monthlyFluxUrl
           ? await decodeGoogleSolarBand({
@@ -241,30 +251,39 @@ export function RooftopDesignView({ site }: { site: Site }) {
           bounds: boundsAroundPoint(site.centre[0], site.centre[1], 90),
         };
       }
-      let sum = 0;
-      let count = 0;
-      for (let i = 0; i < raster.values.length; i += 1) {
-        const value = raster.values[i] as number;
-        if (!Number.isFinite(value)) continue;
-        if (raster.nodata !== null && value === raster.nodata) continue;
-        sum += value;
-        count += 1;
+
+      // Decode MASK for roof-only statistics; do not apply it to the displayed image.
+      let maskRaster: Awaited<ReturnType<typeof decodeGoogleSolarGeoTiff>> | null = null;
+      if (layers.maskUrl) {
+        try {
+          maskRaster = await decodeGoogleSolarGeoTiff({ url: layers.maskUrl, apiKey: key });
+        } catch {
+          maskRaster = null;
+        }
       }
+      const stats = fluxStatsUnderMask(raster, maskRaster);
+
+      setRoofMaskRaster(maskRaster);
       setFluxRaster(raster);
       setShowFlux(true);
       setFluxSummary({
-        min: raster.min,
-        max: raster.max,
-        mean: count > 0 ? sum / count : 0,
+        min: stats.min,
+        max: stats.max,
+        mean: stats.mean,
         width: raster.width,
         height: raster.height,
-        method: raster.method,
+        method: stats.roofMasked
+          ? `${raster.method} · stats over roof MASK (${stats.sampleCount.toLocaleString()} px)`
+          : `${raster.method} · stats over full raster (no MASK)`,
         imageryDate: layers.imageryDate,
+        roofMasked: stats.roofMasked,
       });
       notify({
         tone: "success",
         message: `Data layers loaded (${raster.width}×${raster.height})`,
-        detail: raster.method,
+        detail: stats.roofMasked
+          ? "Flux summary uses the Google Solar roof mask."
+          : raster.method,
       });
     } catch (error) {
       notify({
@@ -283,7 +302,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
     try {
       const key = await revealApiKey("google_solar");
       if (!key) return;
-      const { boundsAroundPoint, decodeGoogleSolarBand } = await import(
+      const { boundsAroundPoint, decodeGoogleSolarBand, fluxStatsUnderMask } = await import(
         "@/services/solar/geotiff-decode"
       );
       let raster = await decodeGoogleSolarBand({
@@ -298,26 +317,20 @@ export function RooftopDesignView({ site }: { site: Site }) {
           bounds: boundsAroundPoint(site.centre[0], site.centre[1], 90),
         };
       }
+      const stats = fluxStatsUnderMask(raster, roofMaskRaster);
       setFluxRaster(raster);
-      setFluxSummary((prev) =>
-        prev
-          ? {
-              ...prev,
-              min: raster.min,
-              max: raster.max,
-              width: raster.width,
-              height: raster.height,
-              method: raster.method,
-            }
-          : {
-              min: raster.min,
-              max: raster.max,
-              mean: (raster.min + raster.max) / 2,
-              width: raster.width,
-              height: raster.height,
-              method: raster.method,
-            },
-      );
+      setFluxSummary((prev) => ({
+        min: stats.min,
+        max: stats.max,
+        mean: stats.mean,
+        width: raster.width,
+        height: raster.height,
+        method: stats.roofMasked
+          ? `${raster.method} · stats over roof MASK`
+          : raster.method,
+        imageryDate: prev?.imageryDate,
+        roofMasked: stats.roofMasked,
+      }));
       setShowFlux(true);
     } catch (error) {
       notify({
@@ -437,7 +450,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
     setInactivePanels(new Set(selected.inactivePanelIndices ?? []));
   }
 
-  function buildHtmlExport(): string {
+  async function buildHtmlExport(): Promise<string> {
     const capacityScaled = scalePower(capacityKw);
     const energyScaled = annualKwh ? scaleEnergy(annualKwh) : null;
     const images = [];
@@ -447,6 +460,38 @@ export function RooftopDesignView({ site }: { site: Site }) {
         src: rgbOverlay.dataUrl,
         caption: "Google Solar RGB layer.",
       });
+      if (insights) {
+        try {
+          const composite = await composeRgbPanelsDataUrl({
+            rgbDataUrl: rgbOverlay.dataUrl,
+            bounds: rgbOverlay.bounds,
+            insights,
+            panelCount,
+            inactive: inactivePanels,
+          });
+          if (composite) {
+            const energies = insights.solarPanels
+              .slice(0, panelCount)
+              .filter((_, index) => !inactivePanels.has(index))
+              .map((panel) => panel.yearlyEnergyDcKwh);
+            const eMin = energies.length ? Math.min(...energies) : 0;
+            const eMax = energies.length ? Math.max(...energies) : 1;
+            images.push({
+              title: "RGB with panel layout",
+              src: composite,
+              caption:
+                "Google Solar RGB with active panels coloured by yearly DC energy. Inactive panels are omitted.",
+            });
+            images.push({
+              title: "Panel energy legend",
+              src: panelEnergyLegendDataUrl(eMin, eMax),
+              caption: "Cool (low yearly DC kWh) → warm (high yearly DC kWh).",
+            });
+          }
+        } catch {
+          // Composite is best-effort; RGB alone still ships.
+        }
+      }
     }
     if (fluxRaster && fluxMonth === 0) {
       try {
@@ -454,12 +499,15 @@ export function RooftopDesignView({ site }: { site: Site }) {
         const min = fluxSummary?.min ?? 0;
         const max = fluxSummary?.max ?? 0;
         const mean = fluxSummary?.mean;
+        const roofNote = fluxSummary?.roofMasked
+          ? " Range/mean over the roof MASK (image shown unmasked)."
+          : "";
         images.push({
           title: "Annual flux",
           src: fluxSrc,
           caption:
             mean != null
-              ? `Google Solar annual flux. Range ${Math.round(min)}–${Math.round(max)} kWh/m²/yr (mean ${Math.round(mean)}).`
+              ? `Google Solar annual flux. Range ${Math.round(min)}–${Math.round(max)} kWh/m²/yr (mean ${Math.round(mean)}).${roofNote}`
               : "Google Solar annual flux overlay.",
         });
         images.push({
@@ -543,7 +591,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
     }
     const base = `${site.name}-rooftop`;
     if (format === "html") {
-      const path = await writeExport(`${base}-summary`, "html", buildHtmlExport());
+      const path = await writeExport(`${base}-summary`, "html", await buildHtmlExport());
       if (path) notify({ tone: "success", message: `Exported HTML to ${path}` });
       return;
     }
@@ -612,7 +660,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
       { name: `${base}.json`, data: json },
       { name: `${site.name}-panels.csv`, data: csv },
       { name: `${site.name}-panels.geojson`, data: geojson },
-      { name: `${base}-summary.html`, data: buildHtmlExport() },
+      { name: `${base}-summary.html`, data: await buildHtmlExport() },
     ]);
     const path = await writeExport(base, "zip", zip);
     if (path) notify({ tone: "success", message: `Exported ZIP to ${path}` });
@@ -882,10 +930,28 @@ export function RooftopDesignView({ site }: { site: Site }) {
           </div>
           {insights && insights.solarPanels.length > 0 && (
             <div className="rooftop-map-controls">
-              <label className="rooftop-map-controls__toggle">
-                <span>Panels</span>
-                <Switch checked={showPanels} label="Panels" onChange={setShowPanels} />
-              </label>
+              <div className="rooftop-map-controls__panel-group">
+                <label className="rooftop-map-controls__toggle">
+                  <span>Panels</span>
+                  <Switch checked={showPanels} label="Panels" onChange={setShowPanels} />
+                </label>
+                <div className="rooftop-map-controls__activate" role="group" aria-label="Panel activation">
+                  <Button size="sm" variant="ghost" onClick={() => setInactivePanels(new Set())}>
+                    Activate all
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setInactivePanels(
+                        new Set(Array.from({ length: panelCount }, (_, index) => index)),
+                      )
+                    }
+                  >
+                    Deactivate all
+                  </Button>
+                </div>
+              </div>
               <label className="rooftop-map-controls__toggle">
                 <span>RGB</span>
                 <Switch
@@ -897,21 +963,27 @@ export function RooftopDesignView({ site }: { site: Site }) {
                   }}
                 />
               </label>
-              {rgbOverlay && showRgb && (
-                <label className="rooftop-map-controls__slider">
-                  <span className="label">RGB opacity</span>
-                  <input
-                    className="rooftop-map-controls__range"
-                    type="range"
-                    min={0.1}
-                    max={1}
-                    step={0.05}
-                    value={rgbOpacity}
-                    aria-label="RGB overlay opacity"
-                    onChange={(event) => setRgbOpacity(Number(event.target.value))}
-                  />
-                </label>
-              )}
+              <label
+                className={[
+                  "rooftop-map-controls__slider",
+                  !(showRgb && rgbOverlay) && "rooftop-map-controls__slider--disabled",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className="label">RGB opacity</span>
+                <input
+                  className="rooftop-map-controls__range"
+                  type="range"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={rgbOpacity}
+                  disabled={!showRgb || !rgbOverlay}
+                  aria-label="RGB overlay opacity"
+                  onChange={(event) => setRgbOpacity(Number(event.target.value))}
+                />
+              </label>
               <label className="rooftop-map-controls__toggle">
                 <span>Flux</span>
                 <Switch
@@ -921,21 +993,27 @@ export function RooftopDesignView({ site }: { site: Site }) {
                   onChange={setShowFlux}
                 />
               </label>
-              {fluxRaster && showFlux && (
-                <label className="rooftop-map-controls__slider">
-                  <span className="label">Flux opacity</span>
-                  <input
-                    className="rooftop-map-controls__range"
-                    type="range"
-                    min={0.1}
-                    max={1}
-                    step={0.05}
-                    value={fluxOpacity}
-                    aria-label="Flux overlay opacity"
-                    onChange={(event) => setFluxOpacity(Number(event.target.value))}
-                  />
-                </label>
-              )}
+              <label
+                className={[
+                  "rooftop-map-controls__slider",
+                  !(showFlux && fluxRaster) && "rooftop-map-controls__slider--disabled",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className="label">Flux opacity</span>
+                <input
+                  className="rooftop-map-controls__range"
+                  type="range"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={fluxOpacity}
+                  disabled={!showFlux || !fluxRaster}
+                  aria-label="Flux overlay opacity"
+                  onChange={(event) => setFluxOpacity(Number(event.target.value))}
+                />
+              </label>
               {monthlyFluxUrl && (
                 <label className="rooftop-map-controls__select">
                   <span className="label">Flux period</span>
@@ -970,24 +1048,6 @@ export function RooftopDesignView({ site }: { site: Site }) {
                   />
                 </label>
               )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setInactivePanels(new Set())}
-              >
-                Activate all
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  setInactivePanels(
-                    new Set(Array.from({ length: panelCount }, (_, index) => index)),
-                  )
-                }
-              >
-                Deactivate all
-              </Button>
             </div>
           )}
           <div className="design-canvas design-canvas--map">
@@ -1074,7 +1134,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
                   },
                   {
                     key: "range",
-                    label: "Range",
+                    label: fluxSummary.roofMasked ? "Range (roof)" : "Range",
                     value: `${formatNumber(fluxSummary.min, 0)}–${formatNumber(fluxSummary.max, 0)}`,
                   },
                   {
@@ -1219,6 +1279,24 @@ function fluxLegendDataUrl(min: number, max: number): string {
   <rect x="12" y="10" width="336" height="14" rx="3" fill="url(#g)"/>
   <text x="12" y="40" font-family="system-ui,sans-serif" font-size="11" fill="#1b1710">${lo}</text>
   <text x="348" y="40" font-family="system-ui,sans-serif" font-size="11" fill="#1b1710" text-anchor="end">${hi}</text>
+</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Cool→warm ramp matching `energyColour` in RooftopPanelMap. */
+function panelEnergyLegendDataUrl(min: number, max: number): string {
+  const lo = Math.round(min);
+  const hi = Math.round(max);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="48" viewBox="0 0 360 48">
+  <defs>
+    <linearGradient id="p" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="rgb(40,90,160)"/>
+      <stop offset="100%" stop-color="rgb(240,190,40)"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="10" width="336" height="14" rx="3" fill="url(#p)"/>
+  <text x="12" y="40" font-family="system-ui,sans-serif" font-size="11" fill="#1b1710">${lo} kWh/yr</text>
+  <text x="348" y="40" font-family="system-ui,sans-serif" font-size="11" fill="#1b1710" text-anchor="end">${hi} kWh/yr</text>
 </svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

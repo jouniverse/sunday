@@ -53,6 +53,65 @@ export async function decodeGoogleSolarGeoTiff(options: {
   return decodeGeoTiffBuffer(buffer);
 }
 
+/**
+ * Min / max / mean of a flux raster restricted to roof-mask pixels.
+ *
+ * The flux image itself is left unmasked for display; only the summary figures
+ * use the MASK layer so totals describe the roof, not the surrounding ground.
+ */
+export function fluxStatsUnderMask(
+  flux: DecodedRaster,
+  mask: DecodedRaster | null,
+): { min: number; max: number; mean: number; sampleCount: number; roofMasked: boolean } {
+  if (!mask || mask.width !== flux.width || mask.height !== flux.height) {
+    let sum = 0;
+    let count = 0;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < flux.values.length; i += 1) {
+      const value = flux.values[i] as number;
+      if (!Number.isFinite(value)) continue;
+      if (flux.nodata !== null && value === flux.nodata) continue;
+      sum += value;
+      count += 1;
+      if (value < min) min = value;
+      if (value > max) max = value;
+    }
+    return {
+      min: count ? min : 0,
+      max: count ? max : 0,
+      mean: count ? sum / count : 0,
+      sampleCount: count,
+      roofMasked: false,
+    };
+  }
+
+  let sum = 0;
+  let count = 0;
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < flux.values.length; i += 1) {
+    const m = mask.values[i] as number;
+    // Google Solar MASK: building pixels are typically > 0.
+    if (!Number.isFinite(m) || m <= 0) continue;
+    if (mask.nodata !== null && m === mask.nodata) continue;
+    const value = flux.values[i] as number;
+    if (!Number.isFinite(value)) continue;
+    if (flux.nodata !== null && value === flux.nodata) continue;
+    sum += value;
+    count += 1;
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return {
+    min: count ? min : 0,
+    max: count ? max : 0,
+    mean: count ? sum / count : 0,
+    sampleCount: count,
+    roofMasked: count > 0,
+  };
+}
+
 export async function decodeGeoTiffBuffer(buffer: ArrayBuffer): Promise<DecodedRaster> {
   const tiff = await fromArrayBuffer(buffer);
   const image = await tiff.getImage();
