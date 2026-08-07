@@ -145,6 +145,7 @@
 .design__azimuth {
   font-size: 16px;
   font-weight: 500;
+  min-width: 40px;
   color: var(--on-surface);
 }
 
@@ -212,6 +213,7 @@
 }
 
 .array-map-preview {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -221,6 +223,40 @@
 .array-map-preview__map {
   flex: 1;
   min-height: 240px;
+}
+
+.array-map-preview__controls {
+  pointer-events: auto;
+  padding: 4px;
+}
+
+.array-map-preview__compass-btn.ds-icon-button,
+.array-map-preview__controls .map-controls__compass-btn {
+  min-width: 52px;
+  min-height: 52px;
+  padding: 10px;
+}
+
+.array-map-preview__compass {
+  width: 32px;
+  height: 32px;
+}
+
+.array-map-preview__compass svg {
+  width: 32px;
+  height: 32px;
+}
+
+.design-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.design-name-row .ds-input,
+.design-name-row input {
+  flex: 1;
+  min-width: 0;
 }
 
 .design-button-stack {
@@ -310,7 +346,12 @@
 .rooftop-panel-map__swatch--flux {
   flex: 1;
   max-width: 64px;
-  background: linear-gradient(90deg, rgb(59, 47, 107), rgb(217, 164, 65), rgb(255, 240, 194));
+  background: linear-gradient(
+    90deg,
+    rgb(59, 47, 107),
+    rgb(217, 164, 65),
+    rgb(255, 240, 194)
+  );
 }
 
 /* MapLibre popup: force readable dark text on light chrome. */

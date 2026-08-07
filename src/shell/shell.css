@@ -12,6 +12,28 @@
   height: 100vh;
 }
 
+/* Mounted views: real flex box (not display:contents) so MapLibre gets a sized canvas. */
+.view-slot {
+  display: none;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.view-slot--on {
+  display: flex;
+}
+
+.map-workspace {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
 /* --- Top bar -------------------------------------------------------------- */
 
 .topbar {
@@ -36,9 +58,10 @@
 }
 
 .topbar__mark {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
+  /* Amber mark on dark chrome; swap to white via color if needed. */
   color: var(--primary);
 }
 
@@ -151,10 +174,13 @@
 /* --- Workspace ------------------------------------------------------------ */
 
 .workspace {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
+  flex-direction: row;
   min-height: 0;
+  min-width: 0;
   position: relative;
+  height: 100%;
 }
 
 .panel {
@@ -239,13 +265,24 @@
 
 .canvas,
 .canvas-host {
-  flex: 1;
+  flex: 1 1 auto;
   position: relative;
   min-width: 0;
   min-height: 0;
+  align-self: stretch;
   background: var(--canvas-map);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+/* Owns the MapLibre surface + bottom-left legend/scale bar. */
+.canvas__map-slot {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .canvas-toolbar {
@@ -286,6 +323,42 @@
 .canvas__overlay--bottom-left {
   bottom: 14px;
   left: 14px;
+}
+
+/*
+ * Scale bar + GSA legend: positioned like MapControls (on `.canvas`, not inside
+ * the WebGL slot — WKWebView otherwise draws the map over in-slot HTML).
+ */
+.canvas__raster-furniture {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  max-width: min(240px, calc(100% - 28px));
+  z-index: calc(var(--z-map-overlay) + 5);
+  pointer-events: none;
+}
+
+.canvas__raster-furniture .scale-bar,
+.canvas__raster-furniture .map-legend {
+  pointer-events: auto;
+}
+
+.canvas__raster-furniture .scale-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.canvas__raster-furniture .map-legend {
+  padding: 0;
+  background: transparent;
+  border: none;
+  min-width: 150px;
 }
 
 .canvas__overlay--top-left {
@@ -428,15 +501,6 @@
   background: var(--surface-container-high);
 }
 
-.layer-row__icon {
-  flex: 0 0 auto;
-  color: var(--on-surface-variant);
-}
-
-.layer-row--on .layer-row__icon {
-  color: var(--primary);
-}
-
 .layer-row__name {
   flex: 1;
   font-size: 12.5px;
@@ -448,18 +512,6 @@
 .layer-row__meta {
   font-size: 10px;
   color: var(--outline);
-}
-
-.panel--collapsed .layer-row {
-  justify-content: center;
-  padding: var(--gap) 0;
-}
-
-.panel--collapsed .layer-row__name,
-.panel--collapsed .layer-row__actions,
-.panel--collapsed .ds-switch,
-.panel--collapsed .ds-section__label {
-  display: none;
 }
 
 /* --- Modal --------------------------------------------------------------- */

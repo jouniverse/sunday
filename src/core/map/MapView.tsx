@@ -19,37 +19,64 @@ import { useSiteStore } from "../store/siteStore";
 import { basemapById } from "./basemaps";
 import { installDrawAdapter } from "./draw/adapter";
 import {
+  installFootprintClickHandler,
+  installFootprintLayerSync,
+  refreshFootprintLayers,
+} from "./footprintLayers";
+import {
   installPlantClickHandler,
-  invalidatePlantLayerCache,
+  installPlantLayerSync,
   refreshPlantLayer,
 } from "./plantLayers";
-import { renderSiteLayers, SITE_SOURCE_ID } from "./siteLayers";
+import {
+  installResourceRasterLayerSync,
+  refreshResourceRasterLayers,
+  scheduleResourceRasterRefresh,
+} from "./resourceRasterLayers";
+import { renderSiteLayers } from "./siteLayers";
 import "./map.css";
+
+function restoreOverlays(map: MapLibreMap): void {
+  // Keep centroid caches — style swap only drops MapLibre sources; re-push from memory.
+  renderSiteLayers(map);
+  void refreshPlantLayer(map);
+  void refreshFootprintLayers(map);
+  void refreshResourceRasterLayers(map);
+}
 
 export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  /**
+   * Signature of the style currently on the map (`basemapId|key`).
+   * setStyle is skipped when this matches — a second setStyle while the first
+   * style is still loading is what produced the black Project canvas.
+   */
+  const appliedStyleRef = useRef<string | null>(null);
 
   const basemap = useMapStore((state) => state.basemap);
   const terrain3d = useMapStore((state) => state.terrain3d);
   const tool = useMapStore((state) => state.tool);
-  const configuredKeys = useSettingsStore((state) => state.configuredKeys);
+  const configuredKeysKey = useSettingsStore((state) =>
+    [...state.configuredKeys].sort().join(","),
+  );
   const preciseCursor = tool === "draw-polygon" || tool === "place-point";
 
-  // --- Map creation. Runs once; the style is swapped in a later effect. ---
+  // --- Map creation. Runs once. ---
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const { viewport } = useMapStore.getState();
+    const { viewport, basemap: initialBasemap } = useMapStore.getState();
+    appliedStyleRef.current = `${initialBasemap}|`;
+
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: basemapById(basemap).build({}),
+      style: basemapById(initialBasemap).build({}),
       center: [viewport.longitude, viewport.latitude],
       zoom: viewport.zoom,
       bearing: viewport.bearing,
       pitch: viewport.pitch,
       attributionControl: false,
-      // The app draws its own zoom controls in the design language.
       dragRotate: true,
       maxPitch: 75,
     });
@@ -72,13 +99,29 @@ export function MapView() {
         maxLat: bounds.getNorth(),
       });
       void refreshPlantLayer(map);
+      void refreshFootprintLayers(map);
+      scheduleResourceRasterRefresh(map);
     };
 
     map.on("moveend", publishCamera);
     map.on("zoomend", publishCamera);
+    let rotateRaf = 0;
+    map.on("rotate", () => {
+      if (rotateRaf) return;
+      rotateRaf = requestAnimationFrame(() => {
+        rotateRaf = 0;
+        const { viewport: current } = useMapStore.getState();
+        const bearing = map.getBearing();
+        if (Math.abs(current.bearing - bearing) < 0.25) return;
+        useMapStore.getState().setViewport({ ...current, bearing });
+      });
+    });
     map.on("load", () => {
+      map.resize();
       publishCamera();
       renderSiteLayers(map);
+      // Idle after first paint catches project hydrate that raced `load`.
+      map.once("idle", () => renderSiteLayers(map));
     });
     map.on("mousemove", (event: MapMouseEvent) => {
       useMapStore.getState().setCursor({ longitude: event.lngLat.lng, latitude: event.lngLat.lat });
@@ -87,12 +130,22 @@ export function MapView() {
 
     const uninstallDraw = installDrawAdapter(map);
     const uninstallPlants = installPlantClickHandler(map);
+    const uninstallPlantSync = installPlantLayerSync(map);
+    // Footprint handlers must not abort map init if a layer id is not ready yet.
+    let uninstallFootprints: () => void = () => {};
+    let uninstallFootprintSync: () => void = () => {};
+    try {
+      uninstallFootprints = installFootprintClickHandler(map);
+      uninstallFootprintSync = installFootprintLayerSync(map);
+    } catch (error) {
+      console.warn("[sunday map] footprint handlers deferred", error);
+    }
+    const uninstallResourceSync = installResourceRasterLayerSync(map);
 
-    // MapWorkspace stays mounted but is often `display: none` while other tabs
-    // are open. Resize when the canvas becomes visible again so hit-testing and
-    // cursors stay aligned after project / view switches.
     const observer = new ResizeObserver(() => {
       map.resize();
+      // Height can go 0 → positive when the flex host finishes layout.
+      requestAnimationFrame(() => map.resize());
     });
     observer.observe(containerRef.current);
 
@@ -100,41 +153,47 @@ export function MapView() {
       observer.disconnect();
       uninstallDraw();
       uninstallPlants();
+      uninstallPlantSync();
+      uninstallFootprints();
+      uninstallFootprintSync();
+      uninstallResourceSync();
       map.remove();
       mapRef.current = null;
+      appliedStyleRef.current = null;
     };
     // Intentionally empty: the map is created once and mutated by other effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Basemap swap. Re-adds the app's own layers, which a style change drops. ---
+  // --- Basemap swap (only when basemap id or API key actually changes). ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const definition = basemapById(basemap);
-    const keys: Record<string, string> = {};
-    // Only the presence of a key is known here; the value is fetched on demand.
+    const configuredKeys = configuredKeysKey ? configuredKeysKey.split(",") : [];
+
+    const apply = (keys: Record<string, string>) => {
+      const signature = `${basemap}|${definition.requiresKey ? (keys[definition.requiresKey] ?? "") : ""}`;
+      if (appliedStyleRef.current === signature) return;
+      appliedStyleRef.current = signature;
+      map.setStyle(definition.build(keys));
+      // style.load is the reliable “sources may be added” signal after setStyle.
+      map.once("style.load", () => restoreOverlays(map));
+    };
+
     if (definition.requiresKey && configuredKeys.includes(definition.requiresKey)) {
-      useSettingsStore
+      void useSettingsStore
         .getState()
         .useKey(definition.requiresKey)
         .then((value) => {
           if (!value) return;
-          keys[definition.requiresKey as string] = value;
-          map.setStyle(definition.build(keys));
+          apply({ [definition.requiresKey as string]: value });
         });
       return;
     }
-    map.setStyle(definition.build(keys));
-
-    const onStyleLoad = () => {
-      renderSiteLayers(map);
-      invalidatePlantLayerCache();
-      void refreshPlantLayer(map);
-    };
-    map.once("styledata", onStyleLoad);
-  }, [basemap, configuredKeys]);
+    apply({});
+  }, [basemap, configuredKeysKey]);
 
   // --- 3D terrain toggle. ---
   useEffect(() => {
@@ -155,7 +214,6 @@ export function MapView() {
     else map.once("styledata", apply);
   }, [terrain3d]);
 
-  // --- Camera requests from anywhere in the app. ---
   useEffect(() =>
     useMapStore.subscribe((state, previous) => {
       const map = mapRef.current;
@@ -166,6 +224,8 @@ export function MapView() {
         map.flyTo({
           center: [target.longitude, target.latitude],
           zoom: target.zoom ?? map.getZoom(),
+          bearing: target.bearing ?? map.getBearing(),
+          pitch: target.pitch ?? map.getPitch(),
           duration: 900,
           essential: true,
         });
@@ -186,22 +246,25 @@ export function MapView() {
     }),
   );
 
-  // --- Site geometry. Redraws whenever a boundary changes. ---
+  // Sites often arrive from project hydrate *after* map load — always re-paint
+  // (renderSiteLayers creates the source if needed). Guarding on getSource skipped
+  // the first hydrate and left sites invisible until a later selection change.
   useEffect(() =>
     useSiteStore.subscribe(() => {
       const map = mapRef.current;
-      if (map?.getSource(SITE_SOURCE_ID)) renderSiteLayers(map);
+      if (!map) return;
+      renderSiteLayers(map);
     }),
   );
 
-  // --- Layer visibility and opacity. ---
   useEffect(() =>
     useLayerStore.subscribe(() => {
       const map = mapRef.current;
       if (!map?.isStyleLoaded()) return;
       renderSiteLayers(map);
-      invalidatePlantLayerCache();
       void refreshPlantLayer(map);
+      void refreshFootprintLayers(map);
+      // GSA overlays: installResourceRasterLayerSync handles visibility/opacity.
     }),
   );
 

@@ -376,6 +376,7 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
+  min-width: 40px;
   background: var(--surface-container);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

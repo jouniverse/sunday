@@ -30,6 +30,13 @@ export interface BasemapDefinition {
   build: (keys: Partial<Record<string, string>>) => StyleSpecification;
 }
 
+/**
+ * Free glyph atlas for MapLibre symbol layers (cluster counts, etc.).
+ * Only attach to styles that need labels — the last working Project map used
+ * keyless raster styles without glyphs.
+ */
+const MAP_GLYPHS = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
+
 /** Raster style from a single XYZ tile template. */
 function rasterStyle(options: {
   url: string | string[];
@@ -38,10 +45,12 @@ function rasterStyle(options: {
   background: string;
   /** Soften bright street tiles so overlays remain readable. */
   opacity?: number;
+  /** Include a glyph atlas (needed for cluster count labels). */
+  withGlyphs?: boolean;
 }): StyleSpecification {
   return {
     version: 8,
-    // Glyphs are only needed once we add labels from vector sources.
+    ...(options.withGlyphs ? { glyphs: MAP_GLYPHS } : {}),
     sources: {
       base: {
         type: "raster",
@@ -119,6 +128,7 @@ export const BASEMAPS: BasemapDefinition[] = [
       const key = keys.maptiler ?? "";
       return {
         version: 8,
+        glyphs: MAP_GLYPHS,
         sources: {
           base: {
             type: "raster",
@@ -127,7 +137,12 @@ export const BASEMAPS: BasemapDefinition[] = [
             maxzoom: 20,
             attribution: "&copy; MapTiler &copy; OpenStreetMap contributors",
           },
-          // Terrain-RGB tiles: MapLibre reads elevation from the pixel values.
+          // Separate DEM sources: MapLibre warns when one source feeds hillshade + terrain.
+          hillshadeDem: {
+            type: "raster-dem",
+            url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${key}`,
+            tileSize: 256,
+          },
           terrain: {
             type: "raster-dem",
             url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${key}`,
@@ -140,7 +155,7 @@ export const BASEMAPS: BasemapDefinition[] = [
           {
             id: "hillshade",
             type: "hillshade",
-            source: "terrain",
+            source: "hillshadeDem",
             paint: {
               "hillshade-shadow-color": "#0a0805",
               "hillshade-highlight-color": "#d3c4b1",
@@ -159,6 +174,7 @@ export const BASEMAPS: BasemapDefinition[] = [
     attribution: "Natural Earth / country boundaries",
     build: () => ({
       version: 8,
+      glyphs: MAP_GLYPHS,
       sources: {
         countries: {
           type: "geojson",

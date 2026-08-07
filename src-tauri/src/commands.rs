@@ -10,10 +10,12 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::error::{Error, Result};
+use crate::raster::preview::{self, ViewportPreview, ViewportPreviewRequest};
 use crate::raster::zonal::{self, ZonalOptions, ZonalStats};
 use crate::raster::{self, RasterInfo, RasterSource};
 use crate::sidecar::{EngineCommand, EngineStatus};
-use crate::vector::{BboxQuery, BboxResult, DatasetSummary, Feature};
+use crate::datasets::{self, DiscoverResult, InstallResult};
+use crate::vector::{BboxQuery, BboxResult, DatasetSummary, Feature, PlantCentroid, VectorStore};
 use crate::AppState;
 
 // ---------------------------------------------------------------------------
@@ -81,6 +83,31 @@ pub async fn raster_zonal_stats(request: ZonalRequest) -> Result<ZonalResponse> 
     .map_err(|e| Error::Invalid(format!("zonal statistics task failed: {e}")))?
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewportPreviewCommand {
+    pub source: RasterSource,
+    #[serde(flatten)]
+    pub request: ViewportPreviewRequest,
+}
+
+/// Windowed, colourised COG preview for Project-map GSA overlays.
+#[tauri::command]
+pub async fn raster_viewport_preview(request: ViewportPreviewCommand) -> Result<ViewportPreview> {
+    tauri::async_runtime::spawn_blocking(move || match &request.source {
+        RasterSource::Local { path } => {
+            let mut open = raster::open_local(path)?;
+            preview::compute(&mut open, &request.request)
+        }
+        RasterSource::Http { url } => {
+            let mut open = raster::open_http(url)?;
+            preview::compute(&mut open, &request.request)
+        }
+    })
+    .await
+    .map_err(|e| Error::Invalid(format!("viewport preview task failed: {e}")))?
+}
+
 // ---------------------------------------------------------------------------
 // Vector datasets
 // ---------------------------------------------------------------------------
@@ -96,6 +123,24 @@ pub fn vector_query_bbox(state: State<'_, AppState>, query: BboxQuery) -> Result
         return Err(Error::Invalid("bounding box is inverted".into()));
     }
     state.with_vector_store(|store| store.query_bbox(&query))
+}
+
+/// One-shot centroid dump for client-side clustering (dense geospatial display).
+///
+/// Runs on a blocking pool and opens a read connection so the UI thread is not
+/// stalled while ~100k GEM rows serialise.
+#[tauri::command]
+pub async fn vector_list_centroids(
+    state: State<'_, AppState>,
+    dataset: String,
+) -> Result<Vec<PlantCentroid>> {
+    let path = state.paths.vector_store();
+    tauri::async_runtime::spawn_blocking(move || {
+        let store = VectorStore::open(&path)?;
+        store.list_centroids(&dataset)
+    })
+    .await
+    .map_err(|e| Error::Invalid(format!("centroid list task failed: {e}")))?
 }
 
 #[tauri::command]
@@ -152,6 +197,38 @@ pub fn vector_import_features(
         store.register_dataset(&dataset, &source, vintage.as_deref(), license.as_deref(), None)?;
         store.insert_features(&features)
     })
+}
+
+// ---------------------------------------------------------------------------
+// Dataset discover / install
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+pub fn gdal_available() -> bool {
+    datasets::gdal_available()
+}
+
+#[tauri::command]
+pub fn dataset_discover(root: String, dataset: String) -> Result<DiscoverResult> {
+    datasets::discover(PathBuf::from(root).as_path(), &dataset)
+}
+
+#[tauri::command]
+pub async fn dataset_install(
+    state: State<'_, AppState>,
+    dataset: String,
+    source_path: String,
+) -> Result<InstallResult> {
+    let paths = state.paths.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        datasets::install(&paths, &dataset, PathBuf::from(source_path).as_path())
+    })
+    .await
+    .map_err(|e| Error::Invalid(format!("dataset install task failed: {e}")))??;
+    // Install opens its own SQLite connection; drop the cached handle so map
+    // queries see the newly imported rows.
+    state.invalidate_vector_store();
+    Ok(result)
 }
 
 // ---------------------------------------------------------------------------

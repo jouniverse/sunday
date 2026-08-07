@@ -7,6 +7,7 @@
 //! bbox -> pixel window -> the chunks that intersect it -> masked statistics.
 
 pub mod geotransform;
+pub mod preview;
 pub mod range_reader;
 pub mod zonal;
 

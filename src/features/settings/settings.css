@@ -51,6 +51,30 @@
   max-width: 560px;
 }
 
+.settings__path-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  max-width: 640px;
+}
+
+.settings__path-row .input,
+.settings__path-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings__naming {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2rem;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.settings__naming .mono {
+  font-size: 10.5px;
+}
+
 .settings__dataset {
   display: flex;
   align-items: center;

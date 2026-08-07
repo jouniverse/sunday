@@ -11,6 +11,6 @@
     "dialog:allow-message",
     "dialog:allow-confirm",
     "dialog:allow-ask",
-    "opener:allow-open-url"
+    "opener:default"
   ]
 }

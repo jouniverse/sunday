@@ -72,6 +72,25 @@ pub struct DatasetSummary {
     pub total_capacity_mw: Option<f64>,
 }
 
+/// Lean point for clustered map display — no properties JSON, no geometry blob.
+///
+/// Dense geospatial display loads these once into a client-side cluster index
+/// instead of re-querying the viewport on every pan/zoom.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlantCentroid {
+    pub id: String,
+    pub lon: f64,
+    pub lat: f64,
+    pub capacity_mw: Option<f64>,
+    pub status: Option<String>,
+    pub technology: Option<String>,
+    pub country: Option<String>,
+    pub name: Option<String>,
+    pub source: String,
+    pub vintage: Option<String>,
+}
+
 pub struct VectorStore {
     conn: Connection,
 }
@@ -136,6 +155,20 @@ impl VectorStore {
                 "CREATE INDEX IF NOT EXISTS features_lonlat ON features(dataset, lon, lat);",
             )?;
         }
+
+        // Older installs labelled GM-SEUS as v2.0; features already carry version v2_1.
+        let _ = self.conn.execute(
+            "UPDATE datasets SET source = 'GM-SEUS v2.1', vintage = '2025'
+             WHERE dataset = 'gmseus-arrays' AND source != 'GM-SEUS v2.1'",
+            [],
+        );
+
+        // TZ-SAM GeoJSON has no release stamp; drop invented Q1/Q2 labels from older installs.
+        let _ = self.conn.execute(
+            "UPDATE datasets SET vintage = NULL WHERE dataset = 'tz-sam'",
+            [],
+        );
+
         Ok(())
     }
 
@@ -172,6 +205,22 @@ impl VectorStore {
             params![dataset, source, vintage, license, metadata],
         )?;
         Ok(())
+    }
+
+    /// Remove all features for a dataset before a full re-install.
+    pub fn delete_dataset_features(&self, dataset: &str) -> Result<usize> {
+        if self.has_rtree() {
+            self.conn.execute(
+                "DELETE FROM features_index WHERE id IN (
+                     SELECT rowid FROM features WHERE dataset = ?1
+                 )",
+                params![dataset],
+            )?;
+        }
+        let n = self
+            .conn
+            .execute("DELETE FROM features WHERE dataset = ?1", params![dataset])?;
+        Ok(n)
     }
 
     /// Bulk insert inside one transaction. Ingestion of ~100k GEM rows is a
@@ -348,6 +397,36 @@ impl VectorStore {
         let features: Vec<Feature> = rows.collect::<rusqlite::Result<Vec<_>>>()?;
         let truncated = (features.len() as u64) < total;
         Ok(BboxResult { features, total, truncated })
+    }
+
+    /// All centroids for a dataset — one shot for client-side clustering.
+    ///
+    /// Deliberately omits `properties` and `geometry` so ~100k GEM rows stay a
+    /// few megabytes over IPC rather than tens.
+    pub fn list_centroids(&self, dataset: &str) -> Result<Vec<PlantCentroid>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT f.id, f.lon, f.lat, f.capacity_mw, f.status, f.technology,
+                    f.country, f.name, COALESCE(d.source, 'unknown'), d.vintage
+             FROM features f
+             LEFT JOIN datasets d ON d.dataset = f.dataset
+             WHERE f.dataset = ?1
+             ORDER BY COALESCE(f.capacity_mw, 0) DESC, f.id ASC",
+        )?;
+        let rows = stmt.query_map(params![dataset], |row| {
+            Ok(PlantCentroid {
+                id: row.get(0)?,
+                lon: row.get(1)?,
+                lat: row.get(2)?,
+                capacity_mw: row.get(3)?,
+                status: row.get(4)?,
+                technology: row.get(5)?,
+                country: row.get(6)?,
+                name: row.get(7)?,
+                source: row.get(8)?,
+                vintage: row.get(9)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
     /// Full geometry and attributes for one feature: the plant inspector path.
@@ -600,6 +679,16 @@ mod tests {
         let found = store.nearest("gem-solar", -118.05, 34.05, 1.0, 2).unwrap();
         assert_eq!(found.len(), 2);
         assert!(found[0].1 <= found[1].1);
+    }
+
+    #[test]
+    fn lists_centroids_largest_first_without_geometry() {
+        let store = seeded();
+        let centroids = store.list_centroids("gem-solar").unwrap();
+        assert_eq!(centroids.len(), 4);
+        assert_eq!(centroids[0].id, "c"); // 500 MW
+        assert_eq!(centroids[0].source, "GEM");
+        assert!(store.list_centroids("missing").unwrap().is_empty());
     }
 
     #[test]

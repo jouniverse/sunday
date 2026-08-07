@@ -6,6 +6,7 @@
 //! in the frontend's `domain/` layer or in the sidecar; this crate is I/O.
 
 pub mod commands;
+pub mod datasets;
 pub mod error;
 pub mod library;
 pub mod project;
@@ -68,6 +69,13 @@ impl AppState {
         }
         f(guard.as_mut().expect("store opened"))
     }
+
+    /// Drop the cached SQLite handle so the next query reopens after an Install
+    /// that wrote through a separate connection.
+    pub fn invalidate_vector_store(&self) {
+        let mut guard = self.vector.lock().expect("vector mutex");
+        *guard = None;
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -84,11 +92,16 @@ pub fn run() {
             commands::app_info,
             commands::raster_info,
             commands::raster_zonal_stats,
+            commands::raster_viewport_preview,
             commands::vector_datasets,
             commands::vector_query_bbox,
+            commands::vector_list_centroids,
             commands::vector_get_feature,
             commands::vector_nearest,
             commands::vector_import_features,
+            commands::gdal_available,
+            commands::dataset_discover,
+            commands::dataset_install,
             commands::project_save,
             commands::project_load,
             commands::library_list,

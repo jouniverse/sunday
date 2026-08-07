@@ -80,17 +80,32 @@ export function App() {
     <div className="app-shell">
       <TopBar />
 
-      {/* Keep heavy views mounted so tab switches do not wipe local state or caches. */}
-      <div style={{ display: view === "map" ? "contents" : "none" }}>
+      {/*
+        Real flex hosts — not display:contents. In WKWebView (Tauri), contents +
+        Fragment children left .workspace / .canvas at height 0 (map 1024×0).
+      */}
+      <div
+        className={`view-slot${view === "map" ? " view-slot--on" : ""}`}
+        aria-hidden={view !== "map"}
+      >
         <MapWorkspace />
       </div>
-      <div style={{ display: view === "design" ? "contents" : "none" }}>
+      <div
+        className={`view-slot${view === "design" ? " view-slot--on" : ""}`}
+        aria-hidden={view !== "design"}
+      >
         <DesignView />
       </div>
-      <div style={{ display: view === "report" ? "contents" : "none" }}>
+      <div
+        className={`view-slot${view === "report" ? " view-slot--on" : ""}`}
+        aria-hidden={view !== "report"}
+      >
         <ReportView />
       </div>
-      <div style={{ display: view === "analytics" ? "contents" : "none" }}>
+      <div
+        className={`view-slot${view === "analytics" ? " view-slot--on" : ""}`}
+        aria-hidden={view !== "analytics"}
+      >
         <AnalyticsView />
       </div>
       {view === "projects" && <ProjectsView />}

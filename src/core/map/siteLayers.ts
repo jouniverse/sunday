@@ -8,10 +8,10 @@
 
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import type { LngLat } from "@/domain/geometry";
-import { useDrawStore } from "./draw/store";
-import { edgeMidpoints } from "./draw/engine";
-import { useSiteStore } from "../store/siteStore";
 import { useLayerStore } from "../store/layerStore";
+import { useSiteStore } from "../store/siteStore";
+import { edgeMidpoints } from "./draw/engine";
+import { useDrawStore } from "./draw/store";
 
 export const SITE_SOURCE_ID = "sunday-sites";
 export const DRAW_SOURCE_ID = "sunday-draw";
@@ -138,8 +138,12 @@ function vertexFeatures(): GeoJSON.FeatureCollection {
 
 /** Adds or updates every app-owned layer. Safe to call repeatedly. */
 export function renderSiteLayers(map: MapLibreMap): void {
-  if (!map.isStyleLoaded()) {
-    map.once("styledata", () => renderSiteLayers(map));
+  try {
+    if (!map.getStyle() || !map.isStyleLoaded()) {
+      map.once("styledata", () => renderSiteLayers(map));
+      return;
+    }
+  } catch {
     return;
   }
 

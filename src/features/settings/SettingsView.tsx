@@ -8,9 +8,11 @@
  */
 
 import { useEffect, useState } from "react";
+import { invalidateFootprintLayerCache } from "@/core/map/footprintLayers";
 import { invalidatePlantLayerCache } from "@/core/map/plantLayers";
-import type { ApiProvider, VectorFeature } from "@/core/platform";
-import { platform } from "@/core/platform";
+import { invalidateResourceRasterCache } from "@/core/map/resourceRasterLayers";
+import type { ApiProvider } from "@/core/platform";
+import { platform, PlatformError } from "@/core/platform";
 import { LAYER_CATALOGUE, useLayerStore } from "@/core/store/layerStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import { useUiStore } from "@/core/store/uiStore";
@@ -42,7 +44,7 @@ const PROVIDER_CARDS: ProviderCard[] = [
     label: "NREL",
     unlocks: "NSRDB solar resource and PVWatts modelled yield across the Americas.",
     free: "Free, issued instantly.",
-    url: "https://developer.nlr.gov/signup/",
+    url: "https://developer.nrel.gov/signup/",
   },
   {
     id: "maptiler",
@@ -53,6 +55,37 @@ const PROVIDER_CARDS: ProviderCard[] = [
   },
 ];
 
+const RASTER_INSTALL_IDS = ["gsa-ghi", "gsa-dni", "gsa-pvout"] as const;
+const VECTOR_INSTALL_IDS = ["gem-solar", "tz-sam", "gmseus-arrays"] as const;
+const VECTOR_STUB_IDS = ["wdpa", "osm-power", "landcover"] as const;
+
+/** Filenames under the datasets folder (layer-label scheme; Solargis keeps GSA abbrevs). */
+const NAMING_ROWS: Array<{ label: string; files: string }> = [
+  { label: "GHI / DNI / PVOUT", files: "GHI.tif, DNI.tif, PVOUT.tif (or *_cog.tif)" },
+  { label: "Solar power plants", files: "Solar power plants.csv, Solar power plants.jsonl" },
+  {
+    label: "Global PV footprints",
+    files: "Global PV footprints.geojson (preferred), .gpkg",
+  },
+  {
+    label: "US ground-mounted arrays",
+    files: "US ground-mounted arrays.geojson (preferred), .gpkg",
+  },
+  { label: "Protected areas", files: "Protected areas.geojson, Protected areas.shp (later)" },
+];
+
+/** Prefer measured install size; omit stale catalogue guesses when unknown. */
+function sizeLabelMb(
+  layerId: string,
+  datasets: Record<string, { downloaded?: boolean; sizeMb?: number } | undefined>,
+): string | null {
+  const measured = datasets[layerId]?.sizeMb;
+  if (typeof measured === "number" && measured > 0) {
+    return `${measured % 1 === 0 ? measured.toFixed(0) : measured.toFixed(1)} MB`;
+  }
+  return null;
+}
+
 export function SettingsView() {
   const settings = useSettingsStore();
   const notify = useUiStore((state) => state.notify);
@@ -62,13 +95,21 @@ export function SettingsView() {
         ? never
         : Awaited<ReturnType<ReturnType<typeof platform>["appInfo"]>> | null
     >(null);
+  const [gdalOk, setGdalOk] = useState<boolean | null>(null);
+  const [installing, setInstalling] = useState<string | null>(null);
 
   useEffect(() => {
     platform()
       .appInfo()
       .then(setAppInfo)
       .catch(() => setAppInfo(null));
+    platform()
+      .datasets.gdalAvailable()
+      .then(setGdalOk)
+      .catch(() => setGdalOk(false));
   }, []);
+
+  const datasetsRoot = settings.preferences.datasetsRoot;
 
   return (
     <div className="content-view">
@@ -96,16 +137,16 @@ export function SettingsView() {
 
         <div className="card">
           <div className="card__head">
-            <h2 className="card__title">Solar resource rasters</h2>
+            <h2 className="card__title">Data location</h2>
           </div>
           <p className="settings__note">
-            Global Solar Atlas layers are multi-gigabyte GeoTIFFs, so Sunday never bundles them.
-            Point it at cloud-optimised copies over HTTP, or at a local directory holding your own
-            download. Either way only the pixels inside a drawn boundary are ever read.
+            Point Sunday at one folder of downloaded datasets (and optionally a cloud COG base URL).
+            Install copies or converts into the app data directory. Download links live in Help →
+            Data layers and licences.
           </p>
           <Field
             label="Cloud-optimised raster base URL"
-            hint="For example a bucket holding GHI, DNI and PVOUT as COGs."
+            hint="Optional. A bucket or CDN holding GHI, DNI and PVOUT as COGs."
           >
             <Input
               mono
@@ -120,21 +161,77 @@ export function SettingsView() {
             />
           </Field>
           <Field
-            label="Local raster directory"
-            hint="A folder of GeoTIFFs (GHI.tif / GHI_cog.tif, etc.)."
+            label="Datasets folder"
+            hint="Raw downloads. Install looks for the expected filenames recursively."
           >
-            <Input
-              mono
-              placeholder="/Users/you/Documents/Sunday/rasters"
-              value={settings.preferences.rasterLocalDir}
-              onChange={(event) => {
-                void settings.setPreferences({ rasterLocalDir: event.target.value });
-                void import("@/services/datasets/raster-sample").then((m) =>
-                  m.markGsaLayersFromSettings(),
-                );
-              }}
-            />
+            <div className="settings__path-row">
+              <Input
+                mono
+                placeholder="/Users/you/Documents/Sunday/datasets"
+                value={datasetsRoot}
+                onChange={(event) =>
+                  void settings.setPreferences({ datasetsRoot: event.target.value })
+                }
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void pickDatasetsRoot(settings, notify)}
+              >
+                Choose…
+              </Button>
+            </div>
           </Field>
+          {appInfo?.rasterDir && (
+            <p className="settings__note settings__note--quiet">
+              Installed Solargis rasters are stored under{" "}
+              <span className="mono">{appInfo.rasterDir}</span> (not in the datasets folder).
+            </p>
+          )}
+          <Callout tone="note">
+            <strong>Expected filenames</strong> (first match wins; legacy download names also work):
+            <ul className="settings__naming">
+              {NAMING_ROWS.map((row) => (
+                <li key={row.label}>
+                  <span className="mono">{row.label}</span> — {row.files}
+                </li>
+              ))}
+            </ul>
+          </Callout>
+          {gdalOk === false && (
+            <Callout tone="note">
+              GDAL is not on PATH. Raw GeoTIFFs will be copied as-is (no COG conversion). GPKG
+              footprint installs need GeoJSON instead, or install GDAL.
+            </Callout>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card__head">
+            <h2 className="card__title">Solar resource rasters</h2>
+          </div>
+          <p className="settings__note">
+            Global Solar Atlas layers are multi-gigabyte GeoTIFFs. Install from the datasets folder
+            above; only pixels inside a drawn boundary are ever read.
+          </p>
+          {RASTER_INSTALL_IDS.map((id) => {
+            const layer = LAYER_CATALOGUE.find((row) => row.id === id);
+            if (!layer) return null;
+            return (
+              <DatasetInstallRow
+                key={id}
+                label={layer.label}
+                meta={`${layer.source}${layer.vintage ? ` · ${layer.vintage}` : ""}`}
+                sizeLabel={sizeLabelMb(id, settings.datasets)}
+                downloaded={Boolean(settings.datasets[id]?.downloaded)}
+                busy={installing === id}
+                disabled={!datasetsRoot.trim()}
+                onInstall={() =>
+                  void runInstall(id, datasetsRoot, setInstalling, settings, notify, appInfo)
+                }
+              />
+            );
+          })}
         </div>
 
         <div className="card">
@@ -142,57 +239,48 @@ export function SettingsView() {
             <h2 className="card__title">Datasets</h2>
           </div>
           <p className="settings__note">
-            Optional downloads. Sunday preprocesses each one into an indexed local store so map
-            queries stay fast; see <span className="mono">scripts/data-pipeline</span> for the
-            conversion steps.
+            Uses the same datasets folder. Install (or Reinstall) into Sunday&apos;s local vector
+            store so map queries stay fast.
           </p>
-          {LAYER_CATALOGUE.filter((layer) => layer.availability.state === "needs-download").map(
-            (layer) => {
-              const dataset =
-                layer.availability.state === "needs-download"
-                  ? layer.availability.dataset
-                  : layer.id;
-              const state = settings.datasets[dataset];
-              return (
-                <div key={layer.id} className="settings__dataset">
-                  <div className="settings__dataset-main">
-                    <span className="settings__dataset-name">{layer.label}</span>
-                    <span className="settings__dataset-meta">
-                      {layer.source}
-                      {layer.vintage && ` · ${layer.vintage}`}
-                      {layer.licence && ` · ${layer.licence}`}
-                    </span>
-                  </div>
-                  {layer.availability.state === "needs-download" &&
-                    layer.availability.approximateMb > 0 && (
-                      <Chip dot={false}>~{layer.availability.approximateMb} MB</Chip>
-                    )}
-                  {state?.downloaded ? (
-                    <Chip tone="ok">
-                      <CheckIcon size={11} /> Installed
-                    </Chip>
-                  ) : dataset === "gem-solar" ? (
-                    <Button
-                      size="sm"
-                      onClick={() => void importGemJsonl(useSettingsStore.getState(), notify)}
-                    >
-                      Import JSONL
-                    </Button>
-                  ) : (
-                    <Chip>Not installed</Chip>
-                  )}
+          {VECTOR_INSTALL_IDS.map((id) => {
+            const layer = LAYER_CATALOGUE.find((row) => row.id === id);
+            if (!layer) return null;
+            return (
+              <DatasetInstallRow
+                key={id}
+                label={layer.label}
+                meta={`${layer.source}${layer.vintage ? ` · ${layer.vintage}` : ""}${
+                  layer.licence ? ` · ${layer.licence}` : ""
+                }`}
+                sizeLabel={sizeLabelMb(id, settings.datasets)}
+                downloaded={Boolean(settings.datasets[id]?.downloaded)}
+                busy={installing === id}
+                disabled={!datasetsRoot.trim()}
+                onInstall={() =>
+                  void runInstall(id, datasetsRoot, setInstalling, settings, notify, appInfo)
+                }
+              />
+            );
+          })}
+          {VECTOR_STUB_IDS.map((id) => {
+            const layer = LAYER_CATALOGUE.find((row) => row.id === id);
+            if (!layer) return null;
+            return (
+              <div key={id} className="settings__dataset">
+                <div className="settings__dataset-main">
+                  <span className="settings__dataset-name">{layer.label}</span>
+                  <span className="settings__dataset-meta">
+                    {layer.source}
+                    {layer.licence ? ` · ${layer.licence}` : ""}
+                  </span>
                 </div>
-              );
-            },
-          )}
-          <Callout tone="note">
-            Convert the GEM CSV with{" "}
-            <span className="mono">node scripts/data-pipeline/import-gem.mjs</span>, then import the
-            resulting JSONL here. Country rankings ship bundled and need no install.
-          </Callout>
+                <Chip>Coming later</Chip>
+              </div>
+            );
+          })}
           <Callout tone="warning">
-            TransitionZero's global footprint layer is licensed CC BY-NC 4.0. Enable it only if
-            non-commercial use applies to you.
+            TransitionZero&apos;s global footprint layer is licensed CC BY-NC 4.0. Install still
+            requires the toggle below before the layer can be turned on.
           </Callout>
           <Field label="" hint="Confirms that non-commercial licensed layers may be used here.">
             <div className="settings__switch">
@@ -330,6 +418,11 @@ export function SettingsView() {
           <ParamList
             rows={[
               { key: "data", label: "Data directory", value: appInfo?.dataDir ?? "—" },
+              {
+                key: "rasters",
+                label: "Installed rasters",
+                value: appInfo?.rasterDir ?? "—",
+              },
               { key: "config", label: "Settings file", value: settings.settingsPath || "—" },
               { key: "cache", label: "Cached API responses", value: String(httpCacheSize()) },
             ]}
@@ -349,115 +442,143 @@ export function SettingsView() {
   );
 }
 
-async function importGemJsonl(
+function DatasetInstallRow({
+  label,
+  meta,
+  sizeLabel,
+  downloaded,
+  busy,
+  disabled,
+  onInstall,
+}: {
+  label: string;
+  meta: string;
+  /** Measured size after Install; omitted when unknown (no stale catalogue guesses). */
+  sizeLabel: string | null;
+  downloaded: boolean;
+  busy: boolean;
+  disabled: boolean;
+  onInstall: () => void;
+}) {
+  return (
+    <div className="settings__dataset">
+      <div className="settings__dataset-main">
+        <span className="settings__dataset-name">{label}</span>
+        <span className="settings__dataset-meta">{meta}</span>
+      </div>
+      {sizeLabel && <Chip dot={false}>{sizeLabel}</Chip>}
+      {downloaded && (
+        <Chip tone="ok">
+          <CheckIcon size={11} /> Installed
+        </Chip>
+      )}
+      <Button size="sm" disabled={disabled || busy} onClick={onInstall}>
+        {busy ? "Installing…" : downloaded ? "Reinstall" : "Install"}
+      </Button>
+    </div>
+  );
+}
+
+async function pickDatasetsRoot(
   settings: ReturnType<typeof useSettingsStore.getState>,
   notify: ReturnType<typeof useUiStore.getState>["notify"],
 ): Promise<void> {
-  // Browser File System Access when available; otherwise a classic file input.
-  let text: string | null = null;
-  const picker = (
-    window as Window & {
-      showOpenFilePicker?: (options: {
-        types: Array<{ description: string; accept: Record<string, string[]> }>;
-        multiple?: boolean;
-      }) => Promise<Array<{ getFile: () => Promise<File> }>>;
-    }
-  ).showOpenFilePicker;
-
   try {
-    if (picker) {
-      const handles = await picker({
-        multiple: false,
-        types: [
-          {
-            description: "GEM JSONL",
-            accept: { "application/x-ndjson": [".jsonl"], "application/json": [".json", ".jsonl"] },
-          },
-        ],
-      });
-      const handle = handles[0];
-      if (!handle) return;
-      text = await (await handle.getFile()).text();
-    } else {
-      text = await new Promise<string | null>((resolve) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".jsonl,.json,application/x-ndjson";
-        input.onchange = () => {
-          const file = input.files?.[0];
-          if (!file) {
-            resolve(null);
-            return;
-          }
-          void file.text().then(resolve);
-        };
-        input.click();
-      });
-    }
+    const path = await platform().datasets.pickDirectory();
+    if (!path) return;
+    await settings.setPreferences({ datasetsRoot: path });
+    notify({ tone: "success", message: "Datasets folder set", detail: path });
   } catch (error) {
-    // User cancelled the picker.
-    if (error instanceof DOMException && error.name === "AbortError") return;
     notify({
       tone: "error",
-      message: "Could not open the GEM file",
+      message: "Could not choose a folder",
       detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function runInstall(
+  datasetId: string,
+  root: string,
+  setInstalling: (id: string | null) => void,
+  settings: ReturnType<typeof useSettingsStore.getState>,
+  notify: ReturnType<typeof useUiStore.getState>["notify"],
+  appInfo: Awaited<ReturnType<ReturnType<typeof platform>["appInfo"]>> | null,
+): Promise<void> {
+  if (!root.trim()) {
+    notify({
+      tone: "warning",
+      message: "Choose a datasets folder first",
+      detail: "Settings → Data location → Datasets folder.",
     });
     return;
   }
 
-  if (!text) return;
-
-  const features: VectorFeature[] = [];
-  for (const line of text.split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    try {
-      features.push(JSON.parse(line) as VectorFeature);
-    } catch {
+  const wasInstalled = Boolean(settings.datasets[datasetId]?.downloaded);
+  setInstalling(datasetId);
+  try {
+    const found = await platform().datasets.discover(root, datasetId);
+    if (!found.path) {
       notify({
-        tone: "error",
-        message: "Invalid JSONL",
-        detail:
-          "Each line must be one GEM feature object from scripts/data-pipeline/import-gem.mjs.",
+        tone: "warning",
+        message: `No file found for ${datasetId}`,
+        detail: `Looked for: ${found.expected.join(", ")}. Place one under the datasets folder and try again.`,
       });
       return;
     }
-  }
 
-  if (features.length === 0) {
-    notify({ tone: "warning", message: "The file contained no features" });
-    return;
-  }
-
-  try {
-    const BATCH = 2_000;
-    let imported = 0;
-    for (let i = 0; i < features.length; i += BATCH) {
-      const chunk = features.slice(i, i + BATCH);
-      imported += await platform().vector.importFeatures({
-        dataset: "gem-solar",
-        source: "Global Energy Monitor, Global Solar Power Tracker",
-        vintage: "2026-02",
-        license: "CC BY 4.0",
-        features: chunk,
-      });
-    }
-    await settings.setDatasetState("gem-solar", {
+    const result = await platform().datasets.install(datasetId, found.path);
+    await settings.setDatasetState(datasetId, {
       downloaded: true,
-      sizeMb: Math.round((text.length / (1024 * 1024)) * 10) / 10,
+      path: result.installedPath,
+      sizeMb: Math.round(result.sizeMb * 10) / 10,
     });
-    useLayerStore.getState().markAvailable("gem-solar");
-    invalidatePlantLayerCache();
+    useLayerStore.getState().markAvailable(datasetId);
+
+    if (datasetId.startsWith("gsa-")) {
+      const rasterDir = appInfo?.rasterDir?.trim();
+      if (rasterDir) {
+        await settings.setPreferences({ rasterLocalDir: rasterDir });
+      }
+      if (
+        datasetId === "gsa-ghi" ||
+        datasetId === "gsa-dni" ||
+        datasetId === "gsa-pvout"
+      ) {
+        invalidateResourceRasterCache(datasetId);
+      }
+    }
+
+    if (datasetId === "gem-solar") {
+      invalidatePlantLayerCache();
+    }
+    if (datasetId === "tz-sam" || datasetId === "gmseus-arrays") {
+      invalidateFootprintLayerCache(datasetId);
+    }
+
+    const count =
+      result.featureCount != null
+        ? `${result.featureCount.toLocaleString()} features`
+        : `${result.sizeMb.toFixed(1)} MB`;
     notify({
       tone: "success",
-      message: `Imported ${imported.toLocaleString()} GEM plants`,
-      detail: "Turn on the Solar power plants layer to see them on the map.",
+      message: `${wasInstalled ? "Reinstalled" : "Installed"} ${datasetId}`,
+      detail: `${result.detail} (${count}${result.usedGdal ? "; used GDAL" : ""}).`,
     });
   } catch (error) {
+    const detail =
+      error instanceof PlatformError
+        ? error.message
+        : error instanceof Error
+          ? error.message
+          : String(error);
     notify({
       tone: "error",
-      message: "GEM import failed",
-      detail: error instanceof Error ? error.message : String(error),
+      message: `Install failed for ${datasetId}`,
+      detail,
     });
+  } finally {
+    setInstalling(null);
   }
 }
 

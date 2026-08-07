@@ -13,7 +13,7 @@ import {
   OpenIcon,
   SaveIcon,
   SettingsIcon,
-  SunIcon,
+  SundayLogoMark,
 } from "@/design-system/icons";
 import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useProjectStore } from "@/core/store/projectStore";
@@ -112,7 +112,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar__logo">
-        <SunIcon size={20} className="topbar__mark" />
+        <SundayLogoMark size={22} className="topbar__mark" />
         Sunday
       </div>
 

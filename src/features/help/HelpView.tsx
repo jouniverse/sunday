@@ -9,10 +9,23 @@
 
 import { platform } from "@/core/platform";
 import { LAYER_CATALOGUE } from "@/core/store/layerStore";
+import { useUiStore } from "@/core/store/uiStore";
 import { PROVIDERS } from "@/services/solar/types";
 import { GCR_PRIORS, LAND_USE_M2_PER_KW, SYSTEM_LOSS_DEFAULTS } from "@/domain/packing/priors";
 import { Callout, DataGrid, SectionLabel } from "@/design-system/data";
 import "./help.css";
+
+async function openSourceUrl(url: string): Promise<void> {
+  try {
+    await platform().shell.openExternal(url);
+  } catch (error) {
+    useUiStore.getState().notify({
+      tone: "error",
+      message: "Could not open the link",
+      detail: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 export function HelpView() {
   return (
@@ -75,8 +88,12 @@ export function HelpView() {
                 render: (row) => (
                   <button
                     type="button"
-                    className="settings__link"
-                    onClick={() => void platform().shell.openExternal(row.documentation)}
+                    className="help__link"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void openSourceUrl(row.documentation);
+                    }}
                   >
                     Open
                   </button>
@@ -180,11 +197,39 @@ export function HelpView() {
           <div className="card__head">
             <h2 className="card__title">Data layers and licences</h2>
           </div>
+          <p className="help__body">
+            Download optional layers into one datasets folder, then Install from Settings. Filenames
+            should match the layer name (for example{" "}
+            <span className="mono">Global PV footprints.geojson</span>); Solargis rasters keep{" "}
+            <span className="mono">GHI.tif</span> / <span className="mono">DNI.tif</span> /{" "}
+            <span className="mono">PVOUT.tif</span>.
+          </p>
           <DataGrid
             caption="Data layer licences"
             columns={[
               { key: "label", header: "Layer", render: (row) => row.label },
-              { key: "source", header: "Source", render: (row) => row.source },
+              {
+                key: "source",
+                header: "Source",
+                render: (row) =>
+                  row.sourceUrl ? (
+                    <a
+                      className="help__link"
+                      href={row.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void openSourceUrl(row.sourceUrl!);
+                      }}
+                    >
+                      {row.source}
+                    </a>
+                  ) : (
+                    row.source
+                  ),
+              },
               { key: "vintage", header: "Vintage", render: (row) => row.vintage ?? "—" },
               { key: "licence", header: "Licence", render: (row) => row.licence ?? "—" },
             ]}

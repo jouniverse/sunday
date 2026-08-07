@@ -11,6 +11,8 @@ import type {
   ApiProvider,
   BboxQuery,
   BboxResult,
+  DatasetDiscoverResult,
+  DatasetInstallResult,
   DatasetSummary,
   EngineStatus,
   HttpFetchTextRequest,
@@ -19,12 +21,14 @@ import type {
   LoadedProject,
   NativeError,
   NearbyFeature,
+  PlantCentroid,
   Platform,
   ProjectDocument,
   RasterInfo,
   RasterSource,
   SettingsView,
   VectorFeature,
+  ViewportPreview,
   ZonalResult,
 } from "./types";
 import { PlatformError } from "./types";
@@ -129,11 +133,24 @@ export const tauriPlatform: Platform = {
           geographic: options?.geographic ?? true,
         },
       }),
+    viewportPreview: (source, bounds, options) =>
+      call<ViewportPreview>("raster_viewport_preview", {
+        request: {
+          source,
+          minLon: bounds.minLon,
+          minLat: bounds.minLat,
+          maxLon: bounds.maxLon,
+          maxLat: bounds.maxLat,
+          band: options?.band ?? 0,
+          maxPixels: options?.maxPixels ?? 262_144,
+        },
+      }),
   },
 
   vector: {
     datasets: () => call<DatasetSummary[]>("vector_datasets"),
     queryBbox: (query: BboxQuery) => call<BboxResult>("vector_query_bbox", { query }),
+    listCentroids: (dataset: string) => call<PlantCentroid[]>("vector_list_centroids", { dataset }),
     getFeature: (dataset: string, id: string) =>
       call<VectorFeature | null>("vector_get_feature", { dataset, id }),
     nearest: (dataset, lon, lat, radiusKm, limit) =>
@@ -145,6 +162,22 @@ export const tauriPlatform: Platform = {
         vintage: vintage ?? null,
         license: license ?? null,
         features,
+      }),
+  },
+
+  datasets: {
+    async pickDirectory() {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const picked = await open({ multiple: false, directory: true });
+      return typeof picked === "string" ? picked : null;
+    },
+    gdalAvailable: () => call<boolean>("gdal_available"),
+    discover: (root, datasetId) =>
+      call<DatasetDiscoverResult>("dataset_discover", { root, dataset: datasetId }),
+    install: (datasetId, sourcePath) =>
+      call<DatasetInstallResult>("dataset_install", {
+        dataset: datasetId,
+        sourcePath,
       }),
   },
 
@@ -193,7 +226,16 @@ export const tauriPlatform: Platform = {
   shell: {
     async openExternal(url: string) {
       const { openUrl } = await import("@tauri-apps/plugin-opener");
-      await openUrl(url);
+      try {
+        await openUrl(url);
+      } catch (error) {
+        throw new PlatformError(
+          "invalid",
+          error instanceof Error
+            ? error.message
+            : `Could not open ${url} in the system browser`,
+        );
+      }
     },
 
     async saveFile(suggestedName, contents, filters) {

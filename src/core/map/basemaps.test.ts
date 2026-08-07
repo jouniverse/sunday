@@ -41,6 +41,12 @@ describe("basemap registry", () => {
     expect(JSON.stringify(style)).toContain("TESTKEY");
     // Terrain basemaps must actually declare a terrain source.
     expect(style.terrain).toBeDefined();
+    // Hillshade and 3D mesh use separate DEM sources (MapLibre quality warning).
+    expect(style.sources?.hillshadeDem).toBeDefined();
+    expect(style.sources?.terrain).toBeDefined();
+    expect(style.layers.some((layer) => layer.id === "hillshade" && "source" in layer && layer.source === "hillshadeDem")).toBe(
+      true,
+    );
   });
 
   it("falls back to the first basemap for an unknown id", () => {

@@ -32,12 +32,35 @@ impl GeoTransform {
     }
 
     /// Derives the transform of an overview level from the full-resolution one.
+    ///
+    /// Prefer [`Self::for_overview`] when both dimensions are known — COG
+    /// overviews are not always exactly square-scaled, and using a single
+    /// `width/overview_width` factor for Y shifts the paint north/south.
     pub fn scaled(&self, scale: f64) -> Self {
         Self {
             origin_x: self.origin_x,
             origin_y: self.origin_y,
             pixel_width: self.pixel_width * scale,
             pixel_height: self.pixel_height * scale,
+        }
+    }
+
+    /// Geotransform for an overview IFD that covers the same geographic extent
+    /// as the full-resolution image with fewer pixels.
+    pub fn for_overview(
+        &self,
+        full_width: u32,
+        full_height: u32,
+        overview_width: u32,
+        overview_height: u32,
+    ) -> Self {
+        let ow = overview_width.max(1) as f64;
+        let oh = overview_height.max(1) as f64;
+        Self {
+            origin_x: self.origin_x,
+            origin_y: self.origin_y,
+            pixel_width: self.pixel_width * (full_width as f64 / ow),
+            pixel_height: self.pixel_height * (full_height as f64 / oh),
         }
     }
 
@@ -177,5 +200,14 @@ mod tests {
         assert!((t.pixel_width - 0.04).abs() < 1e-12);
         assert!((t.pixel_height + 0.04).abs() < 1e-12);
         assert_eq!(t.origin_x, 10.0);
+    }
+
+    #[test]
+    fn overview_transform_uses_independent_xy_scales() {
+        let t = transform().for_overview(1000, 500, 250, 100);
+        // scale_x = 4, scale_y = 5
+        assert!((t.pixel_width - 0.04).abs() < 1e-12);
+        assert!((t.pixel_height + 0.05).abs() < 1e-12);
+        assert_eq!(t.origin_y, 50.0);
     }
 }

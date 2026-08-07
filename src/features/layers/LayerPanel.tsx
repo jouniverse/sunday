@@ -5,15 +5,17 @@
  * unavailable layer is unavailable, and show each layer's provenance. Both come
  * from the dataset review — a layer whose vintage and licence are invisible is a
  * layer waiting to be misused.
+ *
+ * Icons belong on section headers only (not every layer row). When the left
+ * panel collapses to a rail, only those section icons remain — sections stay
+ * collapsed so the rail has no gaps between icons.
  */
 
 import { useState } from "react";
 import { Chip, Switch } from "@/design-system/controls";
 import {
-  BoltIcon,
   LayersIcon,
   PlantIcon,
-  SatelliteIcon,
   SunIcon,
   TerrainIcon,
 } from "@/design-system/icons";
@@ -25,6 +27,7 @@ import {
   useLayerStore,
 } from "@/core/store/layerStore";
 import type { LayerDefinition } from "@/core/store/layerStore";
+import { useSettingsStore } from "@/core/store/settingsStore";
 import { useUiStore } from "@/core/store/uiStore";
 import "./layers.css";
 
@@ -35,16 +38,16 @@ const GROUP_LABELS: Record<LayerDefinition["group"], string> = {
   context: "This project",
 };
 
-function iconFor(layer: LayerDefinition) {
-  switch (layer.group) {
+function iconForGroup(group: LayerDefinition["group"]) {
+  switch (group) {
     case "resource":
       return <SunIcon size={16} />;
     case "infrastructure":
-      return layer.id === "osm-power" ? <BoltIcon size={16} /> : <PlantIcon size={16} />;
+      return <PlantIcon size={16} />;
     case "land":
       return <TerrainIcon size={16} />;
     default:
-      return layer.id === "sites" ? <LayersIcon size={16} /> : <SatelliteIcon size={16} />;
+      return <LayersIcon size={16} />;
   }
 }
 
@@ -52,6 +55,11 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
   const runtime = useLayerStore((state) => state.runtime);
   const toggle = useLayerStore((state) => state.toggle);
   const setOpacity = useLayerStore((state) => state.setOpacity);
+  // Re-render when settings finish loading, Install flips a chip, or NC toggles.
+  useSettingsStore((state) => state.loaded);
+  useSettingsStore((state) => state.datasets);
+  useSettingsStore((state) => state.preferences.acceptNonCommercialLayers);
+  useSettingsStore((state) => state.configuredKeys);
   const setView = useUiStore((state) => state.setView);
   const notify = useUiStore((state) => state.notify);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -64,30 +72,35 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
   const groups: Array<LayerDefinition["group"]> = ["context", "resource", "infrastructure", "land"];
 
   return (
-    <div className="layer-panel">
+    <div className={`layer-panel${collapsed ? " layer-panel--rail" : ""}`}>
       {groups.map((group) => {
         const layers = LAYER_CATALOGUE.filter((layer) => layer.group === group);
         if (layers.length === 0) return null;
-        const open = openGroups[group] ?? true;
+        const open = !collapsed && (openGroups[group] ?? true);
+        const label = GROUP_LABELS[group];
 
         return (
-          <section key={group} className="layer-group">
-            {!collapsed && (
-              <button
-                type="button"
-                className="layer-group__toggle"
-                aria-expanded={open}
-                onClick={() =>
-                  setOpenGroups((prev) => ({ ...prev, [group]: !(prev[group] ?? true) }))
-                }
-              >
-                <SectionLabel>{GROUP_LABELS[group]}</SectionLabel>
+          <section key={group} className={`layer-group layer-group--${group}`}>
+            <button
+              type="button"
+              className="layer-group__toggle"
+              aria-expanded={open}
+              aria-label={label}
+              title={collapsed ? label : undefined}
+              onClick={() => {
+                if (collapsed) return;
+                setOpenGroups((prev) => ({ ...prev, [group]: !(prev[group] ?? true) }));
+              }}
+            >
+              <span className="layer-group__icon">{iconForGroup(group)}</span>
+              {!collapsed && <SectionLabel>{label}</SectionLabel>}
+              {!collapsed && (
                 <span className="layer-group__chevron" aria-hidden>
                   {open ? "▾" : "▸"}
                 </span>
-              </button>
-            )}
-            {(collapsed || open) &&
+              )}
+            </button>
+            {open &&
               layers.map((layer) => {
                 const state = runtime[layer.id] ?? { visible: false, opacity: 1 };
                 const usable = isLayerUsable(layer);
@@ -97,35 +110,30 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
                   <div
                     key={layer.id}
                     className={`layer-row${state.visible ? " layer-row--on" : ""}`}
-                    title={collapsed ? layer.label : layer.purpose}
+                    title={layer.purpose}
                   >
-                    <span className="layer-row__icon">{iconFor(layer)}</span>
-                    {!collapsed && (
-                      <div className="layer-row__main">
-                        <span className="layer-row__name">{layer.label}</span>
-                        {layer.vintage && <span className="layer-row__meta">{layer.vintage}</span>}
-                      </div>
-                    )}
-                    {!collapsed && (
-                      <Switch
-                        checked={state.visible}
-                        label={`Show ${layer.label}`}
-                        disabled={!usable}
-                        onChange={() => {
-                          if (!usable) {
-                            // Never fail silently: say what is missing and where to fix it.
-                            notify({
-                              tone: "info",
-                              message: `${layer.label} is not available yet`,
-                              detail: reason ?? undefined,
-                            });
-                            setView("settings");
-                            return;
-                          }
-                          toggle(layer.id);
-                        }}
-                      />
-                    )}
+                    <div className="layer-row__main">
+                      <span className="layer-row__name">{layer.label}</span>
+                      {layer.vintage && <span className="layer-row__meta">{layer.vintage}</span>}
+                    </div>
+                    <Switch
+                      checked={state.visible}
+                      label={`Show ${layer.label}`}
+                      disabled={!usable}
+                      onChange={() => {
+                        if (!usable) {
+                          // Never fail silently: say what is missing and where to fix it.
+                          notify({
+                            tone: "info",
+                            message: `${layer.label} is not available yet`,
+                            detail: reason ?? undefined,
+                          });
+                          setView("settings");
+                          return;
+                        }
+                        toggle(layer.id);
+                      }}
+                    />
                   </div>
                 );
               })}
@@ -139,20 +147,27 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
         <div className="layer-panel__opacity">
           <SectionLabel>Visible layer opacity</SectionLabel>
           {LAYER_CATALOGUE.filter((layer) => runtime[layer.id]?.visible && layer.id !== "sites").map(
-            (layer) => (
-              <label key={layer.id} className="layer-panel__slider">
-                <span>{layer.label}</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={runtime[layer.id]?.opacity ?? 1}
-                  aria-label={`${layer.label} opacity`}
-                  onChange={(event) => setOpacity(layer.id, Number(event.target.value))}
-                />
-              </label>
-            ),
+            (layer) => {
+              const opacity = runtime[layer.id]?.opacity ?? 1;
+              const percent = Math.round(opacity * 100);
+              return (
+                <label key={layer.id} className="layer-panel__slider">
+                  <span className="layer-panel__slider-label">{layer.label}</span>
+                  <input
+                    className="layer-panel__range"
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={percent}
+                    aria-label={`${layer.label} opacity`}
+                    aria-valuetext={`${percent}%`}
+                    onChange={(event) => setOpacity(layer.id, Number(event.target.value) / 100)}
+                  />
+                  <span className="layer-panel__slider-value">{percent}%</span>
+                </label>
+              );
+            },
           )}
         </div>
       )}

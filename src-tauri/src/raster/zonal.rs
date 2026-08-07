@@ -106,7 +106,12 @@ pub fn compute<R: std::io::Read + std::io::Seek>(
     let bbox_px = ((bx1 - bx0 + 1).max(1) as f64) * ((by1 - by0 + 1).max(1) as f64);
 
     let mut level = raster.info.choose_level(bbox_px, options.min_pixels);
-    let mut transform = base.scaled(level.scale);
+    let mut transform = base.for_overview(
+        raster.info.width,
+        raster.info.height,
+        level.width,
+        level.height,
+    );
     let mut window = pixel_window(&transform, min_x, min_y, max_x, max_y, level)
         .ok_or_else(|| Error::NoData("polygon does not overlap the raster".into()))?;
 
@@ -122,7 +127,12 @@ pub fn compute<R: std::io::Read + std::io::Seek>(
         match coarser {
             Some(next) => {
                 level = next;
-                transform = base.scaled(level.scale);
+                transform = base.for_overview(
+                    raster.info.width,
+                    raster.info.height,
+                    level.width,
+                    level.height,
+                );
                 window = pixel_window(&transform, min_x, min_y, max_x, max_y, level)
                     .ok_or_else(|| Error::NoData("polygon does not overlap the raster".into()))?;
             }

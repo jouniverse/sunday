@@ -27,6 +27,8 @@ export interface LayerDefinition {
   /** One line on what the layer is for. */
   purpose: string;
   source: string;
+  /** Download / documentation URL shown as a link in Help. */
+  sourceUrl?: string;
   vintage?: string;
   licence?: string;
   /** Whether the layer is usable right now, and if not what is missing. */
@@ -58,6 +60,7 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "raster",
     purpose: "The primary solar resource surface for photovoltaic yield.",
     source: "Global Solar Atlas (Solargis / World Bank ESMAP)",
+    sourceUrl: "https://globalsolaratlas.info/download/world",
     vintage: "2020 release",
     licence: "CC BY 4.0",
     availability: { state: "needs-download", dataset: "gsa-ghi", approximateMb: 480 },
@@ -78,11 +81,18 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "raster",
     purpose: "Decisive for concentrating solar power, which cannot use diffuse light.",
     source: "Global Solar Atlas (Solargis / World Bank ESMAP)",
+    sourceUrl: "https://globalsolaratlas.info/download/world",
     vintage: "2020 release",
     licence: "CC BY 4.0",
     availability: { state: "needs-download", dataset: "gsa-dni", approximateMb: 480 },
     defaultVisible: false,
     units: "kWh/m²/year",
+    // Same ramp as GHI paint — map canvas legend shows viewport min/max stretch.
+    legend: [
+      { colour: "#3b2f6b", label: "Low" },
+      { colour: "#d9a441", label: "Mid" },
+      { colour: "#fff0c2", label: "High" },
+    ],
   },
   {
     id: "gsa-pvout",
@@ -91,11 +101,17 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "raster",
     purpose: "Specific yield for a reference system, useful for a quick comparison.",
     source: "Global Solar Atlas (Solargis / World Bank ESMAP)",
+    sourceUrl: "https://globalsolaratlas.info/download/world",
     vintage: "2020 release",
     licence: "CC BY 4.0",
     availability: { state: "needs-download", dataset: "gsa-pvout", approximateMb: 260 },
     defaultVisible: false,
     units: "kWh/kWp/year",
+    legend: [
+      { colour: "#3b2f6b", label: "Low" },
+      { colour: "#d9a441", label: "Mid" },
+      { colour: "#fff0c2", label: "High" },
+    ],
   },
   {
     id: "gem-solar",
@@ -104,6 +120,7 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "vector",
     purpose: "Named utility-scale plants with capacity, status and technology.",
     source: "Global Energy Monitor, Global Solar Power Tracker",
+    sourceUrl: "https://globalenergymonitor.org/projects/global-solar-power-tracker",
     vintage: "February 2026",
     licence: "CC BY 4.0 (rows cross-referenced to TZ-SAM are BY-NC)",
     availability: { state: "needs-download", dataset: "gem-solar", approximateMb: 33 },
@@ -116,6 +133,20 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     ],
   },
   {
+    id: "tz-sam",
+    label: "Global PV footprints",
+    group: "infrastructure",
+    kind: "vector",
+    purpose: "Imagery-derived footprints with estimated capacity, worldwide.",
+    source: "TransitionZero Solar Asset Mapper",
+    sourceUrl: "https://zenodo.org/records/11368204",
+    // No vintage — TZ-SAM GeoJSON/QMD do not stamp a release quarter we can trust.
+    licence: "CC BY-NC 4.0",
+    // Installed via Settings; still requires the NC toggle before the layer is usable.
+    availability: { state: "needs-download", dataset: "tz-sam", approximateMb: 0 },
+    defaultVisible: false,
+  },
+  {
     id: "gmseus-arrays",
     label: "US ground-mounted arrays",
     group: "infrastructure",
@@ -123,22 +154,11 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     purpose:
       "Measured array footprints with coverage ratios and mount type — the empirical basis " +
       "for Sunday's packing defaults.",
-    source: "GM-SEUS v2.0",
-    vintage: "2024",
+    source: "GM-SEUS v2.1",
+    sourceUrl: "https://zenodo.org/records/21445384",
+    vintage: "2025",
     licence: "CC BY 4.0",
     availability: { state: "needs-download", dataset: "gmseus-arrays", approximateMb: 55 },
-    defaultVisible: false,
-  },
-  {
-    id: "tz-sam",
-    label: "Global PV footprints",
-    group: "infrastructure",
-    kind: "vector",
-    purpose: "Imagery-derived footprints with estimated capacity, worldwide.",
-    source: "TransitionZero Solar Asset Mapper",
-    vintage: "Q1 2024",
-    licence: "CC BY-NC 4.0",
-    availability: { state: "licence-gated", licence: "CC BY-NC 4.0" },
     defaultVisible: false,
   },
   {
@@ -150,6 +170,7 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
       "Mapped transmission lines and substations, for proximity context only — not hosting " +
       "capacity.",
     source: "OpenStreetMap via OpenInfraMap",
+    sourceUrl: "https://openinframap.org/",
     licence: "ODbL",
     // Tiles/query wiring lands with the P1 grid overlay; do not advertise ready.
     availability: { state: "needs-download", dataset: "osm-power", approximateMb: 0 },
@@ -168,6 +189,7 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "vector",
     purpose: "Hard exclusion in every siting framework.",
     source: "World Database on Protected Areas",
+    sourceUrl: "https://www.protectedplanet.net/en/thematic-areas/wdpa?tab=WDPA",
     licence: "WDPA terms of use",
     availability: { state: "needs-download", dataset: "wdpa", approximateMb: 210 },
     defaultVisible: false,
@@ -179,6 +201,7 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "raster",
     purpose: "Cropland, forest, wetland and barren classes, for the siting soft rules.",
     source: "ESA WorldCover",
+    sourceUrl: "https://registry.opendata.aws/esa-worldcover-vito/",
     vintage: "2021",
     licence: "CC BY 4.0",
     availability: { state: "needs-download", dataset: "landcover", approximateMb: 640 },
@@ -191,23 +214,11 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     kind: "derived",
     purpose: "Slope derived from an elevation model, for grading risk.",
     source: "Copernicus DEM via the active terrain basemap",
+    sourceUrl: "https://registry.opendata.aws/terrain-tiles/",
     licence: "Copernicus terms",
     availability: { state: "needs-key", provider: "maptiler" },
     defaultVisible: false,
     units: "%",
-  },
-  {
-    id: "google-solar-flux",
-    label: "Rooftop annual flux",
-    group: "resource",
-    kind: "raster",
-    purpose:
-      "Per-pixel rooftop irradiance for building-level design. Toggle is catalogue-only for now — load flux from Rooftop Design (Wave 3 will paint the Project map).",
-    source: "Google Solar API data layers",
-    licence: "Google Maps Platform terms",
-    availability: { state: "needs-key", provider: "google_solar" },
-    defaultVisible: false,
-    units: "kWh/kW/year",
   },
   {
     id: "sites",
@@ -250,6 +261,14 @@ export function layerById(id: string): LayerDefinition | undefined {
 }
 
 export function isLayerUsable(layer: LayerDefinition): boolean {
+  // TZ-SAM is always dual-gated: installed + NC acceptance (even after markAvailable).
+  if (layer.id === "tz-sam") {
+    const installed =
+      layer.availability.state === "ready" ||
+      Boolean(useSettingsStore.getState().datasets["tz-sam"]?.downloaded);
+    return installed && useSettingsStore.getState().preferences.acceptNonCommercialLayers;
+  }
+
   if (layer.availability.state === "ready") return true;
 
   // Runtime unlocks: a key in Settings or an installed dataset makes the layer
@@ -260,7 +279,15 @@ export function isLayerUsable(layer: LayerDefinition): boolean {
   }
 
   if (layer.availability.state === "needs-download") {
-    return Boolean(useSettingsStore.getState().datasets[layer.availability.dataset]?.downloaded);
+    if (useSettingsStore.getState().datasets[layer.availability.dataset]?.downloaded) {
+      return true;
+    }
+    // GSA rasters can also be used from a cloud URL or local dir without Install.
+    if (layer.id.startsWith("gsa-")) {
+      const prefs = useSettingsStore.getState().preferences;
+      return Boolean(prefs.rasterBaseUrl.trim() || prefs.rasterLocalDir.trim());
+    }
+    return false;
   }
 
   if (layer.availability.state === "licence-gated") {
@@ -272,16 +299,38 @@ export function isLayerUsable(layer: LayerDefinition): boolean {
 
 /** Human-readable reason a layer cannot be switched on yet. */
 export function unavailableReason(layer: LayerDefinition): string | null {
+  if (layer.id === "tz-sam") {
+    const installed =
+      layer.availability.state === "ready" ||
+      Boolean(useSettingsStore.getState().datasets["tz-sam"]?.downloaded);
+    if (!installed) {
+      return "Install the Global PV footprints dataset in Settings.";
+    }
+    if (!useSettingsStore.getState().preferences.acceptNonCommercialLayers) {
+      return "Enable “Allow non-commercial licensed layers” in Settings (CC BY-NC 4.0).";
+    }
+    return null;
+  }
+
   switch (layer.availability.state) {
     case "ready":
       return null;
     case "needs-key":
       return `Add a ${layer.availability.provider.replace("_", " ")} API key in Settings to use this layer.`;
-    case "needs-download":
+    case "needs-download": {
       if (layer.availability.approximateMb <= 0) {
         return `${layer.label} is catalogued but not wired to a live source yet.`;
       }
-      return `Download the ${layer.availability.dataset} dataset (about ${layer.availability.approximateMb} MB) in Settings.`;
+      if (layer.id === "tz-sam") {
+        const downloaded = Boolean(
+          useSettingsStore.getState().datasets["tz-sam"]?.downloaded,
+        );
+        if (downloaded && !useSettingsStore.getState().preferences.acceptNonCommercialLayers) {
+          return "Enable “Allow non-commercial licensed layers” in Settings (CC BY-NC 4.0).";
+        }
+      }
+      return `Install the ${layer.availability.dataset} dataset (about ${layer.availability.approximateMb} MB) in Settings.`;
+    }
     case "needs-desktop":
       return "This layer needs the desktop app rather than the browser dev server.";
     case "licence-gated":
@@ -331,9 +380,9 @@ export const useLayerStore = create<LayerState>((set, get) => ({
   replaceAll: (runtime) => set({ runtime: { ...initialRuntime(), ...runtime } }),
 
   markAvailable: (id) => {
-    const layer = layerById(id);
-    if (layer) layer.availability = { state: "ready" };
-    // Force subscribers to re-read the catalogue.
+    // Do not mutate catalogue availability — Settings lists Install rows by
+    // dataset id, and usability comes from datasets.downloaded / keys / NC.
+    void id;
     set((state) => ({ runtime: { ...state.runtime } }));
   },
 }));

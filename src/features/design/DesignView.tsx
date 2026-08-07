@@ -6,14 +6,14 @@
  * and every consequence updates live. Nothing is hidden and nothing is locked.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import type { Site } from "@/core/store/siteStore";
 import { newDesignId, useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
-import { Button, Field, Input, Select, Stepper } from "@/design-system/controls";
+import { Button, Field, IconButton, Input, Select, Stepper } from "@/design-system/controls";
 import {
   Callout,
   EmptyState,
@@ -25,7 +25,7 @@ import {
   Stat,
   StatCluster,
 } from "@/design-system/data";
-import { CompassIcon, PanelIcon, PolygonIcon } from "@/design-system/icons";
+import { CompassIcon, CrosshairIcon, PanelIcon, PolygonIcon } from "@/design-system/icons";
 import { COST_DEFAULTS, computeLcoe, computeOwnerCashFlow } from "@/domain/finance/cashflow";
 import {
   computeFillFactor,
@@ -50,7 +50,7 @@ import { exportDesignHtml } from "@/services/export/design-html";
 import { buildZip } from "@/services/export/zip";
 import { SidePanel } from "@/shell/SidePanel";
 import { satelliteSnapshot } from "@/core/map/satelliteExport";
-import { ArrayMapPreview } from "./ArrayMapPreview";
+import { ArrayMapPreview, type ArrayMapPreviewHandle } from "./ArrayMapPreview";
 import { buildFullSchematicSvg, computeArrayStrips } from "./ArrayPreview";
 import { DesignExportMenu, type DesignExportFormat } from "./DesignExportMenu";
 import { RooftopDesignView } from "./RooftopDesignView";
@@ -131,6 +131,7 @@ function DesignWorkspace({ site }: { site: Site }) {
     return active?.name ?? "";
   });
   const [siteNameDraft, setSiteNameDraft] = useState(site.name);
+  const mapPreviewRef = useRef<ArrayMapPreviewHandle | null>(null);
 
   const module =
     moduleById(moduleId) ?? (MODULE_LIBRARY[0] as NonNullable<ReturnType<typeof moduleById>>);
@@ -572,7 +573,7 @@ function DesignWorkspace({ site }: { site: Site }) {
   const area = scaleArea(site.areaM2);
 
   return (
-    <>
+    <div className="map-workspace">
       <div className="subbar">
         <div className="breadcrumb design-breadcrumb">
           <span>Design</span>
@@ -660,11 +661,19 @@ function DesignWorkspace({ site }: { site: Site }) {
                 />
               </Field>
               <Field label="Design name">
-                <Input
-                  value={designNameDraft}
-                  onChange={(event) => setDesignNameDraft(event.target.value)}
-                  placeholder="e.g. Fixed 32° south"
-                />
+                <div className="design-name-row">
+                  <Input
+                    value={designNameDraft}
+                    onChange={(event) => setDesignNameDraft(event.target.value)}
+                    placeholder="e.g. Fixed 32° south"
+                  />
+                  <IconButton
+                    label="Zoom to site"
+                    onClick={() => mapPreviewRef.current?.fitToSite()}
+                  >
+                    <CrosshairIcon size={16} />
+                  </IconButton>
+                </div>
               </Field>
 
               <Field label="Module">
@@ -814,6 +823,7 @@ function DesignWorkspace({ site }: { site: Site }) {
           <div className="design-preview-stack">
             <div className="design-preview-stack__map">
               <ArrayMapPreview
+                ref={mapPreviewRef}
                 site={site}
                 module={module}
                 tiltDegrees={tilt}
@@ -1021,7 +1031,7 @@ function DesignWorkspace({ site }: { site: Site }) {
           )}
         </SidePanel>
       </div>
-    </>
+    </div>
   );
 }
 

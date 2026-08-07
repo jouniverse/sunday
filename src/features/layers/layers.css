@@ -3,14 +3,21 @@
 .layer-panel {
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Collapsed left rail: stack section icons with no gaps. */
+.layer-panel--rail {
+  gap: 0;
 }
 
 .layer-group__toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   width: 100%;
-  padding: 0;
+  /* Even vertical padding so the 16px icon centres with the label. */
+  padding: 6px 0;
   margin: 0;
   border: none;
   background: transparent;
@@ -20,7 +27,27 @@
 }
 
 .layer-group__toggle .ds-section__label {
+  /* SectionLabel's default padding is top-heavy and throws off flex centering. */
   margin-bottom: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.layer-group__icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+  color: var(--on-surface-variant);
+}
+
+/* LayersIcon sits optically a touch high vs the other glyphs. */
+.layer-group--context .layer-group__icon {
+  margin-top: 2px;
 }
 
 .layer-group__chevron {
@@ -28,6 +55,26 @@
   font-size: 11px;
   color: var(--on-surface-variant);
   padding-right: var(--space-2);
+}
+
+.layer-panel--rail .layer-group__toggle {
+  justify-content: center;
+  padding: 10px 0;
+  border-radius: var(--r-md);
+  cursor: default;
+}
+
+.layer-panel--rail .layer-group__toggle:hover {
+  background: var(--surface-container-high);
+}
+
+.layer-panel--rail .layer-group__icon {
+  color: var(--on-surface-variant);
+}
+
+.layer-panel .layer-row {
+  /* Past section icon (16) + gap (8), then +15 so titles sit under the label. */
+  padding-left: calc(16px + 8px + 15px);
 }
 
 .layer-row__main {
@@ -43,25 +90,79 @@
 }
 
 .layer-panel__slider {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: var(--gap);
-  padding: 4px var(--space-2);
+  gap: 8px;
+  padding: 6px var(--space-2);
   font-size: 11.5px;
   color: var(--on-surface-variant);
 }
 
-.layer-panel__slider span {
-  flex: 1;
+.layer-panel__slider-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.layer-panel__slider input {
-  flex: 0 0 96px;
-  accent-color: var(--primary);
+.layer-panel__slider-value {
+  flex: 0 0 auto;
+  min-width: 2.5em;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--outline);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Match Design-view range thumbs (rooftop-map-controls__range / ds-envelope):
+ * amber thumb on a muted track — not the unstyled browser accent slider.
+ */
+.layer-panel__range {
+  width: 96px;
+  height: 22px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: inherit;
+}
+
+.layer-panel__range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--outline-variant);
+}
+
+.layer-panel__range::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 16px;
+  margin-top: -5px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--primary);
+  cursor: inherit;
+}
+
+.layer-panel__range:active::-webkit-slider-thumb {
+  background: var(--primary-container);
+}
+
+.layer-panel__range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--outline-variant);
+}
+
+.layer-panel__range::-moz-range-thumb {
+  width: 12px;
+  height: 16px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: var(--primary);
+  cursor: inherit;
 }
 
 .layer-detail {

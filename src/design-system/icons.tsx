@@ -184,6 +184,38 @@ export const SunIcon = (props: IconProps) => (
   </Icon>
 );
 
+/**
+ * App wordmark mark — horizon arc + ring from the Sunday logo, transparent
+ * background. Stroke uses currentColor so chrome can be amber or white.
+ * Source art: notes/ui-design/logo-design/sunday-app-icon-white.svg
+ */
+export const SundayLogoMark = ({ size = 20, ...rest }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 2048 2048"
+    fill="none"
+    aria-hidden="true"
+    focusable="false"
+    {...rest}
+  >
+    <circle
+      cx="1018.79"
+      cy="1071.51"
+      r="777.55"
+      stroke="currentColor"
+      strokeMiterlimit={10}
+      strokeWidth={20}
+    />
+    <path
+      d="M238.45,1026.79c1.26-100.06,18.63-201.75,60.79-294.75,1.24-3.72,1.24-7.44,2.48-11.16,48.36-107.88,115.32-202.13,207.09-280.25,69.44-58.28,142.61-102.92,224.45-135.16,110.36-42.16,228.17-59.52,347.21-48.36h12.4c114.08,12.4,220.73,44.64,321.17,105.4,6.2,3.72,12.4,7.44,18.6,11.16,22.32,17.36,44.64,29.76,65.72,47.12,38.44,32.24,73.16,63.24,106.64,101.68,1.24,1.24,1.24,3.72,2.48,4.96,122.76,138.89,187.25,314.97,188.1,496.49"
+      stroke="currentColor"
+      strokeMiterlimit={10}
+      strokeWidth={100}
+    />
+  </svg>
+);
+
 export const PanelIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M3 6h18l-2 8H5L3 6z" />
@@ -261,9 +293,19 @@ export const CheckIcon = (props: IconProps) => (
   </Icon>
 );
 
+/** Generic compass glyph (e.g. array azimuth readout). */
 export const CompassIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="12" cy="12" r="9" />
     <path d="M15.5 8.5l-2 5-5 2 2-5z" />
+  </Icon>
+);
+
+/** Map north needle — solid north / light south; rotate with −bearing. */
+export const MapNorthIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 21 L15.8 12 H8.2 Z" opacity={0.28} fill="currentColor" stroke="none" />
+    <path d="M12 3 L15.8 12 H8.2 Z" fill="currentColor" stroke="none" />
   </Icon>
 );

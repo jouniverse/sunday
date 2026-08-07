@@ -8,10 +8,20 @@
  */
 
 import { Map as MapLibreMap, type GeoJSONSource } from "maplibre-gl";
-import { useEffect, useMemo, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { basemapById } from "@/core/map/basemaps";
 import "@/core/map/maplibre-worker";
+import "@/core/map/map.css";
 import type { Site } from "@/core/store/siteStore";
+import { IconButton } from "@/design-system/controls";
+import { MapNorthIcon } from "@/design-system/icons";
 import type { ModuleSpec, MountType } from "@/domain/packing/priors";
 import { computeArrayStrips } from "./ArrayPreview";
 
@@ -22,31 +32,42 @@ const STRIPS_SOURCE = "sunday-array-strips";
 
 export type ArrayMapBasemap = "satellite" | "schematic";
 
-export function ArrayMapPreview({
-  site,
-  module,
-  tiltDegrees,
-  gcr,
-  azimuth,
-  mount = "fixed_tilt",
-  showStrips,
-  basemap = "satellite",
-  onCaptureReady,
-}: {
-  site: Site;
-  module: ModuleSpec;
-  tiltDegrees: number;
-  gcr: number;
-  azimuth: number;
-  mount?: MountType;
-  showStrips: boolean;
-  /** Dark blank canvas for schematic-only; Esri imagery for satellite modes. */
-  basemap?: ArrayMapBasemap;
-  onCaptureReady?: (capture: () => string | null) => void;
-}) {
+export interface ArrayMapPreviewHandle {
+  fitToSite: () => void;
+}
+
+export const ArrayMapPreview = forwardRef<
+  ArrayMapPreviewHandle,
+  {
+    site: Site;
+    module: ModuleSpec;
+    tiltDegrees: number;
+    gcr: number;
+    azimuth: number;
+    mount?: MountType;
+    showStrips: boolean;
+    /** Dark blank canvas for schematic-only; Esri imagery for satellite modes. */
+    basemap?: ArrayMapBasemap;
+    onCaptureReady?: (capture: () => string | null) => void;
+  }
+>(function ArrayMapPreview(
+  {
+    site,
+    module,
+    tiltDegrees,
+    gcr,
+    azimuth,
+    mount = "fixed_tilt",
+    showStrips,
+    basemap = "satellite",
+    onCaptureReady,
+  },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const readyRef = useRef(false);
+  const [bearing, setBearing] = useState(0);
 
   // Full strip set — WebGL can hold tens of thousands; no viewport truncation.
   const layout = useMemo(
@@ -100,6 +121,13 @@ export function ArrayMapPreview({
     if (map.getLayer("strips-line")) map.setLayoutProperty("strips-line", "visibility", visibility);
   }
 
+  useImperativeHandle(ref, () => ({
+    fitToSite: () => {
+      const map = mapRef.current;
+      if (map) fitSite(map, site);
+    },
+  }));
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     readyRef.current = false;
@@ -113,8 +141,21 @@ export function ArrayMapPreview({
       center: site.centre,
       zoom: 15,
       attributionControl: { compact: true },
+      dragRotate: true,
+      maxPitch: 75,
     });
     mapRef.current = map;
+
+    let rotateRaf = 0;
+    const syncBearing = () => {
+      if (rotateRaf) return;
+      rotateRaf = requestAnimationFrame(() => {
+        rotateRaf = 0;
+        setBearing(map.getBearing());
+      });
+    };
+    map.on("rotate", syncBearing);
+    map.on("moveend", syncBearing);
 
     map.on("load", () => {
       map.addSource(SITE_SOURCE, { type: "geojson", data: siteGeoJsonRef.current });
@@ -155,6 +196,7 @@ export function ArrayMapPreview({
       readyRef.current = true;
       pushStrips(map);
       fitSite(map, site);
+      setBearing(map.getBearing());
       requestAnimationFrame(() => map.resize());
     });
 
@@ -195,10 +237,33 @@ export function ArrayMapPreview({
   }, [stripsGeoJson, showStrips]);
 
   const stripCount = layout?.stripCount ?? 0;
+  const offNorth = Math.abs(((bearing % 360) + 360) % 360) > 0.5;
+
+  const resetNorth = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.easeTo({ bearing: 0, duration: 400 });
+  };
 
   return (
     <div className="array-map-preview">
       <div className="array-map-preview__map" ref={containerRef} />
+      <div className="canvas__overlay canvas__overlay--bottom-right map-controls array-map-preview__controls">
+        <IconButton
+          className="map-controls__compass-btn array-map-preview__compass-btn"
+          label={offNorth ? "Reset map north" : "Map facing north"}
+          onClick={resetNorth}
+          active={offNorth}
+        >
+          <span
+            className="map-controls__compass array-map-preview__compass"
+            style={{ transform: `rotate(${-bearing}deg)` }}
+            aria-hidden
+          >
+            <MapNorthIcon size={32} />
+          </span>
+        </IconButton>
+      </div>
       {stripCount > 0 && (
         <p className="array-preview__banner array-preview__banner--footer">
           {stripCount.toLocaleString()} row strips · WebGL schematic
@@ -208,7 +273,7 @@ export function ArrayMapPreview({
       )}
     </div>
   );
-}
+});
 
 function emptyFc(): GeoJSON.FeatureCollection {
   return { type: "FeatureCollection", features: [] };
@@ -254,6 +319,6 @@ function fitSite(map: MapLibreMap, site: Site) {
       [minLng, minLat],
       [maxLng, maxLat],
     ],
-    { padding: 48, duration: 0, maxZoom: 18 },
+    { padding: 48, duration: 450, maxZoom: 18 },
   );
 }

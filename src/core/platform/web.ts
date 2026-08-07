@@ -17,10 +17,12 @@ import type {
   LibraryIndex,
   LoadedProject,
   NearbyFeature,
+  PlantCentroid,
   Platform,
   ProjectDocument,
   SettingsView,
   VectorFeature,
+  ViewportPreview,
   ZonalResult,
 } from "./types";
 import { PlatformError, unavailable } from "./types";
@@ -279,6 +281,9 @@ export const webPlatform: Platform = {
     async zonalStats(): Promise<ZonalResult> {
       throw unavailable("Zonal statistics over raster data");
     },
+    async viewportPreview(): Promise<ViewportPreview> {
+      throw unavailable("Solar resource map overlays");
+    },
   },
 
   vector: {
@@ -290,6 +295,9 @@ export const webPlatform: Platform = {
     async queryBbox(_query: BboxQuery): Promise<BboxResult> {
       return { features: [], total: 0, truncated: false };
     },
+    async listCentroids(): Promise<PlantCentroid[]> {
+      return [];
+    },
     async getFeature(): Promise<VectorFeature | null> {
       return null;
     },
@@ -298,6 +306,21 @@ export const webPlatform: Platform = {
     },
     async importFeatures(): Promise<number> {
       throw unavailable("Importing a dataset");
+    },
+  },
+
+  datasets: {
+    async pickDirectory() {
+      throw unavailable("Choosing a datasets folder");
+    },
+    async gdalAvailable() {
+      return false;
+    },
+    async discover() {
+      throw unavailable("Discovering datasets");
+    },
+    async install() {
+      throw unavailable("Installing a dataset");
     },
   },
 

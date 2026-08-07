@@ -184,6 +184,7 @@
 }
 
 .ds-provenance__dot {
+  margin-top: 6px;
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -325,6 +326,7 @@
 }
 
 .ds-callout--warning {
+  margin-top: 5px;
   border-left-color: var(--warning);
   color: var(--on-surface);
 }

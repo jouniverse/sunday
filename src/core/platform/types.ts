@@ -198,6 +198,27 @@ export interface ZonalResult {
   raster: RasterInfo;
 }
 
+export interface GeoBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+/** Colourised viewport window of a COG for MapLibre image overlays. */
+export interface ViewportPreview {
+  width: number;
+  height: number;
+  /** RGBA8 pixels, base64-encoded. */
+  rgbaBase64: string;
+  bounds: GeoBounds;
+  min: number;
+  max: number;
+  method: string;
+  levelScale: number;
+  validCount: number;
+}
+
 export interface RasterApi {
   info(source: RasterSource): Promise<RasterInfo>;
   /** Rings are GeoJSON-style: outer ring first, the rest are holes. */
@@ -206,6 +227,12 @@ export interface RasterApi {
     rings: Array<Array<[number, number]>>,
     options?: { band?: number; geographic?: boolean },
   ): Promise<ZonalResult>;
+  /** Windowed overview paint for GSA (and similar) map overlays. */
+  viewportPreview(
+    source: RasterSource,
+    bounds: { minLon: number; minLat: number; maxLon: number; maxLat: number },
+    options?: { band?: number; maxPixels?: number },
+  ): Promise<ViewportPreview>;
 }
 
 /* --- Vector datasets ------------------------------------------------------ */
@@ -246,6 +273,20 @@ export interface BboxResult {
   truncated: boolean;
 }
 
+/** Lean plant point for one-shot client-side clustering (no properties/geometry). */
+export interface PlantCentroid {
+  id: string;
+  lon: number;
+  lat: number;
+  capacityMw: number | null;
+  status: string | null;
+  technology: string | null;
+  country: string | null;
+  name: string | null;
+  source: string;
+  vintage: string | null;
+}
+
 export interface DatasetSummary {
   dataset: string;
   source: string;
@@ -262,6 +303,8 @@ export interface NearbyFeature extends VectorFeature {
 export interface VectorApi {
   datasets(): Promise<DatasetSummary[]>;
   queryBbox(query: BboxQuery): Promise<BboxResult>;
+  /** All centroids for a dataset — load once, cluster client-side. */
+  listCentroids(dataset: string): Promise<PlantCentroid[]>;
   getFeature(dataset: string, id: string): Promise<VectorFeature | null>;
   nearest(
     dataset: string,
@@ -277,6 +320,32 @@ export interface VectorApi {
     license?: string;
     features: VectorFeature[];
   }): Promise<number>;
+}
+
+/* --- Dataset discover / install (Settings) -------------------------------- */
+
+export interface DatasetDiscoverResult {
+  dataset: string;
+  path: string | null;
+  kind: string | null;
+  expected: string[];
+}
+
+export interface DatasetInstallResult {
+  dataset: string;
+  installedPath: string;
+  featureCount: number | null;
+  sizeMb: number;
+  usedGdal: boolean;
+  detail: string;
+}
+
+export interface DatasetsApi {
+  /** Native folder picker; null when cancelled. Browser: unavailable. */
+  pickDirectory(): Promise<string | null>;
+  gdalAvailable(): Promise<boolean>;
+  discover(root: string, datasetId: string): Promise<DatasetDiscoverResult>;
+  install(datasetId: string, sourcePath: string): Promise<DatasetInstallResult>;
 }
 
 /* --- Solar engine sidecar ------------------------------------------------- */
@@ -340,6 +409,7 @@ export interface Platform {
   library: ProjectLibraryApi;
   raster: RasterApi;
   vector: VectorApi;
+  datasets: DatasetsApi;
   engine: EngineApi;
   shell: ShellApi;
   http: HttpApi;

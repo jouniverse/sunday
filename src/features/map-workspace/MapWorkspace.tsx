@@ -6,11 +6,15 @@
  * supplied by the shell.
  */
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { MapView } from "@/core/map/MapView";
 import { availableBasemaps, scaleBarFor } from "@/core/map/basemaps";
 import { measure } from "@/core/map/draw/engine";
 import { useDrawStore } from "@/core/map/draw/store";
+import {
+  getActiveGsaPreview,
+  subscribeGsaPreview,
+} from "@/core/map/resourceRasterLayers";
 import { useLayerStore } from "@/core/store/layerStore";
 import { useMapStore } from "@/core/store/mapStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
@@ -19,6 +23,7 @@ import { useUiStore } from "@/core/store/uiStore";
 import { IconButton, Select } from "@/design-system/controls";
 import {
   CrosshairIcon,
+  MapNorthIcon,
   MinusIcon,
   PinIcon,
   PlusIcon,
@@ -65,7 +70,7 @@ export function MapWorkspace() {
   }, [sites]);
 
   return (
-    <>
+    <div className="map-workspace">
       <MapSubBar totalAreaM2={totals.areaM2} totalAnnualKwh={totals.annualKwh} siteName={selected?.name} />
 
       <div className="workspace">
@@ -84,11 +89,20 @@ export function MapWorkspace() {
         </SidePanel>
 
         <main className="canvas">
-          <MapView />
+          <div className="canvas__map-slot">
+            <MapView />
+          </div>
           <MapToolbelt />
           <DrawReadout />
           <MapControls />
-          <ScaleBar />
+          {/*
+            Same stacking level as MapControls (sibling of the WebGL host).
+            WKWebView often paints the MapLibre canvas over HTML inside the map slot.
+          */}
+          <div className="canvas__overlay canvas__overlay--bottom-left canvas__raster-furniture">
+            <ResourceRasterLegend />
+            <ScaleBar />
+          </div>
           {rightCollapsed && <RightPanelReopen onClick={() => setRightCollapsed(false)} />}
         </main>
 
@@ -101,7 +115,7 @@ export function MapWorkspace() {
           <SiteInspector />
         </SidePanel>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -259,18 +273,50 @@ function MapControls() {
     });
   };
 
+  const resetNorth = () => {
+    flyTo({
+      longitude: viewport.longitude,
+      latitude: viewport.latitude,
+      zoom: viewport.zoom,
+      bearing: 0,
+      pitch: viewport.pitch,
+    });
+  };
+
+  const bearing = viewport.bearing;
+  const offNorth = Math.abs(((bearing % 360) + 360) % 360) > 0.5;
+
   return (
-    <div className="canvas__overlay canvas__overlay--bottom-right map-controls">
-      <IconButton label="Zoom in" onClick={() => zoomBy(1)}>
-        <PlusIcon size={14} />
-      </IconButton>
-      <IconButton label="Zoom out" onClick={() => zoomBy(-1)}>
-        <MinusIcon size={14} />
-      </IconButton>
-      <IconButton label="Zoom to all sites" onClick={fitAll} disabled={sites.length === 0}>
-        <CrosshairIcon size={14} />
-      </IconButton>
-    </div>
+    <>
+      {/* Compass is a separate control so it does not stretch the zoom stack. */}
+      <div className="canvas__overlay map-compass-control">
+        <IconButton
+          className="map-controls__compass-btn"
+          label={offNorth ? "Reset map north" : "Map facing north"}
+          onClick={resetNorth}
+          active={offNorth}
+        >
+          <span
+            className="map-controls__compass"
+            style={{ transform: `rotate(${-bearing}deg)` }}
+            aria-hidden
+          >
+            <MapNorthIcon size={28} />
+          </span>
+        </IconButton>
+      </div>
+      <div className="canvas__overlay canvas__overlay--bottom-right map-controls">
+        <IconButton label="Zoom in" onClick={() => zoomBy(1)}>
+          <PlusIcon size={14} />
+        </IconButton>
+        <IconButton label="Zoom out" onClick={() => zoomBy(-1)}>
+          <MinusIcon size={14} />
+        </IconButton>
+        <IconButton label="Zoom to all sites" onClick={fitAll} disabled={sites.length === 0}>
+          <CrosshairIcon size={14} />
+        </IconButton>
+      </div>
+    </>
   );
 }
 
@@ -279,9 +325,42 @@ function ScaleBar() {
   const bar = scaleBarFor(viewport.zoom, viewport.latitude);
 
   return (
-    <div className="canvas__overlay canvas__overlay--bottom-left scale-bar">
+    <div className="scale-bar">
       <div className="scale-bar__bar" style={{ width: `${Math.round(bar.pixels)}px` }} />
       <span className="mono">{bar.label}</span>
+    </div>
+  );
+}
+
+/** Continuous GSA ramp above the scale bar when a solar resource overlay is on. */
+function ResourceRasterLegend() {
+  const active = useSyncExternalStore(subscribeGsaPreview, getActiveGsaPreview, () => null);
+  if (!active) return null;
+
+  const { preview, units, label } = active;
+  // GSA world rasters often store daily means; stretch labels to annual when small.
+  const looksDaily = preview.max > 0 && preview.max < 20;
+  const scale = looksDaily ? 365 : 1;
+  const min = Math.round(preview.min * scale);
+  const max = Math.round(preview.max * scale);
+
+  return (
+    <div className="map-legend map-legend--raster">
+      <div className="map-legend__title">{label}</div>
+      <div
+        className="map-legend__ramp"
+        title={`${min} – ${max} ${units}`}
+        aria-label={`${label} from ${min} to ${max} ${units}`}
+      />
+      <div className="map-legend__ramp-labels mono">
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
+      <div className="map-legend__units">
+        {units}
+        {looksDaily ? " (daily × 365)" : ""}
+      </div>
+      <div className="map-legend__method mono">{preview.method}</div>
     </div>
   );
 }
