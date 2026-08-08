@@ -17,6 +17,7 @@ batch conversion, offline GEM JSONL). Source files often live under
 | `gem-solar` | `Solar power plants.csv` / `.jsonl` (legacy names ok) | SQLite `gem-solar` |
 | `tz-sam` | `Global PV footprints.gpkg` / `.geojson` (legacy ok) | SQLite `tz-sam` |
 | `gmseus-arrays` | `US ground-mounted arrays.gpkg` / `.geojson` (legacy ok) | SQLite `gmseus-arrays` |
+| `wdpa` | `Protected areas.shp` (+ `.shx`/`.dbf`) or `.geojson` | `{dataDir}/vector/protected_areas.pmtiles` + SQLite `wdpa` |
 
 - Rasters: if GDAL is on PATH and only a raw GeoTIFF is found, Install runs
   `gdal_translate` to COG; otherwise the file is copied as-is.
@@ -42,6 +43,7 @@ node scripts/data-pipeline/prepare-country-rankings.mjs
 | --- | --- | --- |
 | `import-gem.mjs` | GEM utility-scale CSV | JSONL (also importable via in-app Install if named `gem-solar.jsonl`) |
 | `convert-solargis-cog.sh` | Raw Global Solar Atlas GeoTIFFs | Cloud-Optimised GeoTIFFs for HTTP range / local zonal stats |
+| `convert-wdpa-pmtiles.sh` | Folder with WDPA shapefile or GeoJSON | `protected_areas.pmtiles` (backup / testing / cloud prep) |
 
 ```bash
 # GEM plant catalogue (~100k phases) → JSONL in data/derived/
@@ -53,6 +55,11 @@ node scripts/data-pipeline/import-gem.mjs \
 ./scripts/data-pipeline/convert-solargis-cog.sh \
   notes/datasets/solargis-solar-potential/World_GHI_GISdata_LTAy_AvgDailyTotals_GlobalSolarAtlas-v2_GEOTIFF \
   data/derived/cogs
+
+# Protected areas → PMTiles (requires ogr2ogr + tippecanoe; can take many minutes)
+./scripts/data-pipeline/convert-wdpa-pmtiles.sh \
+  notes/datasets/app-datasets \
+  data/derived
 ```
 
 ## Rules

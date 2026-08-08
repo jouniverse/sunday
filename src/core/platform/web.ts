@@ -165,9 +165,14 @@ export const webPlatform: Platform = {
       dataDir: "unavailable in the browser",
       configDir: "unavailable in the browser",
       rasterDir: "unavailable in the browser",
+      vectorDir: "unavailable in the browser",
       vectorStore: "unavailable in the browser",
       engine,
     };
+  },
+
+  async resolveLocalFileUrl() {
+    return null;
   },
 
   settings: {
@@ -283,6 +288,21 @@ export const webPlatform: Platform = {
     },
     async viewportPreview(): Promise<ViewportPreview> {
       throw unavailable("Solar resource map overlays");
+    },
+  },
+
+  terrain: {
+    async slopePreview() {
+      throw unavailable("Terrain slope map overlays");
+    },
+    async slopeZonal() {
+      throw unavailable("Terrain slope sampling");
+    },
+  },
+
+  landcover: {
+    async preview() {
+      throw unavailable("Land cover map overlays");
     },
   },
 

@@ -88,6 +88,11 @@ impl Paths {
         self.data_dir.join("vector").join("sunday.sqlite")
     }
 
+    /// Local vector tiles and related install artefacts (e.g. WDPA PMTiles).
+    pub fn vector_dir(&self) -> PathBuf {
+        self.data_dir.join("vector")
+    }
+
     pub fn raster_dir(&self) -> PathBuf {
         self.data_dir.join("rasters")
     }

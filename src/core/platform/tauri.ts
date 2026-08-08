@@ -27,6 +27,7 @@ import type {
   RasterInfo,
   RasterSource,
   SettingsView,
+  TerrainSlopeZonalResult,
   VectorFeature,
   ViewportPreview,
   ZonalResult,
@@ -72,6 +73,11 @@ export const tauriPlatform: Platform = {
   kind: "tauri",
 
   appInfo: () => call<AppInfo>("app_info"),
+
+  async resolveLocalFileUrl(absolutePath: string) {
+    const { convertFileSrc } = await import("@tauri-apps/api/core");
+    return convertFileSrc(absolutePath);
+  },
 
   settings: {
     get: () => call<SettingsView>("settings_get"),
@@ -143,6 +149,34 @@ export const tauriPlatform: Platform = {
           maxLat: bounds.maxLat,
           band: options?.band ?? 0,
           maxPixels: options?.maxPixels ?? 262_144,
+        },
+      }),
+  },
+
+  terrain: {
+    slopePreview: (bounds) =>
+      call<ViewportPreview>("terrain_slope_preview", {
+        request: {
+          minLon: bounds.minLon,
+          minLat: bounds.minLat,
+          maxLon: bounds.maxLon,
+          maxLat: bounds.maxLat,
+        },
+      }),
+    slopeZonal: (rings) =>
+      call<TerrainSlopeZonalResult>("terrain_slope_zonal", {
+        request: { rings },
+      }),
+  },
+
+  landcover: {
+    preview: (bounds) =>
+      call<ViewportPreview>("landcover_preview", {
+        request: {
+          minLon: bounds.minLon,
+          minLat: bounds.minLat,
+          maxLon: bounds.maxLon,
+          maxLat: bounds.maxLat,
         },
       }),
   },

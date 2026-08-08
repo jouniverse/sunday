@@ -37,6 +37,7 @@
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@turf/area": "^7.3.5",
     "@turf/bbox": "^7.3.5",
+    "@turf/boolean-intersects": "^7.4.0",
     "@turf/boolean-point-in-polygon": "^7.3.5",
     "@turf/centroid": "^7.3.5",
     "@turf/destination": "^7.3.5",
@@ -45,6 +46,7 @@
     "@turf/length": "^7.3.5",
     "geotiff": "^3.0.5",
     "maplibre-gl": "^6.0.0",
+    "pmtiles": "^4.4.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "zustand": "^5.0.14"

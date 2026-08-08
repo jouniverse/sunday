@@ -63,12 +63,12 @@ const STEPS: Step[] = [
   },
   {
     id: "terrain",
-    title: "Terrain, for slope and aspect",
+    title: "Terrain basemaps (visual)",
     body:
-      "A MapTiler key adds hillshade and 3D terrain basemaps, and the slope layer the screening " +
-      "checks read for grading risk.",
+      "A MapTiler key adds hillshade and 3D terrain basemaps for visual context. Analytical " +
+      "terrain slope for screening uses free AWS Terrarium tiles in the desktop app — no MapTiler key.",
     provider: "maptiler",
-    unlocks: ["Hillshade and 3D terrain", "Slope and aspect sampling"],
+    unlocks: ["Hillshade and 3D terrain basemaps"],
     keyUrl: "https://cloud.maptiler.com/account/keys/",
   },
   {

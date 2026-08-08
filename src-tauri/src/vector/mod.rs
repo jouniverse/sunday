@@ -277,13 +277,14 @@ impl VectorStore {
                     |row| row.get(0),
                 )?;
                 if let Some(index_stmt) = index_stmt.as_mut() {
-                    index_stmt.execute(params![
-                        rowid,
-                        feature.lon,
-                        feature.lon,
-                        feature.lat,
-                        feature.lat
-                    ])?;
+                    // Prefer true geometry extents so large polygons (WDPA) are
+                    // findable by viewport/site bbox — not just their centroid.
+                    let (min_lon, max_lon, min_lat, max_lat) = feature
+                        .geometry
+                        .as_ref()
+                        .and_then(geometry_bounds)
+                        .unwrap_or((feature.lon, feature.lon, feature.lat, feature.lat));
+                    index_stmt.execute(params![rowid, min_lon, max_lon, min_lat, max_lat])?;
                 }
                 inserted += 1;
             }
@@ -533,6 +534,51 @@ fn placeholder_list(values: Option<&[String]>, prefix: &str) -> Option<(String, 
         names.push((name, value.clone()));
     }
     Some((clause.join(", "), names))
+}
+
+/// Axis-aligned WGS84 bounds of a GeoJSON geometry, when coordinates parse.
+fn geometry_bounds(geometry: &serde_json::Value) -> Option<(f64, f64, f64, f64)> {
+    let coords = geometry.get("coordinates")?;
+    let mut min_lon = f64::INFINITY;
+    let mut max_lon = f64::NEG_INFINITY;
+    let mut min_lat = f64::INFINITY;
+    let mut max_lat = f64::NEG_INFINITY;
+    fn walk(
+        value: &serde_json::Value,
+        min_lon: &mut f64,
+        max_lon: &mut f64,
+        min_lat: &mut f64,
+        max_lat: &mut f64,
+    ) {
+        match value {
+            serde_json::Value::Array(arr) => {
+                if arr.len() >= 2
+                    && arr[0].as_f64().is_some()
+                    && arr[1].as_f64().is_some()
+                    && arr.first().and_then(|v| v.as_array()).is_none()
+                {
+                    if let (Some(lon), Some(lat)) = (arr[0].as_f64(), arr[1].as_f64()) {
+                        if lon.is_finite() && lat.is_finite() {
+                            *min_lon = min_lon.min(lon);
+                            *max_lon = max_lon.max(lon);
+                            *min_lat = min_lat.min(lat);
+                            *max_lat = max_lat.max(lat);
+                        }
+                    }
+                } else {
+                    for child in arr {
+                        walk(child, min_lon, max_lon, min_lat, max_lat);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    walk(coords, &mut min_lon, &mut max_lon, &mut min_lat, &mut max_lat);
+    if !min_lon.is_finite() {
+        return None;
+    }
+    Some((min_lon, max_lon, min_lat, max_lat))
 }
 
 pub fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {

@@ -8,8 +8,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { platform } from "@/core/platform";
+import { useMapStore } from "@/core/store/mapStore";
 import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useProjectStore } from "@/core/store/projectStore";
+import {
+  screeningRingBounds,
+  useScreeningStore,
+} from "@/core/store/screeningStore";
 import { useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { Button, Field, Input } from "@/design-system/controls";
@@ -31,11 +36,21 @@ export function ProjectsView() {
   const sites = useSiteStore((state) => state.sites);
   const removeSite = useSiteStore((state) => state.removeSite);
   const selectSite = useSiteStore((state) => state.selectSite);
+  const screeningAreas = useScreeningStore((state) => state.areas);
+  const selectScreening = useScreeningStore((state) => state.select);
+  const renameScreening = useScreeningStore((state) => state.rename);
+  const removeScreening = useScreeningStore((state) => state.remove);
+  const renameSite = useSiteStore((state) => state.renameSite);
+  const renameDesign = useSiteStore((state) => state.renameDesign);
+  const fitBounds = useMapStore((state) => state.fitBounds);
   const markDirty = useProjectStore((state) => state.markDirty);
   const setView = useUiStore((state) => state.setView);
   const notify = useUiStore((state) => state.notify);
 
   const [draftName, setDraftName] = useState(projectName);
+  /** Inline rename target: `screening:id` | `site:id` | `design:siteId/designId`. */
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState("");
   useEffect(() => {
     setDraftName(projectName);
   }, [projectName, activeId]);
@@ -119,6 +134,50 @@ export function ProjectsView() {
     removeSite(id);
     markDirty();
     void saveActiveToLibrary().catch(() => undefined);
+  }
+
+  async function handleDeleteScreening(id: string, name: string) {
+    const ok = await platform().shell.confirm(
+      `Remove screening area “${name}” from this project?`,
+      "Delete screening area",
+    );
+    if (!ok) return;
+    removeScreening(id);
+    markDirty();
+    void saveActiveToLibrary().catch(() => undefined);
+  }
+
+  function beginEdit(key: string, currentName: string) {
+    setEditingKey(key);
+    setEditDraft(currentName);
+  }
+
+  function cancelEdit() {
+    setEditingKey(null);
+    setEditDraft("");
+  }
+
+  function commitEdit() {
+    if (!editingKey) return;
+    const next = editDraft.trim();
+    if (!next) {
+      notify({ tone: "warning", message: "Name cannot be empty" });
+      return;
+    }
+    if (editingKey.startsWith("screening:")) {
+      renameScreening(editingKey.slice("screening:".length), next);
+    } else if (editingKey.startsWith("site:")) {
+      renameSite(editingKey.slice("site:".length), next);
+    } else if (editingKey.startsWith("design:")) {
+      const rest = editingKey.slice("design:".length);
+      const slash = rest.indexOf("/");
+      if (slash > 0) {
+        renameDesign(rest.slice(0, slash), rest.slice(slash + 1), next);
+      }
+    }
+    markDirty();
+    void saveActiveToLibrary().catch(() => undefined);
+    cancelEdit();
   }
 
   async function handleDeleteDesign(siteId: string, designId: string, name: string) {
@@ -229,10 +288,90 @@ export function ProjectsView() {
             />
           </Field>
           <Callout tone="note">
-            {sites.length} site{sites.length === 1 ? "" : "s"} in this project
+            {sites.length} site{sites.length === 1 ? "" : "s"}
+            {screeningAreas.length > 0
+              ? ` · ${screeningAreas.length} screening area${screeningAreas.length === 1 ? "" : "s"}`
+              : ""}{" "}
+            in this project
             {dirty ? " · unsaved changes" : ""}.
           </Callout>
         </div>
+
+        <SectionLabel>Screening areas in this project</SectionLabel>
+        {screeningAreas.length === 0 ? (
+          <Callout tone="note">
+            No screening areas yet. Open the Project map → Land and terrain → Draw screening area.
+          </Callout>
+        ) : (
+          <ul className="projects__sites">
+            {screeningAreas.map((area) => {
+              const key = `screening:${area.id}`;
+              const editing = editingKey === key;
+              return (
+                <li key={area.id} className="projects__site">
+                  <div className="projects__site-row">
+                    {editing ? (
+                      <Input
+                        className="projects__edit-input"
+                        value={editDraft}
+                        aria-label="Screening area name"
+                        autoFocus
+                        onChange={(event) => setEditDraft(event.target.value)}
+                        onBlur={() => commitEdit()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") commitEdit();
+                          if (event.key === "Escape") cancelEdit();
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="projects__site-name"
+                        onClick={() => {
+                          selectScreening(area.id);
+                          const bounds = screeningRingBounds(area.ring);
+                          if (bounds) fitBounds(bounds);
+                          setView("map");
+                        }}
+                      >
+                        {area.name}
+                        <span className="projects__meta">
+                          {area.geometryValid && area.areaM2 > 0
+                            ? ` · ${Math.round(area.areaM2 / 1e6).toLocaleString()} km²`
+                            : " · invalid"}
+                        </span>
+                      </button>
+                    )}
+                    <div className="projects__item-actions">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onMouseDown={(event) => {
+                          if (editing) {
+                            event.preventDefault();
+                            cancelEdit();
+                          }
+                        }}
+                        onClick={() => {
+                          if (!editing) beginEdit(key, area.name);
+                        }}
+                      >
+                        {editing ? "Cancel" : "Edit"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void handleDeleteScreening(area.id, area.name)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
         <SectionLabel>Sites in this project</SectionLabel>
         {sites.length === 0 ? (
@@ -241,69 +380,143 @@ export function ProjectsView() {
           </Callout>
         ) : (
           <ul className="projects__sites">
-            {sites.map((site) => (
-              <li key={site.id} className="projects__site">
-                <div className="projects__site-row">
-                  <button
-                    type="button"
-                    className="projects__site-name"
-                    onClick={() => {
-                      selectSite(site.id);
-                      setView("map");
-                    }}
-                  >
-                    {site.name}
-                    <span className="projects__meta">
-                      {" "}
-                      · {site.kind}
-                      {site.areaM2 ? ` · ${Math.round(site.areaM2).toLocaleString()} m²` : ""}
-                      {(site.designs?.length ?? 0) > 0
-                        ? ` · ${site.designs!.length} design${site.designs!.length === 1 ? "" : "s"}`
-                        : ""}
-                    </span>
-                  </button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDeleteSite(site.id, site.name)}
-                  >
-                    Delete site
-                  </Button>
-                </div>
-                {(site.designs?.length ?? 0) > 0 && (
-                  <ul className="projects__designs">
-                    {site.designs!.map((design) => (
-                      <li key={design.id} className="projects__design-row">
-                        <button
-                          type="button"
-                          className="projects__design-name"
-                          onClick={() => {
-                            selectSite(site.id);
-                            useSiteStore.getState().selectDesign(site.id, design.id);
-                            setView("design");
-                          }}
-                        >
-                          {design.name}
-                          <span className="projects__meta">
-                            {design.capacityKwDc != null
-                              ? ` · ${design.capacityKwDc.toFixed(1)} kW`
-                              : ""}
-                            {design.kind === "rooftop" ? " · rooftop" : ""}
-                          </span>
-                        </button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => void handleDeleteDesign(site.id, design.id, design.name)}
-                        >
-                          Delete
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
+            {sites.map((site) => {
+              const siteKey = `site:${site.id}`;
+              const editingSite = editingKey === siteKey;
+              return (
+                <li key={site.id} className="projects__site">
+                  <div className="projects__site-row">
+                    {editingSite ? (
+                      <Input
+                        className="projects__edit-input"
+                        value={editDraft}
+                        aria-label="Site name"
+                        autoFocus
+                        onChange={(event) => setEditDraft(event.target.value)}
+                        onBlur={() => commitEdit()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") commitEdit();
+                          if (event.key === "Escape") cancelEdit();
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        className="projects__site-name"
+                        onClick={() => {
+                          selectSite(site.id);
+                          setView("map");
+                        }}
+                      >
+                        {site.name}
+                        <span className="projects__meta">
+                          {" "}
+                          · {site.kind}
+                          {site.areaM2 ? ` · ${Math.round(site.areaM2).toLocaleString()} m²` : ""}
+                          {(site.designs?.length ?? 0) > 0
+                            ? ` · ${site.designs!.length} design${site.designs!.length === 1 ? "" : "s"}`
+                            : ""}
+                        </span>
+                      </button>
+                    )}
+                    <div className="projects__item-actions">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onMouseDown={(event) => {
+                          if (editingSite) {
+                            event.preventDefault();
+                            cancelEdit();
+                          }
+                        }}
+                        onClick={() => {
+                          if (!editingSite) beginEdit(siteKey, site.name);
+                        }}
+                      >
+                        {editingSite ? "Cancel" : "Edit"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteSite(site.id, site.name)}
+                      >
+                        Delete site
+                      </Button>
+                    </div>
+                  </div>
+                  {(site.designs?.length ?? 0) > 0 && (
+                    <ul className="projects__designs">
+                      {site.designs!.map((design) => {
+                        const designKey = `design:${site.id}/${design.id}`;
+                        const editingDesign = editingKey === designKey;
+                        return (
+                          <li key={design.id} className="projects__design-row">
+                            {editingDesign ? (
+                              <Input
+                                className="projects__edit-input"
+                                value={editDraft}
+                                aria-label="Design name"
+                                autoFocus
+                                onChange={(event) => setEditDraft(event.target.value)}
+                                onBlur={() => commitEdit()}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") commitEdit();
+                                  if (event.key === "Escape") cancelEdit();
+                                }}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                className="projects__design-name"
+                                onClick={() => {
+                                  selectSite(site.id);
+                                  useSiteStore.getState().selectDesign(site.id, design.id);
+                                  setView("design");
+                                }}
+                              >
+                                {design.name}
+                                <span className="projects__meta">
+                                  {design.capacityKwDc != null
+                                    ? ` · ${design.capacityKwDc.toFixed(1)} kW`
+                                    : ""}
+                                  {design.kind === "rooftop" ? " · rooftop" : ""}
+                                </span>
+                              </button>
+                            )}
+                            <div className="projects__item-actions">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onMouseDown={(event) => {
+                                  if (editingDesign) {
+                                    event.preventDefault();
+                                    cancelEdit();
+                                  }
+                                }}
+                                onClick={() => {
+                                  if (!editingDesign) beginEdit(designKey, design.name);
+                                }}
+                              >
+                                {editingDesign ? "Cancel" : "Edit"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  void handleDeleteDesign(site.id, design.id, design.name)
+                                }
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

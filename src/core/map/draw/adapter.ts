@@ -10,7 +10,10 @@
 import type { Map as MapLibreMap, MapMouseEvent } from "maplibre-gl";
 import type { LngLat } from "@/domain/geometry";
 import { useMapStore } from "../../store/mapStore";
+import { useProjectStore } from "../../store/projectStore";
+import { useScreeningStore } from "../../store/screeningStore";
 import { useSiteStore } from "../../store/siteStore";
+import { renderScreeningLayers } from "../screeningLayers";
 import { renderSiteLayers } from "../siteLayers";
 import type { DrawConfig } from "./engine";
 import { midpointAt, vertexAt } from "./engine";
@@ -37,7 +40,10 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
 
   const asLngLat = (event: MapMouseEvent): LngLat => [event.lngLat.lng, event.lngLat.lat];
 
-  const redraw = () => renderSiteLayers(map);
+  const redraw = () => {
+    renderSiteLayers(map);
+    renderScreeningLayers(map);
+  };
 
   const onClick = (event: MapMouseEvent) => {
     const draw = useDrawStore.getState();
@@ -60,6 +66,15 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
       // Click an existing site while panning to select it — no need to delete
       // the current selection first.
       if (tool === "pan") {
+        const screeningHit = map.queryRenderedFeatures(event.point, {
+          layers: ["screening-fill"].filter((id) => map.getLayer(id)),
+        });
+        const screeningId = screeningHit[0]?.properties?.id;
+        if (typeof screeningId === "string") {
+          useScreeningStore.getState().select(screeningId);
+          redraw();
+          return;
+        }
         const hit = map.queryRenderedFeatures(event.point, {
           layers: ["sites-fill", "sites-point"].filter((id) => map.getLayer(id)),
         });
@@ -179,15 +194,28 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
     }
   };
 
-  /** Closes the shape and turns it into a site, or updates the one being edited. */
+  /** Closes the shape and turns it into a site or screening area. */
   function commitShape() {
     const draw = useDrawStore.getState();
+    const tool = useMapStore.getState().tool;
+    const editingSiteId = draw.editingSiteId;
+    const asScreening =
+      tool === "draw-screening" ||
+      (draw.state.shape?.id.startsWith("screening-draft-") ?? false);
     const shape = draw.finish();
-    if (!shape) return;
+    if (!shape) {
+      // finish() can fail on a degenerate ring — never leave a stuck draft/edit.
+      useDrawStore.getState().cancel();
+      useMapStore.getState().setTool("pan");
+      redraw();
+      return;
+    }
 
-    const { editingSiteId } = useDrawStore.getState();
     if (editingSiteId) {
       useSiteStore.getState().updateSiteRing(editingSiteId, shape.vertices);
+    } else if (asScreening) {
+      useScreeningStore.getState().addArea(shape.vertices);
+      useProjectStore.getState().markDirty();
     } else {
       useSiteStore.getState().addAreaSite(shape.vertices);
     }
@@ -196,15 +224,19 @@ export function installDrawAdapter(map: MapLibreMap): () => void {
     redraw();
   }
 
-  /** Starts drawing whenever the polygon tool is selected. */
+  /** Starts drawing whenever a polygon tool is selected. */
   const unsubscribeTool = useMapStore.subscribe((state, previous) => {
     if (state.tool === previous.tool) return;
     const draw = useDrawStore.getState();
     const canvas = map.getCanvas();
-    if (state.tool === "draw-polygon") {
-      if (draw.state.mode === "idle") {
-        draw.begin(`draft-${Date.now()}`);
+    if (state.tool === "draw-polygon" || state.tool === "draw-screening") {
+      // Always start a fresh draft. An inspector boundary edit (or a stuck
+      // previous draft) must not block adding another site or screening area.
+      if (draw.state.mode !== "idle" || draw.editingSiteId !== null) {
+        draw.cancel();
       }
+      const prefix = state.tool === "draw-screening" ? "screening-draft" : "draft";
+      draw.begin(`${prefix}-${Date.now()}`);
       // Ensure pan is available after a stuck vertex-drag (project/view switches).
       if (!map.dragPan.isEnabled()) map.dragPan.enable();
       canvas.style.cursor = "";

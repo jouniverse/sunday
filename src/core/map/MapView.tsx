@@ -14,6 +14,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibre-worker";
 import { useLayerStore } from "../store/layerStore";
 import { useMapStore } from "../store/mapStore";
+import { useScreeningStore } from "../store/screeningStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { useSiteStore } from "../store/siteStore";
 import { basemapById } from "./basemaps";
@@ -23,25 +24,42 @@ import {
   installFootprintLayerSync,
   refreshFootprintLayers,
 } from "./footprintLayers";
-import {
-  installPlantClickHandler,
-  installPlantLayerSync,
-  refreshPlantLayer,
-} from "./plantLayers";
+import { installPlantClickHandler, installPlantLayerSync, refreshPlantLayer } from "./plantLayers";
+import { ensurePmtilesProtocol } from "./pmtilesProtocol";
+import { installProtectedAreaLayerSync, refreshProtectedAreaLayers } from "./protectedAreaLayers";
 import {
   installResourceRasterLayerSync,
   refreshResourceRasterLayers,
   scheduleResourceRasterRefresh,
 } from "./resourceRasterLayers";
+import { renderScreeningLayers } from "./screeningLayers";
 import { renderSiteLayers } from "./siteLayers";
+import {
+  installLandCoverLayerSync,
+  refreshLandCoverLayers,
+} from "./landCoverLayers";
+import {
+  installPowerGridClickHandler,
+  installPowerGridLayerSync,
+  refreshPowerGridLayers,
+} from "./powerGridLayers";
+import {
+  installTerrainSlopeLayerSync,
+  refreshTerrainSlopeLayers,
+} from "./terrainSlopeLayers";
 import "./map.css";
 
 function restoreOverlays(map: MapLibreMap): void {
   // Keep centroid caches — style swap only drops MapLibre sources; re-push from memory.
   renderSiteLayers(map);
+  renderScreeningLayers(map);
   void refreshPlantLayer(map);
   void refreshFootprintLayers(map);
   void refreshResourceRasterLayers(map);
+  void refreshProtectedAreaLayers(map);
+  void refreshTerrainSlopeLayers(map);
+  void refreshLandCoverLayers(map);
+  void refreshPowerGridLayers(map);
 }
 
 export function MapView() {
@@ -57,15 +75,15 @@ export function MapView() {
   const basemap = useMapStore((state) => state.basemap);
   const terrain3d = useMapStore((state) => state.terrain3d);
   const tool = useMapStore((state) => state.tool);
-  const configuredKeysKey = useSettingsStore((state) =>
-    [...state.configuredKeys].sort().join(","),
-  );
-  const preciseCursor = tool === "draw-polygon" || tool === "place-point";
+  const configuredKeysKey = useSettingsStore((state) => [...state.configuredKeys].sort().join(","));
+  const preciseCursor =
+    tool === "draw-polygon" || tool === "draw-screening" || tool === "place-point";
 
   // --- Map creation. Runs once. ---
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    ensurePmtilesProtocol();
     const { viewport, basemap: initialBasemap } = useMapStore.getState();
     appliedStyleRef.current = `${initialBasemap}|`;
 
@@ -120,8 +138,12 @@ export function MapView() {
       map.resize();
       publishCamera();
       renderSiteLayers(map);
+      renderScreeningLayers(map);
       // Idle after first paint catches project hydrate that raced `load`.
-      map.once("idle", () => renderSiteLayers(map));
+      map.once("idle", () => {
+        renderSiteLayers(map);
+        renderScreeningLayers(map);
+      });
     });
     map.on("mousemove", (event: MapMouseEvent) => {
       useMapStore.getState().setCursor({ longitude: event.lngLat.lng, latitude: event.lngLat.lat });
@@ -141,6 +163,11 @@ export function MapView() {
       console.warn("[sunday map] footprint handlers deferred", error);
     }
     const uninstallResourceSync = installResourceRasterLayerSync(map);
+    const uninstallWdpaSync = installProtectedAreaLayerSync(map);
+    const uninstallSlopeSync = installTerrainSlopeLayerSync(map);
+    const uninstallLandCoverSync = installLandCoverLayerSync(map);
+    const uninstallPowerSync = installPowerGridLayerSync(map);
+    const uninstallPowerClick = installPowerGridClickHandler(map);
 
     const observer = new ResizeObserver(() => {
       map.resize();
@@ -157,6 +184,11 @@ export function MapView() {
       uninstallFootprints();
       uninstallFootprintSync();
       uninstallResourceSync();
+      uninstallWdpaSync();
+      uninstallSlopeSync();
+      uninstallLandCoverSync();
+      uninstallPowerSync();
+      uninstallPowerClick();
       map.remove();
       mapRef.current = null;
       appliedStyleRef.current = null;
@@ -258,10 +290,19 @@ export function MapView() {
   );
 
   useEffect(() =>
+    useScreeningStore.subscribe(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      renderScreeningLayers(map);
+    }),
+  );
+
+  useEffect(() =>
     useLayerStore.subscribe(() => {
       const map = mapRef.current;
       if (!map?.isStyleLoaded()) return;
       renderSiteLayers(map);
+      renderScreeningLayers(map);
       void refreshPlantLayer(map);
       void refreshFootprintLayers(map);
       // GSA overlays: installResourceRasterLayerSync handles visibility/opacity.

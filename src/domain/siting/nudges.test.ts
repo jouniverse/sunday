@@ -193,6 +193,16 @@ describe("land cover and designations", () => {
     expect(nudges.find((n) => n.id === "protected-area")?.severity).toBe("blocking");
   });
 
+  it("notes when protected areas data is not installed", () => {
+    const nudges = evaluateSite({
+      ...goodSite,
+      protectedAreasAvailable: false,
+      inProtectedArea: undefined,
+    });
+    expect(nudges.find((n) => n.id === "protected-areas-missing")?.severity).toBe("note");
+    expect(nudges.find((n) => n.id === "protected-area")).toBeUndefined();
+  });
+
   it("blocks water and wetland", () => {
     expect(ids({ ...goodSite, landCover: "water" })).toContain("land-water");
     expect(ids({ ...goodSite, landCover: "wetland" })).toContain("land-wetland");

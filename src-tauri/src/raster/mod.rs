@@ -7,6 +7,7 @@
 //! bbox -> pixel window -> the chunks that intersect it -> masked statistics.
 
 pub mod geotransform;
+pub mod palette;
 pub mod preview;
 pub mod range_reader;
 pub mod zonal;
@@ -206,6 +207,9 @@ impl Window {
 /// Reads a pixel window of one band as `f64`, row-major, `NaN` where nodata.
 ///
 /// Only the chunks that intersect the window are decoded.
+///
+/// Palette (RGBPalette) COGs — e.g. ESA WorldCover — are read as raw class
+/// indices; the `tiff` crate cannot expand their ColorMap, and we do not need it.
 pub fn read_window<R: Read + Seek>(
     raster: &mut OpenRaster<R>,
     level: RasterLevel,
@@ -223,6 +227,22 @@ pub fn read_window<R: Read + Seek>(
         return Err(Error::Invalid(format!(
             "band {band} requested but raster has {samples} sample(s) per pixel"
         )));
+    }
+
+    // Classified palette rasters: indices are the values (WorldCover Map codes).
+    if palette::is_palette_u8(&mut raster.decoder)? {
+        if band != 0 {
+            return Err(Error::Invalid(
+                "palette rasters only expose band 0 (class indices)".into(),
+            ));
+        }
+        return palette::read_window_indices(
+            &mut raster.decoder,
+            window,
+            level_w,
+            level_h,
+            raster.info.nodata,
+        );
     }
 
     let (chunk_w, chunk_h) = raster.decoder.chunk_dimensions();

@@ -15,6 +15,8 @@ import type { LayerRuntimeState } from "./layerStore";
 import { useMapStore } from "./mapStore";
 import type { Viewport } from "./mapStore";
 import { useProjectStore } from "./projectStore";
+import { useScreeningStore } from "./screeningStore";
+import type { ScreeningArea } from "./screeningStore";
 import { useSiteStore } from "./siteStore";
 import type { Site } from "./siteStore";
 
@@ -47,6 +49,11 @@ function applyDocument(document: ProjectDocument, path: string, fromNewerSchema:
     useSiteStore.getState().replaceAll(document.sites as Site[]);
   } else {
     useSiteStore.getState().clear();
+  }
+  if (Array.isArray(document.screeningAreas)) {
+    useScreeningStore.getState().replaceAll(document.screeningAreas as ScreeningArea[]);
+  } else {
+    useScreeningStore.getState().clear();
   }
   if (document.layers && typeof document.layers === "object") {
     useLayerStore.getState().replaceAll(document.layers as Record<string, LayerRuntimeState>);
@@ -122,6 +129,7 @@ export const useProjectLibraryStore = create<ProjectLibraryState>((set, get) => 
     const id = newId();
     resetMapInteraction();
     useSiteStore.getState().clear();
+    useScreeningStore.getState().clear();
     const createdAt = new Date().toISOString();
     useProjectStore.setState({
       name: uniqueName,

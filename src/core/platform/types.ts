@@ -58,6 +58,8 @@ export interface AppInfo {
   dataDir: string;
   configDir: string;
   rasterDir: string;
+  /** Local vector tiles (PMTiles) and related install artefacts. */
+  vectorDir: string;
   vectorStore: string;
   engine: EngineStatus;
 }
@@ -235,6 +237,38 @@ export interface RasterApi {
   ): Promise<ViewportPreview>;
 }
 
+/** Mean / max slope from AWS Terrarium tiles inside a site ring. */
+export interface TerrainSlopeZonalResult {
+  meanSlopeDegrees: number;
+  maxSlopeDegrees: number;
+  meanElevationM: number | null;
+  sampleCount: number;
+  method: string;
+  zoom: number;
+}
+
+export interface TerrainApi {
+  /** Colourised slope preview for a screening AOI bbox (desktop only). */
+  slopePreview(bounds: {
+    minLon: number;
+    minLat: number;
+    maxLon: number;
+    maxLat: number;
+  }): Promise<ViewportPreview>;
+  /** Site-ring zonal slope for Run screening checks. */
+  slopeZonal(rings: Array<Array<[number, number]>>): Promise<TerrainSlopeZonalResult>;
+}
+
+export interface LandcoverApi {
+  /** Categorical ESA WorldCover preview for a screening AOI bbox (desktop only). */
+  preview(bounds: {
+    minLon: number;
+    minLat: number;
+    maxLon: number;
+    maxLat: number;
+  }): Promise<ViewportPreview>;
+}
+
 /* --- Vector datasets ------------------------------------------------------ */
 
 export interface VectorFeature {
@@ -404,10 +438,17 @@ export interface HttpApi {
 export interface Platform {
   readonly kind: "tauri" | "web";
   appInfo(): Promise<AppInfo>;
+  /**
+   * Asset-protocol URL for a local absolute path (PMTiles, etc.).
+   * Browser fallback returns null — local tile paint is desktop-only.
+   */
+  resolveLocalFileUrl(absolutePath: string): Promise<string | null>;
   settings: SettingsApi;
   project: ProjectApi;
   library: ProjectLibraryApi;
   raster: RasterApi;
+  terrain: TerrainApi;
+  landcover: LandcoverApi;
   vector: VectorApi;
   datasets: DatasetsApi;
   engine: EngineApi;

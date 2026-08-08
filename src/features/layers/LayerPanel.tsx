@@ -12,24 +12,40 @@
  */
 
 import { useState } from "react";
-import { Chip, Switch } from "@/design-system/controls";
+import type { LayerDefinition } from "@/core/store/layerStore";
 import {
-  LayersIcon,
-  PlantIcon,
-  SunIcon,
-  TerrainIcon,
-} from "@/design-system/icons";
-import { Callout, ProvenanceBadge, SectionLabel } from "@/design-system/data";
-import {
-  LAYER_CATALOGUE,
   isLayerUsable,
+  LAYER_CATALOGUE,
   unavailableReason,
   useLayerStore,
 } from "@/core/store/layerStore";
-import type { LayerDefinition } from "@/core/store/layerStore";
+import { useMapStore } from "@/core/store/mapStore";
+import { useProjectStore } from "@/core/store/projectStore";
+import {
+  SCREENING_AREA_WARN_KM2,
+  screeningRingBounds,
+  useScreeningStore,
+} from "@/core/store/screeningStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
+import { useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
+import { Button, Chip, IconButton, Input, Select, Switch } from "@/design-system/controls";
+import { Callout, ProvenanceBadge, SectionLabel } from "@/design-system/data";
+import {
+  CrosshairIcon,
+  LayersIcon,
+  PlantIcon,
+  PolygonIcon,
+  SunIcon,
+  TerrainIcon,
+  TrashIcon,
+} from "@/design-system/icons";
 import "./layers.css";
+
+/** Land layers that only paint inside a screening AOI. */
+const NEEDS_SCREENING_AOI = new Set(["wdpa", "terrain-slope", "landcover"]);
+/** Infrastructure layers that need a screening AOI or a selected site. */
+const NEEDS_FOCUS_GEOMETRY = new Set(["osm-power"]);
 
 const GROUP_LABELS: Record<LayerDefinition["group"], string> = {
   resource: "Solar resource",
@@ -51,6 +67,92 @@ function iconForGroup(group: LayerDefinition["group"]) {
   }
 }
 
+/** Compact chrome for multi-polygon screening AOIs (shared by land + power grid). */
+function ScreeningAreasChrome() {
+  const areas = useScreeningStore((state) => state.areas);
+  const selectedId = useScreeningStore((state) => state.selectedId);
+  const select = useScreeningStore((state) => state.select);
+  const rename = useScreeningStore((state) => state.rename);
+  const remove = useScreeningStore((state) => state.remove);
+  const hasOversized = useScreeningStore((state) => state.hasOversizedArea());
+  const setTool = useMapStore((state) => state.setTool);
+  const tool = useMapStore((state) => state.tool);
+  const fitBounds = useMapStore((state) => state.fitBounds);
+  const markDirty = useProjectStore((state) => state.markDirty);
+  const selected = areas.find((area) => area.id === selectedId) ?? areas[0] ?? null;
+
+  return (
+    <div className="screening-chrome">
+      <p className="screening-chrome__hint">
+        Window land layers and the power grid. Sites stay independent.
+      </p>
+      <Button
+        size="sm"
+        variant={tool === "draw-screening" ? "primary" : "secondary"}
+        block
+        icon={<PolygonIcon size={14} />}
+        onClick={() => setTool("draw-screening")}
+      >
+        Draw screening area
+      </Button>
+      {areas.length > 1 && selected && (
+        <Select
+          aria-label="Select screening area"
+          value={selected.id}
+          options={areas.map((area) => ({
+            value: area.id,
+            label: area.name,
+          }))}
+          onChange={(event) => select(event.target.value)}
+        />
+      )}
+      {areas.length > 0 && selected && (
+        <div className="screening-chrome__row">
+          <Input
+            value={selected.name}
+            aria-label="Screening area name"
+            onChange={(event) => {
+              rename(selected.id, event.target.value);
+              markDirty();
+            }}
+          />
+          <IconButton
+            label="Zoom to screening area"
+            size="sm"
+            onClick={() => {
+              const bounds = screeningRingBounds(selected.ring);
+              if (bounds) fitBounds(bounds);
+            }}
+          >
+            <CrosshairIcon size={14} />
+          </IconButton>
+          <IconButton
+            label="Delete screening area"
+            size="sm"
+            onClick={() => {
+              remove(selected.id);
+              markDirty();
+            }}
+          >
+            <TrashIcon size={14} />
+          </IconButton>
+        </div>
+      )}
+      {areas.length === 0 && (
+        <Callout tone="note">
+          Draw a screening area to paint land layers, or select a site for the power grid (~50 km).
+        </Callout>
+      )}
+      {hasOversized && (
+        <Callout tone="warning">
+          A screening area exceeds ~{SCREENING_AREA_WARN_KM2.toLocaleString()} km². Land paint and
+          queries may truncate.
+        </Callout>
+      )}
+    </div>
+  );
+}
+
 export function LayerPanel({ collapsed }: { collapsed: boolean }) {
   const runtime = useLayerStore((state) => state.runtime);
   const toggle = useLayerStore((state) => state.toggle);
@@ -60,16 +162,20 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
   useSettingsStore((state) => state.datasets);
   useSettingsStore((state) => state.preferences.acceptNonCommercialLayers);
   useSettingsStore((state) => state.configuredKeys);
+  const screeningCount = useScreeningStore((state) => state.areas.length);
+  const siteCount = useSiteStore((state) => state.sites.length);
   const setView = useUiStore((state) => state.setView);
   const notify = useUiStore((state) => state.notify);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     context: true,
+    screening: true,
     resource: true,
     infrastructure: true,
     land: true,
   });
 
   const groups: Array<LayerDefinition["group"]> = ["context", "resource", "infrastructure", "land"];
+  const screeningOpen = !collapsed && (openGroups.screening ?? true);
 
   return (
     <div className={`layer-panel${collapsed ? " layer-panel--rail" : ""}`}>
@@ -80,7 +186,8 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
         const label = GROUP_LABELS[group];
 
         return (
-          <section key={group} className={`layer-group layer-group--${group}`}>
+          <div key={group} className="layer-panel__stack">
+          <section className={`layer-group layer-group--${group}`}>
             <button
               type="button"
               className="layer-group__toggle"
@@ -105,6 +212,8 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
                 const state = runtime[layer.id] ?? { visible: false, opacity: 1 };
                 const usable = isLayerUsable(layer);
                 const reason = unavailableReason(layer);
+                const needsAoi = NEEDS_SCREENING_AOI.has(layer.id);
+                const needsFocus = NEEDS_FOCUS_GEOMETRY.has(layer.id);
 
                 return (
                   <div
@@ -131,6 +240,27 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
                           setView("settings");
                           return;
                         }
+                        if (needsAoi && !state.visible && screeningCount === 0) {
+                          notify({
+                            tone: "info",
+                            message: "Draw a screening area first",
+                            detail: `${layer.label} only paints inside a screening area.`,
+                          });
+                          return;
+                        }
+                        if (
+                          needsFocus &&
+                          !state.visible &&
+                          screeningCount === 0 &&
+                          siteCount === 0
+                        ) {
+                          notify({
+                            tone: "info",
+                            message: "Draw a screening area or select a site first",
+                            detail: `${layer.label} paints around a screening area or site (~50 km).`,
+                          });
+                          return;
+                        }
                         toggle(layer.id);
                       }}
                     />
@@ -138,6 +268,36 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
                 );
               })}
           </section>
+          {group === "context" && (
+            <section className="layer-group layer-group--screening">
+              <button
+                type="button"
+                className="layer-group__toggle"
+                aria-expanded={screeningOpen}
+                aria-label="Screening areas"
+                title={collapsed ? "Screening areas" : undefined}
+                onClick={() => {
+                  if (collapsed) return;
+                  setOpenGroups((prev) => ({
+                    ...prev,
+                    screening: !(prev.screening ?? true),
+                  }));
+                }}
+              >
+                <span className="layer-group__icon">
+                  <PolygonIcon size={16} />
+                </span>
+                {!collapsed && <SectionLabel>Screening areas</SectionLabel>}
+                {!collapsed && (
+                  <span className="layer-group__chevron" aria-hidden>
+                    {screeningOpen ? "▾" : "▸"}
+                  </span>
+                )}
+              </button>
+              {screeningOpen && <ScreeningAreasChrome />}
+            </section>
+          )}
+          </div>
         );
       })}
 
@@ -146,29 +306,29 @@ export function LayerPanel({ collapsed }: { collapsed: boolean }) {
       {!collapsed && (
         <div className="layer-panel__opacity">
           <SectionLabel>Visible layer opacity</SectionLabel>
-          {LAYER_CATALOGUE.filter((layer) => runtime[layer.id]?.visible && layer.id !== "sites").map(
-            (layer) => {
-              const opacity = runtime[layer.id]?.opacity ?? 1;
-              const percent = Math.round(opacity * 100);
-              return (
-                <label key={layer.id} className="layer-panel__slider">
-                  <span className="layer-panel__slider-label">{layer.label}</span>
-                  <input
-                    className="layer-panel__range"
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={percent}
-                    aria-label={`${layer.label} opacity`}
-                    aria-valuetext={`${percent}%`}
-                    onChange={(event) => setOpacity(layer.id, Number(event.target.value) / 100)}
-                  />
-                  <span className="layer-panel__slider-value">{percent}%</span>
-                </label>
-              );
-            },
-          )}
+          {LAYER_CATALOGUE.filter(
+            (layer) => runtime[layer.id]?.visible && layer.id !== "sites",
+          ).map((layer) => {
+            const opacity = runtime[layer.id]?.opacity ?? 1;
+            const percent = Math.round(opacity * 100);
+            return (
+              <label key={layer.id} className="layer-panel__slider">
+                <span className="layer-panel__slider-label">{layer.label}</span>
+                <input
+                  className="layer-panel__range"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={percent}
+                  aria-label={`${layer.label} opacity`}
+                  aria-valuetext={`${percent}%`}
+                  onChange={(event) => setOpacity(layer.id, Number(event.target.value) / 100)}
+                />
+                <span className="layer-panel__slider-value">{percent}%</span>
+              </label>
+            );
+          })}
         </div>
       )}
     </div>
@@ -185,7 +345,8 @@ function LayerDetail() {
   if (visible.length === 0) {
     return (
       <Callout tone="note">
-        No data layers are on. Turn one on above to see it here with its source, vintage and licence.
+        No data layers are on. Turn one on above to see it here with its source, vintage and
+        licence.
       </Callout>
     );
   }

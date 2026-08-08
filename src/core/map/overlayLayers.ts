@@ -8,8 +8,13 @@
 import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
 import { refreshFootprintLayers } from "./footprintLayers";
 import { refreshPlantLayer } from "./plantLayers";
+import { refreshProtectedAreaLayers } from "./protectedAreaLayers";
 import { refreshResourceRasterLayers } from "./resourceRasterLayers";
+import { renderScreeningLayers } from "./screeningLayers";
 import { renderSiteLayers } from "./siteLayers";
+import { refreshLandCoverLayers } from "./landCoverLayers";
+import { refreshPowerGridLayers } from "./powerGridLayers";
+import { refreshTerrainSlopeLayers } from "./terrainSlopeLayers";
 import { whenStyleReady } from "./styleReady";
 
 export { whenStyleReady } from "./styleReady";
@@ -21,9 +26,14 @@ function paintOverlays(map: MapLibreMap): void {
     return;
   }
   renderSiteLayers(map);
+  renderScreeningLayers(map);
   void refreshPlantLayer(map);
   void refreshFootprintLayers(map);
   void refreshResourceRasterLayers(map);
+  void refreshProtectedAreaLayers(map);
+  void refreshTerrainSlopeLayers(map);
+  void refreshLandCoverLayers(map);
+  void refreshPowerGridLayers(map);
 }
 
 /** One in-flight setStyle per map; further requests replace the queued style. */

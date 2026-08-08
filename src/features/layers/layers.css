@@ -50,6 +50,15 @@
   margin-top: 2px;
 }
 
+.layer-group--screening .layer-group__icon {
+  color: var(--on-surface-variant);
+}
+
+/* Wrapper so Screening areas can sit between This project and Solar resource. */
+.layer-panel__stack {
+  display: contents;
+}
+
 .layer-group__chevron {
   flex: 0 0 auto;
   font-size: 11px;
@@ -75,6 +84,35 @@
 .layer-panel .layer-row {
   /* Past section icon (16) + gap (8), then +15 so titles sit under the label. */
   padding-left: calc(16px + 8px + 15px);
+}
+
+/* Screening AOI chrome under its own section header. */
+.screening-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 10px;
+  padding-left: calc(16px + 8px + 15px);
+  padding-right: var(--space-2);
+}
+
+.screening-chrome__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--on-surface-variant);
+}
+
+.screening-chrome__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.screening-chrome__row .ds-input,
+.screening-chrome__row .ds-select {
+  flex: 1;
+  min-width: 0;
 }
 
 .layer-row__main {

@@ -68,7 +68,7 @@ const RAMP: &[(f64, u8, u8, u8)] = &[
 ];
 
 /// Picks the finest overview whose estimated window still fits `max_read`.
-pub fn pick_level_for_budget(
+pub(crate) fn pick_level_for_budget(
     levels: &[RasterLevel],
     full_width: u32,
     full_height: u32,
@@ -120,7 +120,7 @@ fn sample_ramp(t: f64) -> (u8, u8, u8) {
     (last.1, last.2, last.3)
 }
 
-fn encode_base64(data: &[u8]) -> String {
+pub(crate) fn encode_base64(data: &[u8]) -> String {
     const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
     for chunk in data.chunks(3) {
@@ -153,21 +153,27 @@ fn clamp_lat(lat: f64) -> f64 {
     lat.clamp(-MERCATOR_MAX_LAT, MERCATOR_MAX_LAT)
 }
 
-fn lon_to_merc_x(lon: f64) -> f64 {
+pub(crate) fn lon_to_merc_x(lon: f64) -> f64 {
     lon
 }
 
-fn lat_to_merc_y(lat: f64) -> f64 {
+pub(crate) fn lat_to_merc_y(lat: f64) -> f64 {
     let lat = clamp_lat(lat).to_radians();
     lat.tan().asinh().to_degrees()
 }
 
-fn merc_y_to_lat(y: f64) -> f64 {
+pub(crate) fn merc_y_to_lat(y: f64) -> f64 {
     y.to_radians().sinh().atan().to_degrees()
 }
 
 /// Output grid size fitting `max_pixels` with the viewport's **mercator** aspect.
-fn output_dimensions(min_lon: f64, min_lat: f64, max_lon: f64, max_lat: f64, max_pixels: u64) -> (u32, u32) {
+pub(crate) fn output_dimensions(
+    min_lon: f64,
+    min_lat: f64,
+    max_lon: f64,
+    max_lat: f64,
+    max_pixels: u64,
+) -> (u32, u32) {
     let span_x = (max_lon - min_lon).abs().max(1e-9);
     let span_y = (lat_to_merc_y(max_lat) - lat_to_merc_y(min_lat)).abs().max(1e-9);
     let aspect = span_x / span_y;
@@ -210,7 +216,12 @@ fn sample_window(
 }
 
 /// Decimate a window buffer by integer stride (nearest).
-fn decimate_window(values: &[f64], width: u32, height: u32, max_pixels: u64) -> (u32, u32, Vec<f64>, u32) {
+pub(crate) fn decimate_window(
+    values: &[f64],
+    width: u32,
+    height: u32,
+    max_pixels: u64,
+) -> (u32, u32, Vec<f64>, u32) {
     let count = width as u64 * height as u64;
     if count <= max_pixels || width == 0 || height == 0 {
         return (width, height, values.to_vec(), 1);

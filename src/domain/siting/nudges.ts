@@ -52,6 +52,12 @@ export interface SiteFacts {
   gridDistanceKm?: number;
   /** Whether the site intersects a protected area (WDPA or equivalent). */
   inProtectedArea?: boolean;
+  /**
+   * When false, WDPA (or equivalent) is not installed — emit a note instead of
+   * silently skipping the protected-area check. Omit in unit tests that do not
+   * care about dataset state.
+   */
+  protectedAreasAvailable?: boolean;
   /** Dominant land cover class, when a LULC layer is loaded. */
   landCover?: "cropland" | "grassland" | "barren" | "forest" | "wetland" | "urban" | "water";
   /** Distance to the nearest known solar plant, km — brownfield context. */
@@ -170,10 +176,10 @@ function slopeNudges(facts: SiteFacts): Nudge[] {
         title: "Terrain slope not sampled",
         detail:
           "No elevation model has been queried for this site, so grading risk is unassessed. " +
-          "DEM slope sampling is not wired yet — toggling Terrain slope only flips the catalogue; " +
-          "MapTiler terrain basemap is visual relief, not a site mean slope.",
+          "Run screening checks in the desktop app (AWS Terrarium tiles) to sample mean slope. " +
+          "MapTiler terrain basemap is visual relief only, not a site mean slope.",
         action:
-          "Use a MapTiler terrain basemap for context, or wait for DEM zonal sampling (see terrain-analysis notes).",
+          "Use the desktop app with network access so Sunday can fetch Terrarium tiles, then run screening checks again.",
         basis: "Missing input",
       },
     ];
@@ -324,7 +330,18 @@ function resourceNudges(facts: SiteFacts): Nudge[] {
 function landNudges(facts: SiteFacts): Nudge[] {
   const nudges: Nudge[] = [];
 
-  if (facts.inProtectedArea) {
+  if (facts.protectedAreasAvailable === false) {
+    nudges.push({
+      id: "protected-areas-missing",
+      severity: "note",
+      title: "Protected areas not installed",
+      detail:
+        "The World Database on Protected Areas is not installed, so this check could not " +
+        "test whether the site intersects a designated area.",
+      action: "Install Protected areas in Settings (ogr2ogr + tippecanoe), then run checks again.",
+      basis: "Missing dataset",
+    });
+  } else if (facts.inProtectedArea) {
     nudges.push({
       id: "protected-area",
       severity: "blocking",

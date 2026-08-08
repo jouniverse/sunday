@@ -3955,8 +3955,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "dirs",
+ "flate2",
  "geo",
  "lru",
+ "png 0.17.16",
  "rand 0.9.5",
  "reqwest",
  "rusqlite",

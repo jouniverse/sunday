@@ -68,11 +68,12 @@ fn candidates(dataset: &str) -> &'static [&'static str] {
             "GMSEUS_Arrays_Final_2025_v2_1.gpkg",
             "GMSEUS_Arrays_Final_2025_v2_0.gpkg",
         ],
+        // Prefer a complete Shapefile over multi-GB GeoJSON when both exist.
         "wdpa" => &[
-            "Protected areas.geojson",
             "Protected areas.shp",
-            "wdpa-poly.geojson",
             "wdpa.shp",
+            "Protected areas.geojson",
+            "wdpa-poly.geojson",
         ],
         _ => &[],
     }
@@ -80,6 +81,20 @@ fn candidates(dataset: &str) -> &'static [&'static str] {
 
 pub fn gdal_available() -> bool {
     which("gdal_translate").is_some() && which("ogr2ogr").is_some()
+}
+
+fn tippecanoe_available() -> bool {
+    which("tippecanoe").is_some()
+}
+
+/// Shapefile needs .shp + .shx + .dbf beside each other.
+fn shapefile_complete(shp: &Path) -> bool {
+    if shp.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase() != "shp" {
+        return false;
+    }
+    let shx = shp.with_extension("shx");
+    let dbf = shp.with_extension("dbf");
+    shx.exists() && dbf.exists()
 }
 
 fn which(bin: &str) -> Option<PathBuf> {
@@ -126,6 +141,10 @@ pub fn discover(root: &Path, dataset: &str) -> Result<DiscoverResult> {
                 "shp" => "shapefile",
                 other => other,
             };
+            // Incomplete WDPA shapefile → keep looking (often a lone .shp next to GeoJSON).
+            if dataset == "wdpa" && kind == "shapefile" && !shapefile_complete(&path) {
+                continue;
+            }
             return Ok(DiscoverResult {
                 dataset: dataset.into(),
                 path: Some(path.display().to_string()),
@@ -190,11 +209,222 @@ pub fn install(paths: &Paths, dataset: &str, source_path: &Path) -> Result<Insta
             Some("2025"),
             Some("CC BY 4.0"),
         ),
-        "wdpa" | "osm-power" | "landcover" => Err(Error::Unsupported(format!(
+        "wdpa" => install_wdpa(paths, source_path),
+        "osm-power" | "landcover" => Err(Error::Unsupported(format!(
             "{dataset} install is not wired yet — export/setup will land in a later build"
         ))),
         _ => Err(Error::Invalid(format!("unknown dataset id '{dataset}'"))),
     }
+}
+
+/// WDPA → local PMTiles (map paint) + simplified geometries in SQLite (screening).
+///
+/// Requires system `ogr2ogr` and `tippecanoe`. Prefers a complete Shapefile;
+/// multi-GB GeoJSON works but is slow. Never loads the full source into memory.
+fn install_wdpa(paths: &Paths, source: &Path) -> Result<InstallResult> {
+    if which("ogr2ogr").is_none() {
+        return Err(Error::Invalid(
+            "WDPA install needs GDAL ogr2ogr on PATH. Install GDAL (e.g. brew install gdal) and try again.".into(),
+        ));
+    }
+    if !tippecanoe_available() {
+        return Err(Error::Invalid(
+            "WDPA install needs tippecanoe on PATH. Install it (e.g. brew install tippecanoe) and try again.".into(),
+        ));
+    }
+
+    let ext = source
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if ext == "shp" && !shapefile_complete(source) {
+        return Err(Error::Invalid(
+            "Shapefile is incomplete — need .shp, .shx and .dbf together. Or Install from Protected areas.geojson.".into(),
+        ));
+    }
+    if !matches!(ext.as_str(), "shp" | "geojson" | "json" | "gpkg") {
+        return Err(Error::Invalid(
+            "WDPA install expects a .shp, .geojson or .gpkg file".into(),
+        ));
+    }
+
+    fs::create_dir_all(paths.cache_dir())?;
+    fs::create_dir_all(paths.vector_dir())?;
+
+    // Simplify + reproject to a line-delimited GeoJSON for streaming SQLite import
+    // and tippecanoe. 0.01° ≈ 1 km — fine for screening and low-zoom paint.
+    //
+    // WDPA is WGS84. Exports often omit .prj; ogr2ogr then refuses -t_srs unless
+    // we declare -s_srs. Always set source SRS so Install works without a .prj.
+    let simplified = paths.cache_dir().join("wdpa-simplified.jsonl");
+    if simplified.exists() {
+        let _ = fs::remove_file(&simplified);
+    }
+    let status = Command::new("ogr2ogr")
+        .args([
+            "-f",
+            "GeoJSONSeq",
+            "-s_srs",
+            "EPSG:4326",
+            "-t_srs",
+            "EPSG:4326",
+            "-simplify",
+            "0.01",
+            "-nlt",
+            "PROMOTE_TO_MULTI",
+            "-overwrite",
+        ])
+        .arg(&simplified)
+        .arg(source)
+        .status()
+        .map_err(|e| Error::Invalid(format!("failed to run ogr2ogr: {e}")))?;
+    if !status.success() {
+        return Err(Error::Invalid(
+            "ogr2ogr failed simplifying WDPA. If the shapefile has no .prj, rebuild the app (Install now assumes WGS84). Otherwise check the source file and GDAL install.".into(),
+        ));
+    }
+
+    let pmtiles = paths.vector_dir().join("protected_areas.pmtiles");
+    if pmtiles.exists() {
+        let _ = fs::remove_file(&pmtiles);
+    }
+    let tippe = Command::new("tippecanoe")
+        .args([
+            "-o",
+        ])
+        .arg(&pmtiles)
+        .args([
+            "-zg",
+            "--drop-densest-as-needed",
+            "--extend-zooms-if-still-dropping",
+            "-l",
+            "protected_areas",
+            "-y",
+            "NAME",
+            "-y",
+            "IUCN_CAT",
+            "-y",
+            "DESIG_ENG",
+            "-y",
+            "STATUS",
+            "-y",
+            "MARINE",
+            "-y",
+            "WDPAID",
+            "--force",
+        ])
+        .arg(&simplified)
+        .status()
+        .map_err(|e| Error::Invalid(format!("failed to run tippecanoe: {e}")))?;
+    if !tippe.success() {
+        let _ = fs::remove_file(&pmtiles);
+        return Err(Error::Invalid(
+            "tippecanoe failed building protected_areas.pmtiles. Check tippecanoe output in the terminal.".into(),
+        ));
+    }
+
+    let count = import_wdpa_jsonl(paths, &simplified)?;
+    let _ = fs::remove_file(&simplified);
+
+    let size_mb = file_size_mb(&pmtiles).unwrap_or(0.0);
+    Ok(InstallResult {
+        dataset: "wdpa".into(),
+        installed_path: pmtiles.display().to_string(),
+        feature_count: Some(count),
+        size_mb,
+        used_gdal: true,
+        detail: format!(
+            "Built PMTiles at {} and imported {count} simplified polygons for screening",
+            pmtiles.display()
+        ),
+    })
+}
+
+fn import_wdpa_jsonl(paths: &Paths, path: &Path) -> Result<u64> {
+    use std::io::{BufRead, BufReader};
+
+    let file = fs::File::open(path)?;
+    let reader = BufReader::new(file);
+    let mut store = VectorStore::open(&paths.vector_store())?;
+    store.register_dataset(
+        "wdpa",
+        "World Database on Protected Areas",
+        None,
+        Some("WDPA terms of use (non-commercial)"),
+        None,
+    )?;
+    store.delete_dataset_features("wdpa")?;
+
+    let mut batch: Vec<Feature> = Vec::with_capacity(2_000);
+    let mut count = 0u64;
+    let mut index = 0usize;
+
+    for line in reader.lines() {
+        let line = line?;
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let value: serde_json::Value = serde_json::from_str(line)
+            .map_err(|e| Error::Invalid(format!("invalid WDPA GeoJSONSeq line: {e}")))?;
+        if let Some(mut feature) = geojson_feature_to_store("wdpa", &value, index) {
+            // Promote common WDPA fields into the columns screening/UI already read.
+            if feature.name.is_none() {
+                feature.name = feature
+                    .properties
+                    .get("NAME")
+                    .or_else(|| feature.properties.get("name"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+            }
+            if feature.status.is_none() {
+                feature.status = feature
+                    .properties
+                    .get("STATUS")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+            }
+            if feature.technology.is_none() {
+                feature.technology = feature
+                    .properties
+                    .get("IUCN_CAT")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+            }
+            if feature.country.is_none() {
+                feature.country = feature
+                    .properties
+                    .get("ISO3")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+            }
+            // Keep a lean properties bag for click/inspect.
+            feature.properties = json!({
+                "name": feature.name,
+                "iucnCat": feature.technology,
+                "designation": feature.properties.get("DESIG_ENG").or_else(|| feature.properties.get("DESIG")).cloned().unwrap_or(serde_json::Value::Null),
+                "status": feature.status,
+                "marine": feature.properties.get("MARINE").cloned().unwrap_or(serde_json::Value::Null),
+            });
+            batch.push(feature);
+            count += 1;
+        }
+        index += 1;
+        if batch.len() >= 2_000 {
+            store.insert_features(&batch)?;
+            batch.clear();
+        }
+    }
+    if !batch.is_empty() {
+        store.insert_features(&batch)?;
+    }
+    if count == 0 {
+        return Err(Error::Invalid(
+            "No polygon features found after simplifying WDPA".into(),
+        ));
+    }
+    Ok(count)
 }
 
 fn install_raster(paths: &Paths, dataset: &str, source: &Path) -> Result<InstallResult> {
@@ -436,6 +666,8 @@ fn geojson_feature_to_store(dataset: &str, item: &serde_json::Value, index: usiz
     let id = props
         .get("id")
         .or_else(|| props.get("ID"))
+        .or_else(|| props.get("WDPAID"))
+        .or_else(|| props.get("wdpaid"))
         .or_else(|| props.get("arrayID"))
         .or_else(|| props.get("ArrayID"))
         .or_else(|| props.get("uid"))

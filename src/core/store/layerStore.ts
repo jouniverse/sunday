@@ -172,8 +172,8 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     source: "OpenStreetMap via OpenInfraMap",
     sourceUrl: "https://openinframap.org/",
     licence: "ODbL",
-    // Tiles/query wiring lands with the P1 grid overlay; do not advertise ready.
-    availability: { state: "needs-download", dataset: "osm-power", approximateMb: 0 },
+    // Streamed OpenInfraMap MVTs — no Install; paint windowed to screening AOI or site.
+    availability: { state: "ready" },
     defaultVisible: false,
     legend: [
       { colour: "#ffb4ab", label: "≥ 220 kV" },
@@ -190,9 +190,15 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     purpose: "Hard exclusion in every siting framework.",
     source: "World Database on Protected Areas",
     sourceUrl: "https://www.protectedplanet.net/en/thematic-areas/wdpa?tab=WDPA",
-    licence: "WDPA terms of use",
+    licence: "WDPA terms of use (non-commercial)",
     availability: { state: "needs-download", dataset: "wdpa", approximateMb: 210 },
     defaultVisible: false,
+    legend: [
+      { colour: "#2d6a4f", label: "Ia / Ib (strict)" },
+      { colour: "#40916c", label: "II–III" },
+      { colour: "#74c69d", label: "IV–VI" },
+      { colour: "#95d5b2", label: "Other / unset" },
+    ],
   },
   {
     id: "landcover",
@@ -204,8 +210,23 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     sourceUrl: "https://registry.opendata.aws/esa-worldcover-vito/",
     vintage: "2021",
     licence: "CC BY 4.0",
-    availability: { state: "needs-download", dataset: "landcover", approximateMb: 640 },
+    // Streamed AOI window from AWS Map COGs — desktop only (HTTP range reads).
+    availability: { state: "needs-desktop" },
     defaultVisible: false,
+    // Official ESA WorldCover 2021 v200 Map colours (PUM Table 3).
+    legend: [
+      { colour: "#006400", label: "Tree cover" },
+      { colour: "#ffbb22", label: "Shrubland" },
+      { colour: "#ffff4c", label: "Grassland" },
+      { colour: "#f096ff", label: "Cropland" },
+      { colour: "#fa0000", label: "Built-up" },
+      { colour: "#b4b4b4", label: "Bare / sparse" },
+      { colour: "#f0f0f0", label: "Snow and ice" },
+      { colour: "#0064c8", label: "Water" },
+      { colour: "#0096a0", label: "Herbaceous wetland" },
+      { colour: "#00cf75", label: "Mangroves" },
+      { colour: "#fae6a0", label: "Moss and lichen" },
+    ],
   },
   {
     id: "terrain-slope",
@@ -213,12 +234,20 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     group: "land",
     kind: "derived",
     purpose: "Slope derived from an elevation model, for grading risk.",
-    source: "Copernicus DEM via the active terrain basemap",
+    source: "AWS Open Data elevation-tiles-prod (Terrarium)",
     sourceUrl: "https://registry.opendata.aws/terrain-tiles/",
-    licence: "Copernicus terms",
-    availability: { state: "needs-key", provider: "maptiler" },
+    licence: "Public domain / AWS Open Data",
+    // Analytical slope uses AWS Terrarium via the desktop core — not MapTiler.
+    availability: { state: "needs-desktop" },
     defaultVisible: false,
     units: "%",
+    legend: [
+      { colour: "#2d6a4f", label: "Flat" },
+      { colour: "#95d5b2", label: "Gentle" },
+      { colour: "#d9a441", label: "Moderate" },
+      { colour: "#e07a45", label: "Steep" },
+      { colour: "#9b2226", label: "Very steep" },
+    ],
   },
   {
     id: "sites",
@@ -261,12 +290,17 @@ export function layerById(id: string): LayerDefinition | undefined {
 }
 
 export function isLayerUsable(layer: LayerDefinition): boolean {
-  // TZ-SAM is always dual-gated: installed + NC acceptance (even after markAvailable).
-  if (layer.id === "tz-sam") {
+  // TZ-SAM / WDPA are dual-gated: installed + NC acceptance (even after markAvailable).
+  if (layer.id === "tz-sam" || layer.id === "wdpa") {
     const installed =
       layer.availability.state === "ready" ||
-      Boolean(useSettingsStore.getState().datasets["tz-sam"]?.downloaded);
+      Boolean(useSettingsStore.getState().datasets[layer.id]?.downloaded);
     return installed && useSettingsStore.getState().preferences.acceptNonCommercialLayers;
+  }
+
+  // AOI-streamed land layers: desktop HTTP fetch (browser preview cannot paint).
+  if (layer.availability.state === "needs-desktop") {
+    return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
   }
 
   if (layer.availability.state === "ready") return true;
@@ -299,15 +333,27 @@ export function isLayerUsable(layer: LayerDefinition): boolean {
 
 /** Human-readable reason a layer cannot be switched on yet. */
 export function unavailableReason(layer: LayerDefinition): string | null {
-  if (layer.id === "tz-sam") {
+  if (layer.availability.state === "needs-desktop") {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) return null;
+    if (layer.id === "landcover") {
+      return "Land cover needs the desktop app (ESA WorldCover on AWS). Draw a screening area, then toggle the layer.";
+    }
+    return "Terrain slope needs the desktop app (AWS Terrarium tiles). Draw a screening area, then toggle the layer.";
+  }
+
+  if (layer.id === "tz-sam" || layer.id === "wdpa") {
     const installed =
       layer.availability.state === "ready" ||
-      Boolean(useSettingsStore.getState().datasets["tz-sam"]?.downloaded);
+      Boolean(useSettingsStore.getState().datasets[layer.id]?.downloaded);
     if (!installed) {
-      return "Install the Global PV footprints dataset in Settings.";
+      return layer.id === "wdpa"
+        ? "Install Protected areas in Settings (needs ogr2ogr + tippecanoe)."
+        : "Install the Global PV footprints dataset in Settings.";
     }
     if (!useSettingsStore.getState().preferences.acceptNonCommercialLayers) {
-      return "Enable “Allow non-commercial licensed layers” in Settings (CC BY-NC 4.0).";
+      return layer.id === "wdpa"
+        ? "Enable “Allow non-commercial licensed layers” in Settings (WDPA terms)."
+        : "Enable “Allow non-commercial licensed layers” in Settings (CC BY-NC 4.0).";
     }
     return null;
   }
@@ -331,8 +377,6 @@ export function unavailableReason(layer: LayerDefinition): string | null {
       }
       return `Install the ${layer.availability.dataset} dataset (about ${layer.availability.approximateMb} MB) in Settings.`;
     }
-    case "needs-desktop":
-      return "This layer needs the desktop app rather than the browser dev server.";
     case "licence-gated":
       return `Licensed ${layer.availability.licence}; enable it in Settings once you have confirmed your use is permitted.`;
     default:

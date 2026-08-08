@@ -15,6 +15,10 @@ use crate::raster::zonal::{self, ZonalOptions, ZonalStats};
 use crate::raster::{self, RasterInfo, RasterSource};
 use crate::sidecar::{EngineCommand, EngineStatus};
 use crate::datasets::{self, DiscoverResult, InstallResult};
+use crate::landcover::{self, LandcoverPreviewRequest};
+use crate::terrain::{
+    self, TerrainSlopePreviewRequest, TerrainSlopeZonalRequest, TerrainSlopeZonalResult,
+};
 use crate::vector::{BboxQuery, BboxResult, DatasetSummary, Feature, PlantCentroid, VectorStore};
 use crate::AppState;
 
@@ -106,6 +110,46 @@ pub async fn raster_viewport_preview(request: ViewportPreviewCommand) -> Result<
     })
     .await
     .map_err(|e| Error::Invalid(format!("viewport preview task failed: {e}")))?
+}
+
+// ---------------------------------------------------------------------------
+// Terrain slope (AWS Terrarium)
+// ---------------------------------------------------------------------------
+
+/// Colourised slope preview windowed to a screening AOI bbox.
+#[tauri::command]
+pub async fn terrain_slope_preview(
+    state: State<'_, AppState>,
+    request: TerrainSlopePreviewRequest,
+) -> Result<ViewportPreview> {
+    let cache = state.paths.cache_dir();
+    tauri::async_runtime::spawn_blocking(move || terrain::slope_preview(&cache, &request))
+        .await
+        .map_err(|e| Error::Invalid(format!("terrain preview task failed: {e}")))?
+}
+
+/// Mean / max slope inside a site ring for Run screening checks.
+#[tauri::command]
+pub async fn terrain_slope_zonal(
+    state: State<'_, AppState>,
+    request: TerrainSlopeZonalRequest,
+) -> Result<TerrainSlopeZonalResult> {
+    let cache = state.paths.cache_dir();
+    tauri::async_runtime::spawn_blocking(move || terrain::slope_zonal(&cache, &request))
+        .await
+        .map_err(|e| Error::Invalid(format!("terrain zonal task failed: {e}")))?
+}
+
+// ---------------------------------------------------------------------------
+// Land cover (ESA WorldCover)
+// ---------------------------------------------------------------------------
+
+/// Categorical WorldCover preview windowed to a screening AOI bbox.
+#[tauri::command]
+pub async fn landcover_preview(request: LandcoverPreviewRequest) -> Result<ViewportPreview> {
+    tauri::async_runtime::spawn_blocking(move || landcover::preview(&request))
+        .await
+        .map_err(|e| Error::Invalid(format!("land cover preview task failed: {e}")))?
 }
 
 // ---------------------------------------------------------------------------
@@ -406,6 +450,7 @@ pub struct AppInfo {
     pub data_dir: String,
     pub config_dir: String,
     pub raster_dir: String,
+    pub vector_dir: String,
     pub vector_store: String,
     pub engine: EngineStatus,
 }
@@ -417,6 +462,7 @@ pub fn app_info(state: State<'_, AppState>) -> AppInfo {
         data_dir: state.paths.data_dir.display().to_string(),
         config_dir: state.paths.config_dir.display().to_string(),
         raster_dir: state.paths.raster_dir().display().to_string(),
+        vector_dir: state.paths.vector_dir().display().to_string(),
         vector_store: state.paths.vector_store().display().to_string(),
         engine: state.sidecar.status(),
     }

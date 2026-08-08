@@ -27,6 +27,9 @@ import type { TechnologyProfile } from "@/domain/siting/nudges";
 import { evaluateSite, summariseNudges } from "@/domain/siting/nudges";
 import { formatCoordinates, formatNumber, scaleArea, scaleDistance } from "@/domain/units";
 import { useResourceCacheStore } from "@/core/store/resourceCacheStore";
+import { platform } from "@/core/platform";
+import { queryNearestGridDistance } from "@/services/datasets/grid-distance";
+import { querySiteProtectedAreaOverlap } from "@/services/datasets/wdpa-intersect";
 import { generateSiteReport } from "@/services/solar/orchestrator";
 import type { SolarProvider } from "@/services/solar/types";
 import { NudgeList } from "./NudgeList";
@@ -80,6 +83,7 @@ function SiteDetail({ site }: { site: Site }) {
   const removeSite = useSiteStore((state) => state.removeSite);
   const selectSite = useSiteStore((state) => state.selectSite);
   const setResource = useSiteStore((state) => state.setResource);
+  const setTerrain = useSiteStore((state) => state.setTerrain);
   const setNudges = useSiteStore((state) => state.setNudges);
   const setKind = useSiteStore((state) => state.setKind);
   const flyTo = useMapStore((state) => state.flyTo);
@@ -87,6 +91,7 @@ function SiteDetail({ site }: { site: Site }) {
   const notify = useUiStore((state) => state.notify);
   const startBusy = useUiStore((state) => state.startBusy);
   const endBusy = useUiStore((state) => state.endBusy);
+  const screeningBusy = useUiStore((state) => Boolean(state.busy.screening));
   const markDirty = useProjectStore((state) => state.markDirty);
   const beginEdit = useDrawStore((state) => state.beginEdit);
   const cancelDraw = useDrawStore((state) => state.cancel);
@@ -190,31 +195,116 @@ function SiteDetail({ site }: { site: Site }) {
   }
 
   /** Runs the screening soft rules over whatever facts are known. */
-  function runScreening() {
-    const nudges = evaluateSite({
-      areaM2: site.areaM2,
-      latitude: site.centre[1],
-      technology,
-      meanSlopeDegrees: site.terrain?.meanSlopeDegrees,
-      aspectDegrees: site.terrain?.aspectDegrees,
-      ghiKwhM2Year: site.resource?.ghiKwhM2Year,
-      dniKwhM2Year: site.resource?.dniKwhM2Year,
-      invalidGeometry: site.ring !== null && !site.geometryValid,
-    });
-    setNudges(site.id, nudges);
-    markDirty();
+  async function runScreening() {
+    startBusy("screening", "Running screening checks");
+    try {
+      let inProtectedArea: boolean | undefined;
+      let protectedAreasAvailable: boolean | undefined;
+      try {
+        const wdpa = await querySiteProtectedAreaOverlap({
+          centre: site.centre,
+          ring: site.ring,
+        });
+        protectedAreasAvailable = wdpa.available;
+        inProtectedArea = wdpa.available ? wdpa.intersects : undefined;
+      } catch (error) {
+        protectedAreasAvailable = false;
+        notify({
+          tone: "warning",
+          message: "Protected-area check failed",
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
 
-    const summary = summariseNudges(nudges);
-    notify({
-      tone: summary.blocking > 0 ? "warning" : "info",
-      message:
-        summary.blocking > 0
-          ? `${summary.blocking} blocking issue${summary.blocking === 1 ? "" : "s"} found`
-          : summary.caution > 0
-            ? `${summary.caution} point${summary.caution === 1 ? "" : "s"} to check`
-            : "No obstacles found in the screening checks",
-      detail: summary.disclaimer,
-    });
+      // Sample AWS Terrarium slope for the selected site (desktop). Leave unset on failure.
+      let meanSlopeDegrees = site.terrain?.meanSlopeDegrees;
+      let aspectDegrees = site.terrain?.aspectDegrees;
+      if (platform().kind === "tauri") {
+        try {
+          const ring =
+            site.ring && site.ring.length >= 3
+              ? site.ring
+              : ([
+                  [site.centre[0] - 0.002, site.centre[1] - 0.002],
+                  [site.centre[0] + 0.002, site.centre[1] - 0.002],
+                  [site.centre[0] + 0.002, site.centre[1] + 0.002],
+                  [site.centre[0] - 0.002, site.centre[1] + 0.002],
+                ] as Array<[number, number]>);
+          const zonal = await platform().terrain.slopeZonal([ring]);
+          setTerrain(site.id, {
+            meanSlopeDegrees: zonal.meanSlopeDegrees,
+            maxSlopeDegrees: zonal.maxSlopeDegrees,
+            meanElevationM: zonal.meanElevationM ?? undefined,
+            source: `AWS Terrarium (${zonal.method})`,
+          });
+          meanSlopeDegrees = zonal.meanSlopeDegrees;
+        } catch (error) {
+          notify({
+            tone: "info",
+            message: "Terrain slope not sampled",
+            detail: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      // Indicative OSM HV proximity (Overpass). Omit distance when unavailable.
+      let gridDistanceKm: number | undefined;
+      try {
+        const grid = await queryNearestGridDistance({ centre: site.centre });
+        if (!grid.available) {
+          notify({
+            tone: "info",
+            message: "Grid distance not checked",
+            detail:
+              "Overpass was unreachable. Check the network; OSM coverage varies by region.",
+          });
+        } else if (grid.distanceKm != null) {
+          gridDistanceKm = grid.distanceKm;
+        } else {
+          notify({
+            tone: "info",
+            message: "No mapped HV grid within 100 km",
+            detail: "OSM via Overpass — indicative only, not hosting capacity.",
+          });
+        }
+      } catch (error) {
+        notify({
+          tone: "info",
+          message: "Grid distance not checked",
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      const nudges = evaluateSite({
+        areaM2: site.areaM2,
+        latitude: site.centre[1],
+        technology,
+        meanSlopeDegrees,
+        aspectDegrees,
+        ghiKwhM2Year: site.resource?.ghiKwhM2Year,
+        dniKwhM2Year: site.resource?.dniKwhM2Year,
+        invalidGeometry: site.ring !== null && !site.geometryValid,
+        inProtectedArea,
+        protectedAreasAvailable,
+        gridDistanceKm,
+      });
+      setNudges(site.id, nudges);
+      markDirty();
+
+      const summary = summariseNudges(nudges);
+      notify({
+        tone: summary.blocking > 0 ? "warning" : "info",
+        message:
+          summary.blocking > 0
+            ? `${summary.blocking} blocking issue${summary.blocking === 1 ? "" : "s"} found`
+            : summary.caution > 0
+              ? `${summary.caution} point${summary.caution === 1 ? "" : "s"} to check`
+              : "No obstacles found in the screening checks",
+        detail: summary.disclaimer,
+      });
+    } finally {
+      endBusy("screening");
+    }
   }
 
   return (
@@ -395,8 +485,8 @@ function SiteDetail({ site }: { site: Site }) {
           </button>
         ))}
       </div>
-      <Button block onClick={runScreening}>
-        Run screening checks
+      <Button block disabled={screeningBusy} onClick={() => void runScreening()}>
+        {screeningBusy ? "Running screening checks…" : "Run screening checks"}
       </Button>
       <NudgeList nudges={site.nudges} />
 

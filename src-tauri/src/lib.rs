@@ -8,11 +8,13 @@
 pub mod commands;
 pub mod datasets;
 pub mod error;
+pub mod landcover;
 pub mod library;
 pub mod project;
 pub mod raster;
 pub mod settings;
 pub mod sidecar;
+pub mod terrain;
 pub mod vector;
 
 use std::sync::{Arc, Mutex};
@@ -93,6 +95,9 @@ pub fn run() {
             commands::raster_info,
             commands::raster_zonal_stats,
             commands::raster_viewport_preview,
+            commands::terrain_slope_preview,
+            commands::terrain_slope_zonal,
+            commands::landcover_preview,
             commands::vector_datasets,
             commands::vector_query_bbox,
             commands::vector_list_centroids,

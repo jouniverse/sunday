@@ -109,7 +109,17 @@
   font: inherit;
   cursor: pointer;
   text-align: left;
+  flex: 1;
   min-width: 0;
+}
+
+/* Keep Edit + Delete as one trailing cluster (not spaced across the row). */
+.projects__item-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .projects__designs {
@@ -138,9 +148,15 @@
   font-size: 12.5px;
   cursor: pointer;
   text-align: left;
+  flex: 1;
   min-width: 0;
 }
 
 .projects__design-name:hover {
   color: var(--primary);
+}
+
+.projects__edit-input {
+  flex: 1;
+  min-width: 0;
 }

@@ -35,7 +35,7 @@ const DEFAULT_VIEWPORT: Viewport = {
   pitch: 0,
 };
 
-export type MapTool = "pan" | "draw-polygon" | "place-point" | "measure";
+export type MapTool = "pan" | "draw-polygon" | "draw-screening" | "place-point" | "measure";
 
 interface MapState {
   viewport: Viewport;

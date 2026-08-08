@@ -49,15 +49,16 @@ const PROVIDER_CARDS: ProviderCard[] = [
   {
     id: "maptiler",
     label: "MapTiler",
-    unlocks: "Hillshade and 3D terrain basemaps, and the terrain slope layer.",
+    unlocks: "Hillshade and 3D terrain basemaps (visual relief only — not analytical slope).",
     free: "Free tier available.",
     url: "https://cloud.maptiler.com/account/keys/",
   },
 ];
 
 const RASTER_INSTALL_IDS = ["gsa-ghi", "gsa-dni", "gsa-pvout"] as const;
-const VECTOR_INSTALL_IDS = ["gem-solar", "tz-sam", "gmseus-arrays"] as const;
-const VECTOR_STUB_IDS = ["wdpa", "osm-power", "landcover"] as const;
+const VECTOR_INSTALL_IDS = ["gem-solar", "tz-sam", "gmseus-arrays", "wdpa"] as const;
+/** Remote AOI / site fetches — listed for provenance; no Install. */
+const STREAMED_DATASET_IDS = ["terrain-slope", "landcover", "osm-power"] as const;
 
 /** Filenames under the datasets folder (layer-label scheme; Solargis keeps GSA abbrevs). */
 const NAMING_ROWS: Array<{ label: string; files: string }> = [
@@ -71,7 +72,10 @@ const NAMING_ROWS: Array<{ label: string; files: string }> = [
     label: "US ground-mounted arrays",
     files: "US ground-mounted arrays.geojson (preferred), .gpkg",
   },
-  { label: "Protected areas", files: "Protected areas.geojson, Protected areas.shp (later)" },
+  {
+    label: "Protected areas",
+    files: "Protected areas.shp (+ .shx/.dbf; .prj optional, assumed WGS84), or .geojson",
+  },
 ];
 
 /** Prefer measured install size; omit stale catalogue guesses when unknown. */
@@ -201,7 +205,8 @@ export function SettingsView() {
           {gdalOk === false && (
             <Callout tone="note">
               GDAL is not on PATH. Raw GeoTIFFs will be copied as-is (no COG conversion). GPKG
-              footprint installs need GeoJSON instead, or install GDAL.
+              footprint installs need GeoJSON instead, or install GDAL. Protected areas also need
+              tippecanoe (<span className="mono">brew install tippecanoe</span>).
             </Callout>
           )}
         </div>
@@ -240,7 +245,11 @@ export function SettingsView() {
           </div>
           <p className="settings__note">
             Uses the same datasets folder. Install (or Reinstall) into Sunday&apos;s local vector
-            store so map queries stay fast.
+            store so map queries stay fast. Protected areas also build{" "}
+            <span className="mono">vector/protected_areas.pmtiles</span> (needs ogr2ogr +
+            tippecanoe). Terrain slope and Land cover stream from AWS Open Data inside a screening
+            area; Power grid streams OpenInfraMap tiles (OSM, ODbL) around a screening area or site —
+            no Install.
           </p>
           {VECTOR_INSTALL_IDS.map((id) => {
             const layer = LAYER_CATALOGUE.find((row) => row.id === id);
@@ -262,7 +271,7 @@ export function SettingsView() {
               />
             );
           })}
-          {VECTOR_STUB_IDS.map((id) => {
+          {STREAMED_DATASET_IDS.map((id) => {
             const layer = LAYER_CATALOGUE.find((row) => row.id === id);
             if (!layer) return null;
             return (
@@ -271,16 +280,18 @@ export function SettingsView() {
                   <span className="settings__dataset-name">{layer.label}</span>
                   <span className="settings__dataset-meta">
                     {layer.source}
+                    {layer.vintage ? ` · ${layer.vintage}` : ""}
                     {layer.licence ? ` · ${layer.licence}` : ""}
+                    {layer.sourceUrl ? ` · ${layer.sourceUrl}` : ""}
                   </span>
                 </div>
-                <Chip>Coming later</Chip>
+                <Chip>Streamed</Chip>
               </div>
             );
           })}
           <Callout tone="warning">
-            TransitionZero&apos;s global footprint layer is licensed CC BY-NC 4.0. Install still
-            requires the toggle below before the layer can be turned on.
+            TransitionZero footprints (CC BY-NC 4.0) and WDPA (non-commercial terms) require the
+            toggle below before those layers can be turned on.
           </Callout>
           <Field label="" hint="Confirms that non-commercial licensed layers may be used here.">
             <div className="settings__switch">
