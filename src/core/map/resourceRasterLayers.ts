@@ -12,6 +12,7 @@ import type { ViewportPreview } from "@/core/platform";
 import { useLayerStore } from "@/core/store/layerStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { resolveGsaSources, type GsaLayer } from "@/services/datasets/raster-sample";
+import { whenStyleReady } from "./styleReady";
 
 export type GsaLayerId = "gsa-ghi" | "gsa-dni" | "gsa-pvout";
 
@@ -314,18 +315,9 @@ function scheduleOne(map: MapLibreMap, id: GsaLayerId) {
 
 /** Refresh all GSA overlays (camera / style / toggle). */
 export async function refreshResourceRasterLayers(map: MapLibreMap): Promise<void> {
-  try {
-    if (!map.getStyle() || !map.isStyleLoaded()) {
-      map.once("styledata", () => {
-        void refreshResourceRasterLayers(map);
-      });
-      return;
-    }
-  } catch {
-    return;
-  }
-
-  await Promise.all(ALL_IDS.map((id) => fetchOne(map, id)));
+  whenStyleReady(map, () => {
+    void Promise.all(ALL_IDS.map((id) => fetchOne(map, id)));
+  });
 }
 
 /** Debounced refresh after pan/zoom. */

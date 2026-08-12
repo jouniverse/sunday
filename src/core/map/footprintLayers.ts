@@ -12,6 +12,7 @@ import type { PlantCentroid, VectorFeature } from "@/core/platform";
 import { platform } from "@/core/platform";
 import { useLayerStore } from "@/core/store/layerStore";
 import { useUiStore } from "@/core/store/uiStore";
+import { whenStyleReady } from "./styleReady";
 
 export type FootprintDatasetId = "tz-sam" | "gmseus-arrays";
 
@@ -189,22 +190,27 @@ function ensureClusterLayers(map: MapLibreMap, dataset: FootprintDatasetId) {
   }
 
   if (!map.getLayer(count)) {
-    map.addLayer({
-      id: count,
-      type: "symbol",
-      source: src,
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": ["get", "point_count_abbreviated"],
-        "text-size": 11,
-        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
-        "text-allow-overlap": true,
-      },
-      paint: {
-        "text-color": "#17130c",
-        "text-opacity": CLUSTER_TEXT_OPACITY,
-      },
-    });
+    try {
+      map.addLayer({
+        id: count,
+        type: "symbol",
+        source: src,
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-size": 11,
+          "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#17130c",
+          "text-opacity": CLUSTER_TEXT_OPACITY,
+        },
+      });
+    } catch (error) {
+      // Glyph-less styles used to abort here before points were added.
+      console.warn(`[sunday map] cluster count labels skipped for ${dataset}`, error);
+    }
   }
 
   if (!map.getLayer(points)) {
@@ -454,13 +460,19 @@ function schedulePolygonRefresh(map: MapLibreMap, dataset: FootprintDatasetId) {
 }
 
 async function refreshOne(map: MapLibreMap, dataset: FootprintDatasetId): Promise<void> {
+  whenStyleReady(map, () => {
+    void paintOne(map, dataset);
+  });
+}
+
+const BUSY_LABEL: Record<FootprintDatasetId, string> = {
+  "tz-sam": "Loading Global PV footprints",
+  "gmseus-arrays": "Loading US ground-mounted arrays",
+};
+
+async function paintOne(map: MapLibreMap, dataset: FootprintDatasetId): Promise<void> {
   try {
-    if (!map.getStyle() || !map.isStyleLoaded()) {
-      map.once("styledata", () => {
-        void refreshOne(map, dataset);
-      });
-      return;
-    }
+    if (!map.getStyle() || !map.isStyleLoaded()) return;
   } catch {
     return;
   }
@@ -480,6 +492,7 @@ async function refreshOne(map: MapLibreMap, dataset: FootprintDatasetId): Promis
     return;
   }
 
+  const busyKey = `footprint-${dataset}`;
   try {
     // Centroid GeoJSON is loaded once; pan/zoom must not re-hit SQLite for points.
     let cached = runtime[dataset].cachedCollection;
@@ -488,7 +501,12 @@ async function refreshOne(map: MapLibreMap, dataset: FootprintDatasetId): Promis
       cached = null;
     }
     if (!cached) {
-      cached = await ensureCentroidCollection(dataset);
+      useUiStore.getState().startBusy(busyKey, BUSY_LABEL[dataset]);
+      try {
+        cached = await ensureCentroidCollection(dataset);
+      } finally {
+        useUiStore.getState().endBusy(busyKey);
+      }
       if (!useLayerStore.getState().isVisible(dataset)) return;
     }
 
@@ -518,6 +536,7 @@ async function refreshOne(map: MapLibreMap, dataset: FootprintDatasetId): Promis
       });
     }
   } catch (error) {
+    useUiStore.getState().endBusy(busyKey);
     const message = error instanceof Error ? error.message : String(error);
     if (/unavailable|no such|empty/i.test(message)) return;
     useUiStore.getState().notify({

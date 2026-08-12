@@ -15,6 +15,7 @@ import type { PlantCentroid } from "@/core/platform";
 import { platform } from "@/core/platform";
 import { useLayerStore } from "@/core/store/layerStore";
 import { useUiStore } from "@/core/store/uiStore";
+import { whenStyleReady } from "./styleReady";
 
 export const PLANT_SOURCE_ID = "sunday-plants";
 const LAYER_CLUSTERS = "plants-clusters";
@@ -221,22 +222,26 @@ function ensureLayers(map: MapLibreMap) {
   }
 
   if (!map.getLayer(LAYER_CLUSTER_COUNT)) {
-    map.addLayer({
-      id: LAYER_CLUSTER_COUNT,
-      type: "symbol",
-      source: PLANT_SOURCE_ID,
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": ["get", "point_count_abbreviated"],
-        "text-size": 11,
-        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
-        "text-allow-overlap": true,
-      },
-      paint: {
-        "text-color": "#17130c",
-        "text-opacity": CLUSTER_TEXT_OPACITY,
-      },
-    });
+    try {
+      map.addLayer({
+        id: LAYER_CLUSTER_COUNT,
+        type: "symbol",
+        source: PLANT_SOURCE_ID,
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-size": 11,
+          "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#17130c",
+          "text-opacity": CLUSTER_TEXT_OPACITY,
+        },
+      });
+    } catch (error) {
+      console.warn("[sunday map] plant cluster count labels skipped", error);
+    }
   }
 
   if (!map.getLayer(LAYER_HALO)) {
@@ -345,13 +350,14 @@ function applyOpacity(map: MapLibreMap, opacity: number) {
 
 /** Loads centroids once (if needed) and paints clustered / individual plants. */
 export async function refreshPlantLayer(map: MapLibreMap): Promise<void> {
+  whenStyleReady(map, () => {
+    void paintPlantLayer(map);
+  });
+}
+
+async function paintPlantLayer(map: MapLibreMap): Promise<void> {
   try {
-    if (!map.getStyle() || !map.isStyleLoaded()) {
-      map.once("styledata", () => {
-        void refreshPlantLayer(map);
-      });
-      return;
-    }
+    if (!map.getStyle() || !map.isStyleLoaded()) return;
   } catch {
     return;
   }

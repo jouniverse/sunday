@@ -25,42 +25,27 @@ import {
   refreshFootprintLayers,
 } from "./footprintLayers";
 import { installPlantClickHandler, installPlantLayerSync, refreshPlantLayer } from "./plantLayers";
+import {
+  overlaysNeedRepair,
+  repaintOverlayLayers,
+  setStyleAndRepaint,
+} from "./overlayLayers";
 import { ensurePmtilesProtocol } from "./pmtilesProtocol";
-import { installProtectedAreaLayerSync, refreshProtectedAreaLayers } from "./protectedAreaLayers";
+import { installProtectedAreaLayerSync } from "./protectedAreaLayers";
 import {
   installResourceRasterLayerSync,
-  refreshResourceRasterLayers,
   scheduleResourceRasterRefresh,
 } from "./resourceRasterLayers";
 import { renderScreeningLayers } from "./screeningLayers";
 import { renderSiteLayers } from "./siteLayers";
-import {
-  installLandCoverLayerSync,
-  refreshLandCoverLayers,
-} from "./landCoverLayers";
+import { whenStyleReady } from "./styleReady";
+import { installLandCoverLayerSync } from "./landCoverLayers";
 import {
   installPowerGridClickHandler,
   installPowerGridLayerSync,
-  refreshPowerGridLayers,
 } from "./powerGridLayers";
-import {
-  installTerrainSlopeLayerSync,
-  refreshTerrainSlopeLayers,
-} from "./terrainSlopeLayers";
+import { installTerrainSlopeLayerSync } from "./terrainSlopeLayers";
 import "./map.css";
-
-function restoreOverlays(map: MapLibreMap): void {
-  // Keep centroid caches — style swap only drops MapLibre sources; re-push from memory.
-  renderSiteLayers(map);
-  renderScreeningLayers(map);
-  void refreshPlantLayer(map);
-  void refreshFootprintLayers(map);
-  void refreshResourceRasterLayers(map);
-  void refreshProtectedAreaLayers(map);
-  void refreshTerrainSlopeLayers(map);
-  void refreshLandCoverLayers(map);
-  void refreshPowerGridLayers(map);
-}
 
 export function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -119,6 +104,10 @@ export function MapView() {
       void refreshPlantLayer(map);
       void refreshFootprintLayers(map);
       scheduleResourceRasterRefresh(map);
+      // Style wipe can leave sites/screening missing; repair on camera settle.
+      if (overlaysNeedRepair(map)) {
+        repaintOverlayLayers(map);
+      }
     };
 
     map.on("moveend", publishCamera);
@@ -137,12 +126,10 @@ export function MapView() {
     map.on("load", () => {
       map.resize();
       publishCamera();
-      renderSiteLayers(map);
-      renderScreeningLayers(map);
+      repaintOverlayLayers(map);
       // Idle after first paint catches project hydrate that raced `load`.
       map.once("idle", () => {
-        renderSiteLayers(map);
-        renderScreeningLayers(map);
+        repaintOverlayLayers(map);
       });
     });
     map.on("mousemove", (event: MapMouseEvent) => {
@@ -209,9 +196,8 @@ export function MapView() {
       const signature = `${basemap}|${definition.requiresKey ? (keys[definition.requiresKey] ?? "") : ""}`;
       if (appliedStyleRef.current === signature) return;
       appliedStyleRef.current = signature;
-      map.setStyle(definition.build(keys));
-      // style.load is the reliable “sources may be added” signal after setStyle.
-      map.once("style.load", () => restoreOverlays(map));
+      // Coalesced setStyle + overlay restore (sites, screening, plants, footprints, …).
+      setStyleAndRepaint(map, definition.build(keys));
     };
 
     if (definition.requiresKey && configuredKeys.includes(definition.requiresKey)) {
@@ -242,8 +228,7 @@ export function MapView() {
         if (map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 400 });
       }
     };
-    if (map.isStyleLoaded()) apply();
-    else map.once("styledata", apply);
+    whenStyleReady(map, apply);
   }, [terrain3d]);
 
   useEffect(() =>
@@ -279,8 +264,8 @@ export function MapView() {
   );
 
   // Sites often arrive from project hydrate *after* map load — always re-paint
-  // (renderSiteLayers creates the source if needed). Guarding on getSource skipped
-  // the first hydrate and left sites invisible until a later selection change.
+  // via whenStyleReady (see siteLayers). Guarding on getSource used to skip the
+  // first hydrate and leave sites invisible until a later selection change.
   useEffect(() =>
     useSiteStore.subscribe(() => {
       const map = mapRef.current;
@@ -297,15 +282,17 @@ export function MapView() {
     }),
   );
 
+  // Sites layer visibility only — plants/footprints have dedicated install*LayerSync.
   useEffect(() =>
-    useLayerStore.subscribe(() => {
+    useLayerStore.subscribe((state, previous) => {
       const map = mapRef.current;
-      if (!map?.isStyleLoaded()) return;
+      if (!map) return;
+      const sitesChanged =
+        state.runtime.sites?.visible !== previous.runtime.sites?.visible ||
+        state.runtime.sites?.opacity !== previous.runtime.sites?.opacity;
+      if (!sitesChanged) return;
       renderSiteLayers(map);
       renderScreeningLayers(map);
-      void refreshPlantLayer(map);
-      void refreshFootprintLayers(map);
-      // GSA overlays: installResourceRasterLayerSync handles visibility/opacity.
     }),
   );
 

@@ -154,9 +154,9 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     purpose:
       "Measured array footprints with coverage ratios and mount type — the empirical basis " +
       "for Sunday's packing defaults.",
-    source: "GM-SEUS v2.1",
+    source: "GM-SEUS",
     sourceUrl: "https://zenodo.org/records/21445384",
-    vintage: "2025",
+    // No catalog vintage — users install local files; do not invent a release year.
     licence: "CC BY 4.0",
     availability: { state: "needs-download", dataset: "gmseus-arrays", approximateMb: 55 },
     defaultVisible: false,

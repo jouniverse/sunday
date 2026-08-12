@@ -98,7 +98,13 @@ export function setStyleAndRepaint(map: MapLibreMap, style: StyleSpecification):
         map.off("style.load", settle);
         window.clearTimeout(timer);
         map.resize();
-        paintOverlays(map);
+        whenStyleReady(map, () => {
+          paintOverlays(map);
+          // Backstop if the first paint raced an incomplete style.
+          map.once("idle", () => {
+            if (overlaysNeedRepair(map)) paintOverlays(map);
+          });
+        });
         resolve();
       };
       map.once("style.load", settle);

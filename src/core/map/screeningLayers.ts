@@ -8,6 +8,7 @@
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import type { LngLat } from "@/domain/geometry";
 import { useScreeningStore } from "@/core/store/screeningStore";
+import { whenStyleReady } from "./styleReady";
 
 export const SCREENING_SOURCE_ID = "sunday-screening";
 
@@ -45,11 +46,12 @@ function features(): GeoJSON.FeatureCollection {
 }
 
 export function renderScreeningLayers(map: MapLibreMap): void {
+  whenStyleReady(map, () => paintScreeningLayers(map));
+}
+
+function paintScreeningLayers(map: MapLibreMap): void {
   try {
-    if (!map.getStyle() || !map.isStyleLoaded()) {
-      map.once("styledata", () => renderScreeningLayers(map));
-      return;
-    }
+    if (!map.getStyle() || !map.isStyleLoaded()) return;
   } catch {
     return;
   }

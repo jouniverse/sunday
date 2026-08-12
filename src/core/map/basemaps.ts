@@ -32,8 +32,7 @@ export interface BasemapDefinition {
 
 /**
  * Free glyph atlas for MapLibre symbol layers (cluster counts, etc.).
- * Only attach to styles that need labels — the last working Project map used
- * keyless raster styles without glyphs.
+ * Attached to every basemap so cluster labels work on Satellite / Streets too.
  */
 const MAP_GLYPHS = "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf";
 
@@ -45,12 +44,10 @@ function rasterStyle(options: {
   background: string;
   /** Soften bright street tiles so overlays remain readable. */
   opacity?: number;
-  /** Include a glyph atlas (needed for cluster count labels). */
-  withGlyphs?: boolean;
 }): StyleSpecification {
   return {
     version: 8,
-    ...(options.withGlyphs ? { glyphs: MAP_GLYPHS } : {}),
+    glyphs: MAP_GLYPHS,
     sources: {
       base: {
         type: "raster",
@@ -213,6 +210,7 @@ export const BASEMAPS: BasemapDefinition[] = [
     attribution: "",
     build: () => ({
       version: 8,
+      glyphs: MAP_GLYPHS,
       sources: {},
       layers: [
         { id: "background", type: "background", paint: { "background-color": "#0f0c07" } },

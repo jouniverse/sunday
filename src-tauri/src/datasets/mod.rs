@@ -205,8 +205,9 @@ pub fn install(paths: &Paths, dataset: &str, source_path: &Path) -> Result<Insta
             paths,
             "gmseus-arrays",
             source_path,
-            "GM-SEUS v2.1",
-            Some("2025"),
+            "GM-SEUS",
+            // Catalog vintage is not required; users install local files.
+            None,
             Some("CC BY 4.0"),
         ),
         "wdpa" => install_wdpa(paths, source_path),
