@@ -24,7 +24,7 @@ const TABS: Array<{ id: ViewId; label: string }> = [
   { id: "map", label: "Project" },
   { id: "design", label: "Design" },
   { id: "report", label: "Report" },
-  { id: "analytics", label: "Analyze" },
+  { id: "analytics", label: "Insights" },
 ];
 
 export function TopBar() {

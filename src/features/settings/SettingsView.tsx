@@ -55,6 +55,39 @@ const PROVIDER_CARDS: ProviderCard[] = [
   },
 ];
 
+/** Insights-only keys — app remains useful without them. */
+const OPTIONAL_PROVIDER_CARDS: ProviderCard[] = [
+  {
+    id: "ember",
+    label: "Ember",
+    unlocks:
+      "Live country electricity generation and solar share for Insights Statistics (OWID bundles work offline without a key).",
+    free: "Free API key.",
+    url: "https://ember-energy.org/data/api/",
+  },
+  {
+    id: "springer",
+    label: "Springer Nature",
+    unlocks: "Scientific literature search in Insights → Research.",
+    free: "Free developer key (quota applies).",
+    url: "https://dev.springernature.com/",
+  },
+  {
+    id: "zenodo",
+    label: "Zenodo",
+    unlocks: "Open research repository search in Insights → Research.",
+    free: "Free personal access token.",
+    url: "https://zenodo.org/account/settings/applications/",
+  },
+  {
+    id: "semanticscholar",
+    label: "Semantic Scholar",
+    unlocks: "Academic paper search in Insights → Research.",
+    free: "Free API key.",
+    url: "https://www.semanticscholar.org/product/api",
+  },
+];
+
 const RASTER_INSTALL_IDS = ["gsa-ghi", "gsa-dni", "gsa-pvout"] as const;
 const VECTOR_INSTALL_IDS = ["gem-solar", "tz-sam", "gmseus-arrays", "wdpa"] as const;
 /** Remote AOI / site fetches — listed for provenance; no Install. */
@@ -137,6 +170,16 @@ export function SettingsView() {
           {PROVIDER_CARDS.map((card) => (
             <ApiKeyRow key={card.id} card={card} />
           ))}
+          <details className="settings__optional-keys">
+            <summary>Optional keys — Insights</summary>
+            <p className="settings__note">
+              Ember and scientific literature sources. Leave blank to keep Insights in a labelled
+              reduced-capability mode (bundled OWID / OpenAlex + CrossRef still work).
+            </p>
+            {OPTIONAL_PROVIDER_CARDS.map((card) => (
+              <ApiKeyRow key={card.id} card={card} />
+            ))}
+          </details>
         </div>
 
         <div className="card">

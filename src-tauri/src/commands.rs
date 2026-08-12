@@ -473,10 +473,11 @@ pub fn app_info(state: State<'_, AppState>) -> AppInfo {
 // ---------------------------------------------------------------------------
 
 /// Hosts the frontend may request through the native HTTP bridge.
-/// Keep in sync with `tauri.conf.json` CSP `connect-src` solar/search entries.
+/// Keep in sync with `tauri.conf.json` CSP `connect-src` entries.
 fn http_host_allowed(host: &str) -> bool {
     matches!(
         host,
+        // Solar resource / geocode / grid (existing)
         "re.jrc.ec.europa.eu"
             | "power.larc.nasa.gov"
             | "developer.nlr.gov"
@@ -485,6 +486,29 @@ fn http_host_allowed(host: &str) -> bool {
             | "maps.googleapis.com"
             | "nominatim.openstreetmap.org"
             | "overpass-api.de"
+            // Insights — statistics
+            | "api.ember-energy.org"
+            // Insights — World Bank Projects
+            | "search.worldbank.org"
+            // Insights — research literature
+            | "api.openalex.org"
+            | "api.crossref.org"
+            | "api.springernature.com"
+            | "zenodo.org"
+            | "api.semanticscholar.org"
+            // Insights — industry RSS
+            | "www.pv-magazine.com"
+            | "www.solarpowerworldonline.com"
+            | "www.pv-tech.org"
+            | "cleantechnica.com"
+            | "www.solarpaces.org"
+            | "renewablesnow.com"
+            | "www.renewableenergyworld.com"
+            | "solarquarter.com"
+            | "www.utilitydive.com"
+            // Insights — research RSS
+            | "www.nature.com"
+            | "www.ise.fraunhofer.de"
     )
 }
 

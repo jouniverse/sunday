@@ -12,7 +12,7 @@ import { platform } from "@/core/platform";
 import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import { useUiStore } from "@/core/store/uiStore";
-import { AnalyticsView } from "@/features/analytics/AnalyticsView";
+import { InsightsView } from "@/features/insights/InsightsView";
 import { DesignView } from "@/features/design/DesignView";
 import { HelpView } from "@/features/help/HelpView";
 import { MapWorkspace } from "@/features/map-workspace/MapWorkspace";
@@ -106,7 +106,7 @@ export function App() {
         className={`view-slot${view === "analytics" ? " view-slot--on" : ""}`}
         aria-hidden={view !== "analytics"}
       >
-        <AnalyticsView />
+        <InsightsView />
       </div>
       {view === "projects" && <ProjectsView />}
       {view === "settings" && <SettingsView />}

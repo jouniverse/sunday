@@ -33,7 +33,7 @@
         "font-src": "'self' data:",
         "img-src": "'self' data: blob: asset: http://asset.localhost https://*",
         "worker-src": "'self' blob:",
-        "connect-src": "'self' ipc: http://ipc.localhost http://asset.localhost asset: http://127.0.0.1:8787 https://re.jrc.ec.europa.eu https://solar.googleapis.com https://maps.googleapis.com https://developer.nlr.gov https://developer.nrel.gov https://power.larc.nasa.gov https://nominatim.openstreetmap.org https://overpass-api.de https://s3.amazonaws.com https://*.basemaps.cartocdn.com https://tiles.stadiamaps.com https://*.tile.openstreetmap.org https://services.arcgisonline.com https://storage.googleapis.com"
+        "connect-src": "'self' ipc: http://ipc.localhost http://asset.localhost asset: http://127.0.0.1:8787 https://re.jrc.ec.europa.eu https://solar.googleapis.com https://maps.googleapis.com https://developer.nlr.gov https://developer.nrel.gov https://power.larc.nasa.gov https://nominatim.openstreetmap.org https://overpass-api.de https://s3.amazonaws.com https://*.basemaps.cartocdn.com https://tiles.stadiamaps.com https://*.tile.openstreetmap.org https://services.arcgisonline.com https://storage.googleapis.com https://api.ember-energy.org https://search.worldbank.org https://api.openalex.org https://api.crossref.org https://api.springernature.com https://zenodo.org https://api.semanticscholar.org https://www.pv-magazine.com https://www.solarpowerworldonline.com https://www.pv-tech.org https://cleantechnica.com https://www.solarpaces.org https://renewablesnow.com https://www.renewableenergyworld.com https://solarquarter.com https://www.utilitydive.com https://www.nature.com https://www.ise.fraunhofer.de"
       },
       "assetProtocol": {
         "enable": true,

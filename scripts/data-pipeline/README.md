@@ -31,10 +31,19 @@ batch conversion, offline GEM JSONL). Source files often live under
 | Script | Input | Output |
 | --- | --- | --- |
 | `prepare-country-rankings.mjs` | Solargis country summary CSV | `data/bundled/country-rankings.json` and `src/assets/data/country-rankings.json` |
+| `prepare-country-monthly-pvout.mjs` | Solargis monthly PVOUT CSV | `country-monthly-pvout.json` (assets + bundled) |
+| `prepare-owid-insights.mjs` | OWID solar CSVs under `notes/datasets/insights-view/our-world-in-data/` | `src/assets/data/insights/owid-*.json` |
+| `prepare-irena-capacity.mjs` | IRENA capacity country CSV | `src/assets/data/insights/irena-capacity.json` |
+| `prepare-irena-country-extras.mjs` | IRENA employment / finance / innovation / balance | `src/assets/data/insights/irena-country-extras.json` |
+| `prepare-gem-country-aggregates.mjs` | GEM utility-scale CSV | `src/assets/data/insights/gem-country-aggregates.json` |
 | `extract-gmseus-priors.mjs` | GM-SEUS documentation / notes | prints the priors already encoded in `src/domain/packing/priors.ts` for audit |
 
 ```bash
 node scripts/data-pipeline/prepare-country-rankings.mjs
+node scripts/data-pipeline/prepare-country-monthly-pvout.mjs
+node scripts/data-pipeline/prepare-owid-insights.mjs
+node scripts/data-pipeline/prepare-irena-capacity.mjs
+node scripts/data-pipeline/prepare-gem-country-aggregates.mjs
 ```
 
 ## Optional CLI (advanced / offline)

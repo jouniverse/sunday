@@ -96,6 +96,27 @@ for (const row of raw) {
     pvoutKwhKwpYear: pvoutDay === null ? null : Math.round(pvoutDay * 3650) / 10,
     ghiMedianKwhM2Day: num(row["Median (T)"]),
     pvoutMedianKwhKwpDay: num(row["Median (P)"]),
+    // Spatial distribution within the country (Summary statistics T / P columns).
+    ghiDistributionKwhM2Day: [
+      num(row["Minimum (T)"]),
+      num(row["10th percentile (T)"]),
+      num(row["25th Percentile (T)"]),
+      ghiDay,
+      num(row["Median (T)"]),
+      num(row["75th Percentile (T)"]),
+      num(row["90th percentile (T)"]),
+      num(row["Maximum (T)"]),
+    ],
+    pvoutDistributionKwhKwpDay: [
+      num(row["Minimum (P)"]),
+      num(row["10th percentile (P)"]),
+      num(row["25th Percentile (P)"]),
+      pvoutDay,
+      num(row["Median (P)"]),
+      num(row["75th Percentile (P)"]),
+      num(row["90th percentile (P)"]),
+      num(row["Maximum (P)"]),
+    ],
   });
 }
 
@@ -116,11 +137,23 @@ const payload = {
   vintage: "2020",
   licence: "CC BY 4.0",
   method:
-    "Country averages from Global Solar Atlas summary statistics; daily means × 365 for annual figures.",
+    "Country averages and spatial distributions from Global Solar Atlas summary statistics (T = theoretical GHI, P = practical PVOUT); daily means × 365 for annual ranking figures.",
   units: {
     ghiKwhM2Year: "kWh/m²/year",
     pvoutKwhKwpYear: "kWh/kWp/year",
+    ghiDistributionKwhM2Day: "kWh/m²/day",
+    pvoutDistributionKwhKwpDay: "kWh/kWp/day",
   },
+  distributionLabels: [
+    "Min",
+    "10%",
+    "25%",
+    "Avg",
+    "Med",
+    "75%",
+    "90%",
+    "Max",
+  ],
   countries,
 };
 

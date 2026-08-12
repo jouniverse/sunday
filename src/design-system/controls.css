@@ -193,6 +193,7 @@
   color: var(--on-surface);
   font: var(--text-body-sm);
   width: 100%;
+  max-width: 300px;
   appearance: none;
   cursor: pointer;
   /* Chevron drawn in CSS so the control needs no icon font. */

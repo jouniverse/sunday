@@ -7,7 +7,11 @@
  * and layers are created once; parameter changes push MultiPolygon GeoJSON.
  */
 
-import { Map as MapLibreMap, type GeoJSONSource } from "maplibre-gl";
+import {
+  AttributionControl,
+  Map as MapLibreMap,
+  type GeoJSONSource,
+} from "maplibre-gl";
 import {
   forwardRef,
   useEffect,
@@ -140,10 +144,13 @@ export const ArrayMapPreview = forwardRef<
       style,
       center: site.centre,
       zoom: 15,
-      attributionControl: { compact: true },
+      // Default bottom-right attribution sits under the north compass; licence
+      // still requires Esri credit, so place it bottom-left instead.
+      attributionControl: false,
       dragRotate: true,
       maxPitch: 75,
     });
+    map.addControl(new AttributionControl({ compact: true }), "bottom-left");
     mapRef.current = map;
 
     let rotateRaf = 0;

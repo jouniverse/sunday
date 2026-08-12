@@ -67,7 +67,15 @@ export interface AppInfo {
 /* --- Settings ------------------------------------------------------------- */
 
 /** Providers that need a key. PVGIS and NASA POWER deliberately do not. */
-export type ApiProvider = "google_solar" | "nrel" | "maptiler" | "stadia";
+export type ApiProvider =
+  | "google_solar"
+  | "nrel"
+  | "maptiler"
+  | "stadia"
+  | "ember"
+  | "springer"
+  | "zenodo"
+  | "semanticscholar";
 
 export interface SettingsView {
   configuredKeys: ApiProvider[];

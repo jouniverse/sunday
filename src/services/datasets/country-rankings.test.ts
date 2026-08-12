@@ -3,6 +3,7 @@ import {
   countryByIso3,
   loadCountryRankings,
   rankedCountries,
+  rankingChartSeries,
   rankingProvenance,
 } from "./country-rankings";
 
@@ -13,6 +14,7 @@ describe("country rankings", () => {
     expect(data.source).toMatch(/Global Solar Atlas/i);
     expect(data.licence).toMatch(/CC BY/i);
     expect(rankingProvenance().vintage).toBeTruthy();
+    expect(data.distributionLabels?.length).toBe(8);
   });
 
   it("ranks by practical PVOUT with Chile near the top", () => {
@@ -34,5 +36,16 @@ describe("country rankings", () => {
     const eca = rankedCountries("ghi", { region: "ECA" });
     expect(eca.length).toBeGreaterThan(5);
     expect(eca.every((row) => row.region === "ECA")).toBe(true);
+  });
+
+  it("builds distinct T (GHI) and P (PVOUT) distribution charts", () => {
+    const ghi = rankingChartSeries("CHL", "ghi");
+    const pvout = rankingChartSeries("CHL", "pvout");
+    expect(ghi?.points.length).toBe(8);
+    expect(pvout?.points.length).toBe(8);
+    expect(ghi?.unit).toBe("kWh/m²/day");
+    expect(pvout?.unit).toBe("kWh/kWp/day");
+    // T and P series are not the same numbers for Chile.
+    expect(ghi?.points.map((p) => p.value)).not.toEqual(pvout?.points.map((p) => p.value));
   });
 });

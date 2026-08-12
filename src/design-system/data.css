@@ -184,7 +184,8 @@
 }
 
 .ds-provenance__dot {
-  margin-top: 6px;
+  /* Parent .ds-provenance is inline-flex with align-items: center — no
+   * margin hack; a fixed margin-top only looked right in some hosts. */
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -307,6 +308,7 @@
   display: flex;
   gap: var(--gap);
   padding: 9px 10px;
+  margin-bottom: 5px;
   border: 1px solid var(--outline-variant);
   border-left-width: 2px;
   border-radius: var(--r-default);
@@ -327,6 +329,7 @@
 
 .ds-callout--warning {
   margin-top: 5px;
+  margin-bottom: 5px;
   border-left-color: var(--warning);
   color: var(--on-surface);
 }

@@ -2,11 +2,23 @@
   "source": "Global Solar Atlas / Solargis, World Bank ESMAP",
   "vintage": "2020",
   "licence": "CC BY 4.0",
-  "method": "Country averages from Global Solar Atlas summary statistics; daily means \u00d7 365 for annual figures.",
+  "method": "Country averages and spatial distributions from Global Solar Atlas summary statistics (T = theoretical GHI, P = practical PVOUT); daily means × 365 for annual ranking figures.",
   "units": {
-    "ghiKwhM2Year": "kWh/m\u00b2/year",
-    "pvoutKwhKwpYear": "kWh/kWp/year"
+    "ghiKwhM2Year": "kWh/m²/year",
+    "pvoutKwhKwpYear": "kWh/kWp/year",
+    "ghiDistributionKwhM2Day": "kWh/m²/day",
+    "pvoutDistributionKwhKwpDay": "kWh/kWp/day"
   },
+  "distributionLabels": [
+    "Min",
+    "10%",
+    "25%",
+    "Avg",
+    "Med",
+    "75%",
+    "90%",
+    "Max"
+  ],
   "countries": [
     {
       "iso3": "ABW",
@@ -18,6 +30,26 @@
       "pvoutKwhKwpYear": 1810.4,
       "ghiMedianKwhM2Day": 6.15,
       "pvoutMedianKwhKwpDay": 4.99,
+      "ghiDistributionKwhM2Day": [
+        5.87,
+        5.97,
+        6.07,
+        6.11,
+        6.15,
+        6.16,
+        6.18,
+        6.23
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.74,
+        4.85,
+        4.94,
+        4.96,
+        4.99,
+        5.01,
+        5.02,
+        5.05
+      ],
       "rankPvout": 16,
       "rankGhi": 11
     },
@@ -31,6 +63,26 @@
       "pvoutKwhKwpYear": 1832.3,
       "ghiMedianKwhM2Day": 5.67,
       "pvoutMedianKwhKwpDay": 5.09,
+      "ghiDistributionKwhM2Day": [
+        4.14,
+        4.85,
+        5.16,
+        5.49,
+        5.67,
+        5.83,
+        5.9,
+        6.07
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.13,
+        4.47,
+        4.77,
+        5.02,
+        5.09,
+        5.29,
+        5.42,
+        5.55
+      ],
       "rankPvout": 12,
       "rankGhi": 66
     },
@@ -44,6 +96,26 @@
       "pvoutKwhKwpYear": 1700.9,
       "ghiMedianKwhM2Day": 5.8,
       "pvoutMedianKwhKwpDay": 4.72,
+      "ghiDistributionKwhM2Day": [
+        4.4,
+        5.19,
+        5.54,
+        5.75,
+        5.8,
+        6.04,
+        6.24,
+        6.55
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.54,
+        4.15,
+        4.41,
+        4.66,
+        4.72,
+        4.97,
+        5.11,
+        5.31
+      ],
       "rankPvout": 57,
       "rankGhi": 36
     },
@@ -52,11 +124,31 @@
       "name": "Albania",
       "region": "ECA",
       "ghiKwhM2Day": 4.2,
-      "ghiKwhM2Year": 1533.0,
+      "ghiKwhM2Year": 1533,
       "pvoutKwhKwpDay": 4.04,
       "pvoutKwhKwpYear": 1474.6,
       "ghiMedianKwhM2Day": 4.22,
       "pvoutMedianKwhKwpDay": 4.06,
+      "ghiDistributionKwhM2Day": [
+        3.42,
+        3.92,
+        4.07,
+        4.2,
+        4.22,
+        4.34,
+        4.47,
+        4.57
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.59,
+        3.84,
+        3.96,
+        4.04,
+        4.06,
+        4.15,
+        4.23,
+        4.31
+      ],
       "rankPvout": 133,
       "rankGhi": 159
     },
@@ -65,11 +157,31 @@
       "name": "Andorra",
       "region": "Other",
       "ghiKwhM2Day": 4.05,
-      "ghiKwhM2Year": 1478.2,
+      "ghiKwhM2Year": 1478.3,
       "pvoutKwhKwpDay": 4.2,
-      "pvoutKwhKwpYear": 1533.0,
+      "pvoutKwhKwpYear": 1533,
       "ghiMedianKwhM2Day": 4.07,
       "pvoutMedianKwhKwpDay": 4.25,
+      "ghiDistributionKwhM2Day": [
+        3.57,
+        3.85,
+        3.97,
+        4.05,
+        4.07,
+        4.15,
+        4.2,
+        4.39
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.62,
+        3.97,
+        4.05,
+        4.2,
+        4.25,
+        4.35,
+        4.41,
+        4.5
+      ],
       "rankPvout": 114,
       "rankGhi": 164
     },
@@ -78,11 +190,31 @@
       "name": "United Arab Emirates",
       "region": "MENA",
       "ghiKwhM2Day": 6.05,
-      "ghiKwhM2Year": 2208.2,
-      "pvoutKwhKwpDay": 5.0,
-      "pvoutKwhKwpYear": 1825.0,
+      "ghiKwhM2Year": 2208.3,
+      "pvoutKwhKwpDay": 5,
+      "pvoutKwhKwpYear": 1825,
       "ghiMedianKwhM2Day": 6.06,
       "pvoutMedianKwhKwpDay": 5.01,
+      "ghiDistributionKwhM2Day": [
+        5.72,
+        5.93,
+        6,
+        6.05,
+        6.06,
+        6.11,
+        6.15,
+        6.18
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.77,
+        4.94,
+        4.97,
+        5,
+        5.01,
+        5.05,
+        5.08,
+        5.11
+      ],
       "rankPvout": 14,
       "rankGhi": 15
     },
@@ -93,9 +225,29 @@
       "ghiKwhM2Day": 5.12,
       "ghiKwhM2Year": 1868.8,
       "pvoutKwhKwpDay": 4.6,
-      "pvoutKwhKwpYear": 1679.0,
+      "pvoutKwhKwpYear": 1679,
       "ghiMedianKwhM2Day": 5.01,
       "pvoutMedianKwhKwpDay": 4.48,
+      "ghiDistributionKwhM2Day": [
+        4.03,
+        4.64,
+        4.85,
+        5.12,
+        5.01,
+        5.14,
+        5.79,
+        7.25
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.02,
+        4.27,
+        4.38,
+        4.6,
+        4.48,
+        4.66,
+        4.99,
+        6.44
+      ],
       "rankPvout": 62,
       "rankGhi": 102
     },
@@ -109,6 +261,26 @@
       "pvoutKwhKwpYear": 1500.2,
       "ghiMedianKwhM2Day": 4.31,
       "pvoutMedianKwhKwpDay": 4.18,
+      "ghiDistributionKwhM2Day": [
+        3.47,
+        3.72,
+        4.01,
+        4.22,
+        4.31,
+        4.46,
+        4.6,
+        4.68
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.39,
+        3.66,
+        4.03,
+        4.11,
+        4.18,
+        4.29,
+        4.34,
+        4.43
+      ],
       "rankPvout": 124,
       "rankGhi": 158
     },
@@ -122,6 +294,26 @@
       "pvoutKwhKwpYear": 1452.7,
       "ghiMedianKwhM2Day": 4.92,
       "pvoutMedianKwhKwpDay": 3.94,
+      "ghiDistributionKwhM2Day": [
+        4.35,
+        4.66,
+        4.77,
+        4.92,
+        4.92,
+        5.07,
+        5.16,
+        5.39
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.58,
+        3.78,
+        3.85,
+        3.98,
+        3.94,
+        4.14,
+        4.25,
+        4.32
+      ],
       "rankPvout": 140,
       "rankGhi": 118
     },
@@ -132,9 +324,29 @@
       "ghiKwhM2Day": 5.75,
       "ghiKwhM2Year": 2098.8,
       "pvoutKwhKwpDay": 4.77,
-      "pvoutKwhKwpYear": 1741.0,
+      "pvoutKwhKwpYear": 1741.1,
       "ghiMedianKwhM2Day": 5.76,
       "pvoutMedianKwhKwpDay": 4.78,
+      "ghiDistributionKwhM2Day": [
+        5.43,
+        5.55,
+        5.65,
+        5.75,
+        5.76,
+        5.87,
+        5.95,
+        6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.48,
+        4.58,
+        4.68,
+        4.77,
+        4.78,
+        4.87,
+        4.94,
+        4.97
+      ],
       "rankPvout": 40,
       "rankGhi": 37
     },
@@ -148,6 +360,26 @@
       "pvoutKwhKwpYear": 1719.2,
       "ghiMedianKwhM2Day": 5.93,
       "pvoutMedianKwhKwpDay": 4.73,
+      "ghiDistributionKwhM2Day": [
+        3.77,
+        5.02,
+        5.5,
+        5.76,
+        5.93,
+        6.15,
+        6.26,
+        6.37
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.69,
+        4.26,
+        4.51,
+        4.71,
+        4.73,
+        4.96,
+        5.16,
+        5.31
+      ],
       "rankPvout": 49,
       "rankGhi": 33
     },
@@ -161,6 +393,26 @@
       "pvoutKwhKwpYear": 1189.9,
       "ghiMedianKwhM2Day": 3.23,
       "pvoutMedianKwhKwpDay": 3.22,
+      "ghiDistributionKwhM2Day": [
+        2.55,
+        2.97,
+        3.12,
+        3.21,
+        3.23,
+        3.33,
+        3.45,
+        3.59
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.79,
+        3.11,
+        3.16,
+        3.26,
+        3.22,
+        3.36,
+        3.46,
+        3.74
+      ],
       "rankPvout": 192,
       "rankGhi": 191
     },
@@ -174,6 +426,26 @@
       "pvoutKwhKwpYear": 1394.3,
       "ghiMedianKwhM2Day": 4.06,
       "pvoutMedianKwhKwpDay": 3.79,
+      "ghiDistributionKwhM2Day": [
+        3.44,
+        3.76,
+        3.94,
+        4.04,
+        4.06,
+        4.11,
+        4.2,
+        4.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.44,
+        3.64,
+        3.72,
+        3.82,
+        3.79,
+        3.87,
+        3.99,
+        4.47
+      ],
       "rankPvout": 154,
       "rankGhi": 166
     },
@@ -184,9 +456,29 @@
       "ghiKwhM2Day": 5.19,
       "ghiKwhM2Year": 1894.4,
       "pvoutKwhKwpDay": 4.17,
-      "pvoutKwhKwpYear": 1522.0,
+      "pvoutKwhKwpYear": 1522.1,
       "ghiMedianKwhM2Day": 5.22,
       "pvoutMedianKwhKwpDay": 4.18,
+      "ghiDistributionKwhM2Day": [
+        4.47,
+        4.86,
+        5.11,
+        5.19,
+        5.22,
+        5.35,
+        5.44,
+        5.54
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.72,
+        3.98,
+        4.11,
+        4.17,
+        4.18,
+        4.27,
+        4.35,
+        4.49
+      ],
       "rankPvout": 119,
       "rankGhi": 97
     },
@@ -200,6 +492,26 @@
       "pvoutKwhKwpYear": 1065.8,
       "ghiMedianKwhM2Day": 2.95,
       "pvoutMedianKwhKwpDay": 2.92,
+      "ghiDistributionKwhM2Day": [
+        2.85,
+        2.89,
+        2.92,
+        2.94,
+        2.95,
+        2.97,
+        2.99,
+        3.05
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.81,
+        2.86,
+        2.89,
+        2.92,
+        2.92,
+        2.94,
+        2.97,
+        3.05
+      ],
       "rankPvout": 199,
       "rankGhi": 198
     },
@@ -210,9 +522,29 @@
       "ghiKwhM2Day": 5.33,
       "ghiKwhM2Year": 1945.5,
       "pvoutKwhKwpDay": 4.2,
-      "pvoutKwhKwpYear": 1533.0,
+      "pvoutKwhKwpYear": 1533,
       "ghiMedianKwhM2Day": 5.45,
       "pvoutMedianKwhKwpDay": 4.31,
+      "ghiDistributionKwhM2Day": [
+        4.64,
+        4.81,
+        5.04,
+        5.33,
+        5.45,
+        5.59,
+        5.67,
+        5.77
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.67,
+        3.79,
+        3.98,
+        4.2,
+        4.31,
+        4.4,
+        4.46,
+        4.52
+      ],
       "rankPvout": 115,
       "rankGhi": 84
     },
@@ -221,11 +553,31 @@
       "name": "Burkina Faso",
       "region": "AFR",
       "ghiKwhM2Day": 5.81,
-      "ghiKwhM2Year": 2120.6,
+      "ghiKwhM2Year": 2120.7,
       "pvoutKwhKwpDay": 4.57,
       "pvoutKwhKwpYear": 1668.1,
       "ghiMedianKwhM2Day": 5.82,
       "pvoutMedianKwhKwpDay": 4.58,
+      "ghiDistributionKwhM2Day": [
+        5.43,
+        5.63,
+        5.72,
+        5.81,
+        5.82,
+        5.91,
+        5.98,
+        6.02
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.28,
+        4.43,
+        4.5,
+        4.57,
+        4.58,
+        4.65,
+        4.7,
+        4.74
+      ],
       "rankPvout": 65,
       "rankGhi": 28
     },
@@ -234,11 +586,31 @@
       "name": "Bangladesh",
       "region": "SOA",
       "ghiKwhM2Day": 4.6,
-      "ghiKwhM2Year": 1679.0,
+      "ghiKwhM2Year": 1679,
       "pvoutKwhKwpDay": 3.88,
       "pvoutKwhKwpYear": 1416.2,
       "ghiMedianKwhM2Day": 4.6,
       "pvoutMedianKwhKwpDay": 3.87,
+      "ghiDistributionKwhM2Day": [
+        4.33,
+        4.45,
+        4.51,
+        4.6,
+        4.6,
+        4.65,
+        4.76,
+        4.95
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.68,
+        3.79,
+        3.83,
+        3.88,
+        3.87,
+        3.9,
+        4,
+        4.23
+      ],
       "rankPvout": 149,
       "rankGhi": 136
     },
@@ -247,11 +619,31 @@
       "name": "Bulgaria",
       "region": "ECA",
       "ghiKwhM2Day": 3.87,
-      "ghiKwhM2Year": 1412.5,
+      "ghiKwhM2Year": 1412.6,
       "pvoutKwhKwpDay": 3.7,
       "pvoutKwhKwpYear": 1350.5,
       "ghiMedianKwhM2Day": 3.87,
       "pvoutMedianKwhKwpDay": 3.69,
+      "ghiDistributionKwhM2Day": [
+        3.42,
+        3.74,
+        3.83,
+        3.87,
+        3.87,
+        3.94,
+        4.03,
+        4.19
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.41,
+        3.62,
+        3.66,
+        3.7,
+        3.69,
+        3.75,
+        3.82,
+        4.02
+      ],
       "rankPvout": 164,
       "rankGhi": 171
     },
@@ -262,9 +654,29 @@
       "ghiKwhM2Day": 5.75,
       "ghiKwhM2Year": 2098.8,
       "pvoutKwhKwpDay": 4.87,
-      "pvoutKwhKwpYear": 1777.5,
+      "pvoutKwhKwpYear": 1777.6,
       "ghiMedianKwhM2Day": 5.77,
       "pvoutMedianKwhKwpDay": 4.87,
+      "ghiDistributionKwhM2Day": [
+        5.5,
+        5.64,
+        5.7,
+        5.75,
+        5.77,
+        5.81,
+        5.84,
+        5.88
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.64,
+        4.75,
+        4.8,
+        4.87,
+        4.87,
+        4.94,
+        4.98,
+        5.02
+      ],
       "rankPvout": 26,
       "rankGhi": 38
     },
@@ -278,6 +690,26 @@
       "pvoutKwhKwpYear": 1660.8,
       "ghiMedianKwhM2Day": 5.37,
       "pvoutMedianKwhKwpDay": 4.53,
+      "ghiDistributionKwhM2Day": [
+        5.01,
+        5.11,
+        5.18,
+        5.36,
+        5.37,
+        5.51,
+        5.63,
+        5.82
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.33,
+        4.36,
+        4.43,
+        4.55,
+        4.53,
+        4.66,
+        4.75,
+        4.88
+      ],
       "rankPvout": 69,
       "rankGhi": 79
     },
@@ -288,9 +720,29 @@
       "ghiKwhM2Day": 3.66,
       "ghiKwhM2Year": 1335.9,
       "pvoutKwhKwpDay": 3.57,
-      "pvoutKwhKwpYear": 1303.0,
+      "pvoutKwhKwpYear": 1303.1,
       "ghiMedianKwhM2Day": 3.59,
       "pvoutMedianKwhKwpDay": 3.45,
+      "ghiDistributionKwhM2Day": [
+        3.25,
+        3.49,
+        3.54,
+        3.66,
+        3.59,
+        3.68,
+        4.05,
+        4.24
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.22,
+        3.37,
+        3.41,
+        3.57,
+        3.45,
+        3.72,
+        3.99,
+        4.1
+      ],
       "rankPvout": 173,
       "rankGhi": 179
     },
@@ -304,6 +756,26 @@
       "pvoutKwhKwpYear": 1076.8,
       "ghiMedianKwhM2Day": 2.94,
       "pvoutMedianKwhKwpDay": 2.96,
+      "ghiDistributionKwhM2Day": [
+        2.76,
+        2.82,
+        2.86,
+        2.94,
+        2.94,
+        3.01,
+        3.05,
+        3.13
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.81,
+        2.86,
+        2.89,
+        2.95,
+        2.96,
+        3,
+        3.03,
+        3.11
+      ],
       "rankPvout": 197,
       "rankGhi": 199
     },
@@ -312,11 +784,31 @@
       "name": "Belize",
       "region": "LCR",
       "ghiKwhM2Day": 5.05,
-      "ghiKwhM2Year": 1843.2,
+      "ghiKwhM2Year": 1843.3,
       "pvoutKwhKwpDay": 4.18,
       "pvoutKwhKwpYear": 1525.7,
       "ghiMedianKwhM2Day": 5.07,
       "pvoutMedianKwhKwpDay": 4.17,
+      "ghiDistributionKwhM2Day": [
+        4.56,
+        4.81,
+        4.95,
+        5.05,
+        5.07,
+        5.16,
+        5.23,
+        5.56
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.92,
+        4.06,
+        4.11,
+        4.18,
+        4.17,
+        4.22,
+        4.32,
+        4.59
+      ],
       "rankPvout": 117,
       "rankGhi": 109
     },
@@ -330,6 +822,26 @@
       "pvoutKwhKwpYear": 1525.7,
       "ghiMedianKwhM2Day": 4.73,
       "pvoutMedianKwhKwpDay": 4.19,
+      "ghiDistributionKwhM2Day": [
+        4.7,
+        4.71,
+        4.71,
+        4.73,
+        4.73,
+        4.75,
+        4.76,
+        4.76
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.15,
+        4.16,
+        4.16,
+        4.18,
+        4.19,
+        4.2,
+        4.21,
+        4.22
+      ],
       "rankPvout": 118,
       "rankGhi": 130
     },
@@ -343,6 +855,26 @@
       "pvoutKwhKwpYear": 1803.1,
       "ghiMedianKwhM2Day": 5.15,
       "pvoutMedianKwhKwpDay": 4.38,
+      "ghiDistributionKwhM2Day": [
+        3.81,
+        4.88,
+        5.07,
+        5.42,
+        5.15,
+        5.39,
+        6.79,
+        7.29
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.83,
+        4.11,
+        4.18,
+        4.94,
+        4.38,
+        5.77,
+        6.07,
+        6.37
+      ],
       "rankPvout": 17,
       "rankGhi": 70
     },
@@ -353,9 +885,29 @@
       "ghiKwhM2Day": 5.28,
       "ghiKwhM2Year": 1927.2,
       "pvoutKwhKwpDay": 4.4,
-      "pvoutKwhKwpYear": 1606.0,
+      "pvoutKwhKwpYear": 1606,
       "ghiMedianKwhM2Day": 5.27,
       "pvoutMedianKwhKwpDay": 4.42,
+      "ghiDistributionKwhM2Day": [
+        4.15,
+        4.88,
+        5.04,
+        5.28,
+        5.27,
+        5.5,
+        5.74,
+        6.12
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.75,
+        4.08,
+        4.24,
+        4.4,
+        4.42,
+        4.58,
+        4.7,
+        4.92
+      ],
       "rankPvout": 84,
       "rankGhi": 88
     },
@@ -364,11 +916,31 @@
       "name": "Barbados",
       "region": "LCR",
       "ghiKwhM2Day": 5.77,
-      "ghiKwhM2Year": 2106.0,
+      "ghiKwhM2Year": 2106.1,
       "pvoutKwhKwpDay": 4.72,
       "pvoutKwhKwpYear": 1722.8,
       "ghiMedianKwhM2Day": 5.77,
       "pvoutMedianKwhKwpDay": 4.71,
+      "ghiDistributionKwhM2Day": [
+        5.51,
+        5.59,
+        5.7,
+        5.77,
+        5.77,
+        5.86,
+        5.96,
+        6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.49,
+        4.59,
+        4.67,
+        4.72,
+        4.71,
+        4.77,
+        4.84,
+        4.89
+      ],
       "rankPvout": 47,
       "rankGhi": 32
     },
@@ -382,6 +954,26 @@
       "pvoutKwhKwpYear": 1423.5,
       "ghiMedianKwhM2Day": 4.86,
       "pvoutMedianKwhKwpDay": 3.88,
+      "ghiDistributionKwhM2Day": [
+        4.27,
+        4.7,
+        4.77,
+        4.84,
+        4.86,
+        4.91,
+        4.97,
+        5.21
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.74,
+        3.81,
+        3.84,
+        3.9,
+        3.88,
+        3.93,
+        4.04,
+        4.17
+      ],
       "rankPvout": 147,
       "rankGhi": 124
     },
@@ -395,6 +987,26 @@
       "pvoutKwhKwpYear": 1430.8,
       "ghiMedianKwhM2Day": 3.94,
       "pvoutMedianKwhKwpDay": 3.88,
+      "ghiDistributionKwhM2Day": [
+        3.09,
+        3.49,
+        3.7,
+        3.94,
+        3.94,
+        4.18,
+        4.38,
+        4.77
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.12,
+        3.45,
+        3.57,
+        3.92,
+        3.88,
+        4.26,
+        4.45,
+        4.73
+      ],
       "rankPvout": 145,
       "rankGhi": 168
     },
@@ -408,6 +1020,26 @@
       "pvoutKwhKwpYear": 1865.2,
       "ghiMedianKwhM2Day": 6.09,
       "pvoutMedianKwhKwpDay": 5.11,
+      "ghiDistributionKwhM2Day": [
+        5.59,
+        5.86,
+        6.03,
+        6.07,
+        6.09,
+        6.14,
+        6.23,
+        6.34
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.71,
+        4.92,
+        5.05,
+        5.11,
+        5.11,
+        5.19,
+        5.26,
+        5.45
+      ],
       "rankPvout": 10,
       "rankGhi": 12
     },
@@ -418,9 +1050,29 @@
       "ghiKwhM2Day": 5.7,
       "ghiKwhM2Year": 2080.5,
       "pvoutKwhKwpDay": 4.47,
-      "pvoutKwhKwpYear": 1631.5,
+      "pvoutKwhKwpYear": 1631.6,
       "ghiMedianKwhM2Day": 5.72,
       "pvoutMedianKwhKwpDay": 4.47,
+      "ghiDistributionKwhM2Day": [
+        5.2,
+        5.42,
+        5.57,
+        5.7,
+        5.72,
+        5.83,
+        5.93,
+        6.12
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.19,
+        4.29,
+        4.37,
+        4.47,
+        4.47,
+        4.55,
+        4.62,
+        4.84
+      ],
       "rankPvout": 75,
       "rankGhi": 42
     },
@@ -429,11 +1081,31 @@
       "name": "Canada",
       "region": "Other",
       "ghiKwhM2Day": 3.25,
-      "ghiKwhM2Year": 1186.2,
+      "ghiKwhM2Year": 1186.3,
       "pvoutKwhKwpDay": 3.82,
       "pvoutKwhKwpYear": 1394.3,
       "ghiMedianKwhM2Day": 3.23,
       "pvoutMedianKwhKwpDay": 3.78,
+      "ghiDistributionKwhM2Day": [
+        2.39,
+        2.96,
+        3.1,
+        3.25,
+        3.23,
+        3.41,
+        3.64,
+        3.97
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.82,
+        3.43,
+        3.62,
+        3.82,
+        3.78,
+        4.13,
+        4.2,
+        4.33
+      ],
       "rankPvout": 155,
       "rankGhi": 189
     },
@@ -447,6 +1119,26 @@
       "pvoutKwhKwpYear": 1226.4,
       "ghiMedianKwhM2Day": 3.34,
       "pvoutMedianKwhKwpDay": 3.31,
+      "ghiDistributionKwhM2Day": [
+        2.61,
+        3.1,
+        3.25,
+        3.36,
+        3.34,
+        3.5,
+        3.64,
+        3.87
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.78,
+        3.18,
+        3.23,
+        3.36,
+        3.31,
+        3.48,
+        3.63,
+        4.11
+      ],
       "rankPvout": 187,
       "rankGhi": 187
     },
@@ -460,6 +1152,26 @@
       "pvoutKwhKwpYear": 1956.4,
       "ghiMedianKwhM2Day": 6.07,
       "pvoutMedianKwhKwpDay": 5.78,
+      "ghiDistributionKwhM2Day": [
+        2.64,
+        3.66,
+        4.78,
+        5.76,
+        6.07,
+        7.07,
+        7.25,
+        7.41
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.21,
+        4.16,
+        4.6,
+        5.36,
+        5.78,
+        6.07,
+        6.28,
+        6.53
+      ],
       "rankPvout": 2,
       "rankGhi": 34
     },
@@ -473,19 +1185,59 @@
       "pvoutKwhKwpYear": 1416.2,
       "ghiMedianKwhM2Day": 4.1,
       "pvoutMedianKwhKwpDay": 3.95,
+      "ghiDistributionKwhM2Day": [
+        2.64,
+        3.36,
+        3.69,
+        4.13,
+        4.1,
+        4.54,
+        4.89,
+        5.93
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.24,
+        2.85,
+        3.24,
+        3.88,
+        3.95,
+        4.49,
+        4.75,
+        5.75
+      ],
       "rankPvout": 150,
       "rankGhi": 160
     },
     {
       "iso3": "CIV",
-      "name": "C\u00f4te d'Ivoire",
+      "name": "Côte d'Ivoire",
       "region": "AFR",
       "ghiKwhM2Day": 5.05,
-      "ghiKwhM2Year": 1843.2,
-      "pvoutKwhKwpDay": 4.0,
-      "pvoutKwhKwpYear": 1460.0,
+      "ghiKwhM2Year": 1843.3,
+      "pvoutKwhKwpDay": 4,
+      "pvoutKwhKwpYear": 1460,
       "ghiMedianKwhM2Day": 4.98,
       "pvoutMedianKwhKwpDay": 3.95,
+      "ghiDistributionKwhM2Day": [
+        4.48,
+        4.66,
+        4.79,
+        5.05,
+        4.98,
+        5.33,
+        5.58,
+        5.7
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.55,
+        3.69,
+        3.78,
+        4,
+        3.95,
+        4.23,
+        4.42,
+        4.51
+      ],
       "rankPvout": 137,
       "rankGhi": 110
     },
@@ -499,6 +1251,26 @@
       "pvoutKwhKwpYear": 1562.2,
       "ghiMedianKwhM2Day": 5.24,
       "pvoutMedianKwhKwpDay": 4.46,
+      "ghiDistributionKwhM2Day": [
+        4.29,
+        4.74,
+        4.9,
+        5.3,
+        5.24,
+        5.75,
+        5.85,
+        6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.43,
+        3.75,
+        3.9,
+        4.28,
+        4.46,
+        4.57,
+        4.65,
+        4.78
+      ],
       "rankPvout": 103,
       "rankGhi": 86
     },
@@ -512,6 +1284,26 @@
       "pvoutKwhKwpYear": 1554.9,
       "ghiMedianKwhM2Day": 5.17,
       "pvoutMedianKwhKwpDay": 4.23,
+      "ghiDistributionKwhM2Day": [
+        4.32,
+        4.86,
+        4.97,
+        5.19,
+        5.17,
+        5.39,
+        5.6,
+        5.93
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.41,
+        3.98,
+        4.09,
+        4.26,
+        4.23,
+        4.42,
+        4.61,
+        4.86
+      ],
       "rankPvout": 109,
       "rankGhi": 98
     },
@@ -522,9 +1314,29 @@
       "ghiKwhM2Day": 4.86,
       "ghiKwhM2Year": 1773.9,
       "pvoutKwhKwpDay": 3.77,
-      "pvoutKwhKwpYear": 1376.0,
+      "pvoutKwhKwpYear": 1376.1,
       "ghiMedianKwhM2Day": 4.99,
       "pvoutMedianKwhKwpDay": 3.86,
+      "ghiDistributionKwhM2Day": [
+        4.13,
+        4.33,
+        4.65,
+        4.86,
+        4.99,
+        5.07,
+        5.15,
+        5.29
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.28,
+        3.4,
+        3.56,
+        3.77,
+        3.86,
+        3.99,
+        4.02,
+        4.1
+      ],
       "rankPvout": 159,
       "rankGhi": 122
     },
@@ -533,11 +1345,31 @@
       "name": "Colombia",
       "region": "LCR",
       "ghiKwhM2Day": 4.87,
-      "ghiKwhM2Year": 1777.5,
+      "ghiKwhM2Year": 1777.6,
       "pvoutKwhKwpDay": 4.05,
-      "pvoutKwhKwpYear": 1478.2,
+      "pvoutKwhKwpYear": 1478.3,
       "ghiMedianKwhM2Day": 4.89,
       "pvoutMedianKwhKwpDay": 4.1,
+      "ghiDistributionKwhM2Day": [
+        3.27,
+        4.18,
+        4.74,
+        4.87,
+        4.89,
+        5.15,
+        5.43,
+        6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.82,
+        3.48,
+        3.89,
+        4.05,
+        4.1,
+        4.3,
+        4.47,
+        4.91
+      ],
       "rankPvout": 131,
       "rankGhi": 121
     },
@@ -546,11 +1378,31 @@
       "name": "Comoros",
       "region": "AFR",
       "ghiKwhM2Day": 5.05,
-      "ghiKwhM2Year": 1843.2,
+      "ghiKwhM2Year": 1843.3,
       "pvoutKwhKwpDay": 4.29,
-      "pvoutKwhKwpYear": 1565.8,
+      "pvoutKwhKwpYear": 1565.9,
       "ghiMedianKwhM2Day": 5.04,
       "pvoutMedianKwhKwpDay": 4.28,
+      "ghiDistributionKwhM2Day": [
+        4.17,
+        4.59,
+        4.82,
+        5.05,
+        5.04,
+        5.33,
+        5.53,
+        5.76
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.72,
+        4.02,
+        4.12,
+        4.29,
+        4.28,
+        4.46,
+        4.56,
+        4.7
+      ],
       "rankPvout": 102,
       "rankGhi": 111
     },
@@ -564,6 +1416,26 @@
       "pvoutKwhKwpYear": 1708.2,
       "ghiMedianKwhM2Day": 5.71,
       "pvoutMedianKwhKwpDay": 4.73,
+      "ghiDistributionKwhM2Day": [
+        4.92,
+        5.25,
+        5.5,
+        5.64,
+        5.71,
+        5.8,
+        5.87,
+        6.18
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.16,
+        4.38,
+        4.63,
+        4.68,
+        4.73,
+        4.79,
+        4.84,
+        5.16
+      ],
       "rankPvout": 53,
       "rankGhi": 47
     },
@@ -572,11 +1444,31 @@
       "name": "Costa Rica",
       "region": "LCR",
       "ghiKwhM2Day": 4.89,
-      "ghiKwhM2Year": 1784.8,
+      "ghiKwhM2Year": 1784.9,
       "pvoutKwhKwpDay": 4.09,
-      "pvoutKwhKwpYear": 1492.8,
+      "pvoutKwhKwpYear": 1492.9,
       "ghiMedianKwhM2Day": 4.8,
       "pvoutMedianKwhKwpDay": 4.17,
+      "ghiDistributionKwhM2Day": [
+        3.5,
+        4.21,
+        4.57,
+        4.89,
+        4.8,
+        5.34,
+        5.63,
+        5.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.09,
+        3.62,
+        3.76,
+        4.09,
+        4.17,
+        4.46,
+        4.58,
+        4.63
+      ],
       "rankPvout": 128,
       "rankGhi": 119
     },
@@ -590,19 +1482,59 @@
       "pvoutKwhKwpYear": 1657.1,
       "ghiMedianKwhM2Day": 5.42,
       "pvoutMedianKwhKwpDay": 4.53,
+      "ghiDistributionKwhM2Day": [
+        4.73,
+        5.23,
+        5.34,
+        5.41,
+        5.42,
+        5.51,
+        5.61,
+        5.85
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.09,
+        4.43,
+        4.48,
+        4.54,
+        4.53,
+        4.59,
+        4.68,
+        4.87
+      ],
       "rankPvout": 70,
       "rankGhi": 72
     },
     {
       "iso3": "CUW",
-      "name": "Cura\u00e7ao (Neth.)",
+      "name": "Curaçao (Neth.)",
       "region": "Other",
       "ghiKwhM2Day": 5.96,
       "ghiKwhM2Year": 2175.4,
       "pvoutKwhKwpDay": 4.83,
-      "pvoutKwhKwpYear": 1763.0,
+      "pvoutKwhKwpYear": 1763,
       "ghiMedianKwhM2Day": 5.97,
       "pvoutMedianKwhKwpDay": 4.84,
+      "ghiDistributionKwhM2Day": [
+        5.67,
+        5.78,
+        5.88,
+        5.96,
+        5.97,
+        6.07,
+        6.14,
+        6.18
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.59,
+        4.68,
+        4.77,
+        4.83,
+        4.84,
+        4.92,
+        4.97,
+        5
+      ],
       "rankPvout": 33,
       "rankGhi": 20
     },
@@ -613,9 +1545,29 @@
       "ghiKwhM2Day": 5.56,
       "ghiKwhM2Year": 2029.4,
       "pvoutKwhKwpDay": 4.63,
-      "pvoutKwhKwpYear": 1690.0,
+      "pvoutKwhKwpYear": 1690,
       "ghiMedianKwhM2Day": 5.52,
       "pvoutMedianKwhKwpDay": 4.61,
+      "ghiDistributionKwhM2Day": [
+        5.4,
+        5.43,
+        5.45,
+        5.56,
+        5.52,
+        5.69,
+        5.73,
+        5.81
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.48,
+        4.51,
+        4.53,
+        4.63,
+        4.61,
+        4.73,
+        4.77,
+        4.83
+      ],
       "rankPvout": 61,
       "rankGhi": 60
     },
@@ -629,6 +1581,26 @@
       "pvoutKwhKwpYear": 1715.5,
       "ghiMedianKwhM2Day": 5.23,
       "pvoutMedianKwhKwpDay": 4.71,
+      "ghiDistributionKwhM2Day": [
+        4.8,
+        5.02,
+        5.13,
+        5.21,
+        5.23,
+        5.32,
+        5.37,
+        5.44
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.33,
+        4.55,
+        4.62,
+        4.7,
+        4.71,
+        4.79,
+        4.84,
+        4.91
+      ],
       "rankPvout": 51,
       "rankGhi": 94
     },
@@ -639,9 +1611,29 @@
       "ghiKwhM2Day": 3.08,
       "ghiKwhM2Year": 1124.2,
       "pvoutKwhKwpDay": 3.05,
-      "pvoutKwhKwpYear": 1113.2,
+      "pvoutKwhKwpYear": 1113.3,
       "ghiMedianKwhM2Day": 3.09,
       "pvoutMedianKwhKwpDay": 3.05,
+      "ghiDistributionKwhM2Day": [
+        2.86,
+        2.97,
+        3.04,
+        3.08,
+        3.09,
+        3.12,
+        3.19,
+        3.28
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.85,
+        2.96,
+        3.01,
+        3.05,
+        3.05,
+        3.09,
+        3.14,
+        3.22
+      ],
       "rankPvout": 194,
       "rankGhi": 194
     },
@@ -655,6 +1647,26 @@
       "pvoutKwhKwpYear": 1080.4,
       "ghiMedianKwhM2Day": 2.95,
       "pvoutMedianKwhKwpDay": 2.94,
+      "ghiDistributionKwhM2Day": [
+        2.75,
+        2.81,
+        2.86,
+        2.98,
+        2.95,
+        3.09,
+        3.21,
+        3.34
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.75,
+        2.8,
+        2.85,
+        2.96,
+        2.94,
+        3.04,
+        3.17,
+        3.33
+      ],
       "rankPvout": 196,
       "rankGhi": 196
     },
@@ -665,9 +1677,29 @@
       "ghiKwhM2Day": 6.06,
       "ghiKwhM2Year": 2211.9,
       "pvoutKwhKwpDay": 4.8,
-      "pvoutKwhKwpYear": 1752.0,
+      "pvoutKwhKwpYear": 1752,
       "ghiMedianKwhM2Day": 6.1,
       "pvoutMedianKwhKwpDay": 4.82,
+      "ghiDistributionKwhM2Day": [
+        5.61,
+        5.77,
+        5.97,
+        6.06,
+        6.1,
+        6.19,
+        6.23,
+        6.33
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.43,
+        4.56,
+        4.72,
+        4.8,
+        4.82,
+        4.9,
+        4.97,
+        5.1
+      ],
       "rankPvout": 39,
       "rankGhi": 14
     },
@@ -681,6 +1713,26 @@
       "pvoutKwhKwpYear": 1449.1,
       "ghiMedianKwhM2Day": 4.93,
       "pvoutMedianKwhKwpDay": 3.91,
+      "ghiDistributionKwhM2Day": [
+        3.95,
+        4.37,
+        4.55,
+        4.94,
+        4.93,
+        5.38,
+        5.56,
+        5.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.26,
+        3.57,
+        3.72,
+        3.97,
+        3.91,
+        4.17,
+        4.5,
+        4.72
+      ],
       "rankPvout": 142,
       "rankGhi": 116
     },
@@ -689,11 +1741,31 @@
       "name": "Denmark",
       "region": "Other",
       "ghiKwhM2Day": 2.77,
-      "ghiKwhM2Year": 1011.0,
+      "ghiKwhM2Year": 1011.1,
       "pvoutKwhKwpDay": 2.84,
       "pvoutKwhKwpYear": 1036.6,
       "ghiMedianKwhM2Day": 2.76,
       "pvoutMedianKwhKwpDay": 2.84,
+      "ghiDistributionKwhM2Day": [
+        2.64,
+        2.67,
+        2.71,
+        2.77,
+        2.76,
+        2.81,
+        2.88,
+        3.02
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.68,
+        2.73,
+        2.77,
+        2.84,
+        2.84,
+        2.9,
+        2.97,
+        3.1
+      ],
       "rankPvout": 203,
       "rankGhi": 202
     },
@@ -707,6 +1779,26 @@
       "pvoutKwhKwpYear": 1668.1,
       "ghiMedianKwhM2Day": 5.36,
       "pvoutMedianKwhKwpDay": 4.54,
+      "ghiDistributionKwhM2Day": [
+        4.59,
+        5.04,
+        5.19,
+        5.42,
+        5.36,
+        5.66,
+        5.9,
+        6.12
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.09,
+        4.3,
+        4.36,
+        4.57,
+        4.54,
+        4.76,
+        4.92,
+        5.05
+      ],
       "rankPvout": 66,
       "rankGhi": 71
     },
@@ -719,7 +1811,27 @@
       "pvoutKwhKwpDay": 4.92,
       "pvoutKwhKwpYear": 1795.8,
       "ghiMedianKwhM2Day": 6.02,
-      "pvoutMedianKwhKwpDay": 5.0,
+      "pvoutMedianKwhKwpDay": 5,
+      "ghiDistributionKwhM2Day": [
+        4.64,
+        5.34,
+        5.78,
+        5.92,
+        6.02,
+        6.14,
+        6.36,
+        6.51
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.12,
+        4.51,
+        4.75,
+        4.92,
+        5,
+        5.12,
+        5.19,
+        5.46
+      ],
       "rankPvout": 20,
       "rankGhi": 21
     },
@@ -730,9 +1842,29 @@
       "ghiKwhM2Day": 4.3,
       "ghiKwhM2Year": 1569.5,
       "pvoutKwhKwpDay": 3.4,
-      "pvoutKwhKwpYear": 1241.0,
+      "pvoutKwhKwpYear": 1241,
       "ghiMedianKwhM2Day": 4.4,
       "pvoutMedianKwhKwpDay": 3.31,
+      "ghiDistributionKwhM2Day": [
+        3.12,
+        3.6,
+        3.87,
+        4.3,
+        4.4,
+        4.63,
+        4.88,
+        5.81
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.64,
+        2.89,
+        3.01,
+        3.4,
+        3.31,
+        3.7,
+        4.14,
+        4.6
+      ],
       "rankPvout": 184,
       "rankGhi": 154
     },
@@ -743,9 +1875,29 @@
       "ghiKwhM2Day": 6.26,
       "ghiKwhM2Year": 2284.9,
       "pvoutKwhKwpDay": 5.25,
-      "pvoutKwhKwpYear": 1916.2,
+      "pvoutKwhKwpYear": 1916.3,
       "ghiMedianKwhM2Day": 6.34,
       "pvoutMedianKwhKwpDay": 5.3,
+      "ghiDistributionKwhM2Day": [
+        5.52,
+        5.87,
+        6.1,
+        6.26,
+        6.34,
+        6.45,
+        6.51,
+        6.71
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.74,
+        4.88,
+        5.11,
+        5.25,
+        5.3,
+        5.39,
+        5.47,
+        5.78
+      ],
       "rankPvout": 4,
       "rankGhi": 5
     },
@@ -756,9 +1908,29 @@
       "ghiKwhM2Day": 6.07,
       "ghiKwhM2Year": 2215.6,
       "pvoutKwhKwpDay": 4.89,
-      "pvoutKwhKwpYear": 1784.8,
+      "pvoutKwhKwpYear": 1784.9,
       "ghiMedianKwhM2Day": 6.21,
-      "pvoutMedianKwhKwpDay": 5.0,
+      "pvoutMedianKwhKwpDay": 5,
+      "ghiDistributionKwhM2Day": [
+        5.21,
+        5.65,
+        5.89,
+        6.07,
+        6.21,
+        6.28,
+        6.33,
+        6.41
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.15,
+        4.5,
+        4.74,
+        4.89,
+        5,
+        5.06,
+        5.15,
+        5.39
+      ],
       "rankPvout": 25,
       "rankGhi": 13
     },
@@ -772,6 +1944,26 @@
       "pvoutKwhKwpYear": 1609.7,
       "ghiMedianKwhM2Day": 4.64,
       "pvoutMedianKwhKwpDay": 4.49,
+      "ghiDistributionKwhM2Day": [
+        3.26,
+        3.91,
+        4.43,
+        4.58,
+        4.64,
+        4.89,
+        5.01,
+        5.45
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.23,
+        4.04,
+        4.34,
+        4.41,
+        4.49,
+        4.6,
+        4.67,
+        4.9
+      ],
       "rankPvout": 83,
       "rankGhi": 139
     },
@@ -785,6 +1977,26 @@
       "pvoutKwhKwpYear": 1036.6,
       "ghiMedianKwhM2Day": 2.7,
       "pvoutMedianKwhKwpDay": 2.82,
+      "ghiDistributionKwhM2Day": [
+        2.64,
+        2.66,
+        2.68,
+        2.72,
+        2.7,
+        2.73,
+        2.81,
+        2.89
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.75,
+        2.78,
+        2.8,
+        2.84,
+        2.82,
+        2.85,
+        2.95,
+        3.04
+      ],
       "rankPvout": 204,
       "rankGhi": 204
     },
@@ -793,11 +2005,31 @@
       "name": "Ethiopia",
       "region": "AFR",
       "ghiKwhM2Day": 5.85,
-      "ghiKwhM2Year": 2135.2,
+      "ghiKwhM2Year": 2135.3,
       "pvoutKwhKwpDay": 4.7,
       "pvoutKwhKwpYear": 1715.5,
       "ghiMedianKwhM2Day": 5.92,
       "pvoutMedianKwhKwpDay": 4.73,
+      "ghiDistributionKwhM2Day": [
+        4.7,
+        5.33,
+        5.6,
+        5.85,
+        5.92,
+        6.12,
+        6.25,
+        6.6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.98,
+        4.3,
+        4.52,
+        4.7,
+        4.73,
+        4.89,
+        5.03,
+        5.35
+      ],
       "rankPvout": 52,
       "rankGhi": 26
     },
@@ -811,6 +2043,26 @@
       "pvoutKwhKwpYear": 1394.3,
       "ghiMedianKwhM2Day": 4.34,
       "pvoutMedianKwhKwpDay": 3.82,
+      "ghiDistributionKwhM2Day": [
+        3.47,
+        3.8,
+        4.03,
+        4.32,
+        4.34,
+        4.59,
+        4.8,
+        5.17
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.81,
+        3.48,
+        3.68,
+        3.82,
+        3.82,
+        4.02,
+        4.15,
+        4.31
+      ],
       "rankPvout": 156,
       "rankGhi": 152
     },
@@ -824,6 +2076,26 @@
       "pvoutKwhKwpYear": 1237.4,
       "ghiMedianKwhM2Day": 3.43,
       "pvoutMedianKwhKwpDay": 3.33,
+      "ghiDistributionKwhM2Day": [
+        2.97,
+        3.1,
+        3.22,
+        3.48,
+        3.43,
+        3.67,
+        3.98,
+        4.42
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.94,
+        3.04,
+        3.14,
+        3.39,
+        3.33,
+        3.54,
+        3.8,
+        4.37
+      ],
       "rankPvout": 186,
       "rankGhi": 185
     },
@@ -837,6 +2109,26 @@
       "pvoutKwhKwpYear": 1419.9,
       "ghiMedianKwhM2Day": 4.77,
       "pvoutMedianKwhKwpDay": 3.96,
+      "ghiDistributionKwhM2Day": [
+        3.94,
+        4.21,
+        4.51,
+        4.75,
+        4.77,
+        5.07,
+        5.19,
+        5.34
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.11,
+        3.44,
+        3.69,
+        3.89,
+        3.96,
+        4.14,
+        4.2,
+        4.27
+      ],
       "rankPvout": 148,
       "rankGhi": 128
     },
@@ -847,9 +2139,29 @@
       "ghiKwhM2Day": 4.54,
       "ghiKwhM2Year": 1657.1,
       "pvoutKwhKwpDay": 3.6,
-      "pvoutKwhKwpYear": 1314.0,
+      "pvoutKwhKwpYear": 1314,
       "ghiMedianKwhM2Day": 4.53,
       "pvoutMedianKwhKwpDay": 3.58,
+      "ghiDistributionKwhM2Day": [
+        4.1,
+        4.34,
+        4.42,
+        4.54,
+        4.53,
+        4.69,
+        4.75,
+        4.99
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.33,
+        3.45,
+        3.51,
+        3.6,
+        3.58,
+        3.69,
+        3.76,
+        3.97
+      ],
       "rankPvout": 172,
       "rankGhi": 142
     },
@@ -858,11 +2170,31 @@
       "name": "United Kingdom",
       "region": "Other",
       "ghiKwhM2Day": 2.59,
-      "ghiKwhM2Year": 945.3,
+      "ghiKwhM2Year": 945.4,
       "pvoutKwhKwpDay": 2.61,
-      "pvoutKwhKwpYear": 952.6,
+      "pvoutKwhKwpYear": 952.7,
       "ghiMedianKwhM2Day": 2.59,
       "pvoutMedianKwhKwpDay": 2.62,
+      "ghiDistributionKwhM2Day": [
+        2.1,
+        2.31,
+        2.41,
+        2.59,
+        2.59,
+        2.78,
+        2.86,
+        3.07
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.05,
+        2.34,
+        2.45,
+        2.61,
+        2.62,
+        2.79,
+        2.86,
+        3.08
+      ],
       "rankPvout": 208,
       "rankGhi": 207
     },
@@ -876,6 +2208,26 @@
       "pvoutKwhKwpYear": 1354.2,
       "ghiMedianKwhM2Day": 3.73,
       "pvoutMedianKwhKwpDay": 3.76,
+      "ghiDistributionKwhM2Day": [
+        3.01,
+        3.38,
+        3.56,
+        3.72,
+        3.73,
+        3.94,
+        4.06,
+        4.18
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.06,
+        3.46,
+        3.56,
+        3.71,
+        3.76,
+        3.86,
+        3.93,
+        4.14
+      ],
       "rankPvout": 163,
       "rankGhi": 177
     },
@@ -889,6 +2241,26 @@
       "pvoutKwhKwpYear": 1467.3,
       "ghiMedianKwhM2Day": 5.11,
       "pvoutMedianKwhKwpDay": 4.02,
+      "ghiDistributionKwhM2Day": [
+        4.49,
+        4.69,
+        4.8,
+        5.1,
+        5.11,
+        5.35,
+        5.53,
+        5.66
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.57,
+        3.71,
+        3.79,
+        4.02,
+        4.02,
+        4.22,
+        4.35,
+        4.46
+      ],
       "rankPvout": 134,
       "rankGhi": 104
     },
@@ -902,6 +2274,26 @@
       "pvoutKwhKwpYear": 1620.6,
       "ghiMedianKwhM2Day": 5.62,
       "pvoutMedianKwhKwpDay": 4.46,
+      "ghiDistributionKwhM2Day": [
+        5.01,
+        5.26,
+        5.46,
+        5.57,
+        5.62,
+        5.74,
+        5.79,
+        5.85
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4,
+        4.22,
+        4.36,
+        4.44,
+        4.46,
+        4.55,
+        4.59,
+        4.71
+      ],
       "rankPvout": 80,
       "rankGhi": 58
     },
@@ -915,6 +2307,26 @@
       "pvoutKwhKwpYear": 1668.1,
       "ghiMedianKwhM2Day": 5.75,
       "pvoutMedianKwhKwpDay": 4.56,
+      "ghiDistributionKwhM2Day": [
+        5.68,
+        5.71,
+        5.74,
+        5.75,
+        5.75,
+        5.76,
+        5.78,
+        5.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.51,
+        4.53,
+        4.54,
+        4.57,
+        4.56,
+        4.59,
+        4.63,
+        4.68
+      ],
       "rankPvout": 67,
       "rankGhi": 39
     },
@@ -923,11 +2335,31 @@
       "name": "Guinea-Bissau",
       "region": "AFR",
       "ghiKwhM2Day": 5.6,
-      "ghiKwhM2Year": 2044.0,
+      "ghiKwhM2Year": 2044,
       "pvoutKwhKwpDay": 4.46,
       "pvoutKwhKwpYear": 1627.9,
       "ghiMedianKwhM2Day": 5.62,
       "pvoutMedianKwhKwpDay": 4.47,
+      "ghiDistributionKwhM2Day": [
+        5.44,
+        5.51,
+        5.57,
+        5.6,
+        5.62,
+        5.65,
+        5.67,
+        5.7
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.34,
+        4.39,
+        4.44,
+        4.46,
+        4.47,
+        4.48,
+        4.5,
+        4.59
+      ],
       "rankPvout": 76,
       "rankGhi": 53
     },
@@ -936,11 +2368,31 @@
       "name": "Equatorial Guinea",
       "region": "AFR",
       "ghiKwhM2Day": 4.6,
-      "ghiKwhM2Year": 1679.0,
+      "ghiKwhM2Year": 1679,
       "pvoutKwhKwpDay": 3.67,
-      "pvoutKwhKwpYear": 1339.5,
+      "pvoutKwhKwpYear": 1339.6,
       "ghiMedianKwhM2Day": 4.64,
       "pvoutMedianKwhKwpDay": 3.69,
+      "ghiDistributionKwhM2Day": [
+        3.7,
+        4.39,
+        4.54,
+        4.6,
+        4.64,
+        4.72,
+        4.76,
+        4.95
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.01,
+        3.52,
+        3.62,
+        3.67,
+        3.69,
+        3.75,
+        3.79,
+        3.92
+      ],
       "rankPvout": 170,
       "rankGhi": 137
     },
@@ -949,11 +2401,31 @@
       "name": "Greece",
       "region": "Other",
       "ghiKwhM2Day": 4.45,
-      "ghiKwhM2Year": 1624.2,
+      "ghiKwhM2Year": 1624.3,
       "pvoutKwhKwpDay": 4.14,
       "pvoutKwhKwpYear": 1511.1,
       "ghiMedianKwhM2Day": 4.4,
       "pvoutMedianKwhKwpDay": 4.09,
+      "ghiDistributionKwhM2Day": [
+        3.8,
+        4.1,
+        4.23,
+        4.45,
+        4.4,
+        4.66,
+        4.87,
+        5.19
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.73,
+        3.9,
+        4,
+        4.14,
+        4.09,
+        4.29,
+        4.43,
+        4.71
+      ],
       "rankPvout": 120,
       "rankGhi": 150
     },
@@ -964,9 +2436,29 @@
       "ghiKwhM2Day": 5.41,
       "ghiKwhM2Year": 1974.7,
       "pvoutKwhKwpDay": 4.45,
-      "pvoutKwhKwpYear": 1624.2,
+      "pvoutKwhKwpYear": 1624.3,
       "ghiMedianKwhM2Day": 5.4,
       "pvoutMedianKwhKwpDay": 4.45,
+      "ghiDistributionKwhM2Day": [
+        4.73,
+        4.86,
+        5.05,
+        5.41,
+        5.4,
+        5.82,
+        5.97,
+        6.03
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.87,
+        3.97,
+        4.11,
+        4.45,
+        4.45,
+        4.82,
+        4.86,
+        4.89
+      ],
       "rankPvout": 79,
       "rankGhi": 73
     },
@@ -975,11 +2467,31 @@
       "name": "Guatemala",
       "region": "LCR",
       "ghiKwhM2Day": 5.25,
-      "ghiKwhM2Year": 1916.2,
+      "ghiKwhM2Year": 1916.3,
       "pvoutKwhKwpDay": 4.39,
       "pvoutKwhKwpYear": 1602.3,
       "ghiMedianKwhM2Day": 5.18,
       "pvoutMedianKwhKwpDay": 4.31,
+      "ghiDistributionKwhM2Day": [
+        4.19,
+        4.83,
+        5.02,
+        5.25,
+        5.18,
+        5.54,
+        5.84,
+        6.1
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.73,
+        3.98,
+        4.1,
+        4.39,
+        4.31,
+        4.7,
+        4.86,
+        5.02
+      ],
       "rankPvout": 86,
       "rankGhi": 92
     },
@@ -993,6 +2505,26 @@
       "pvoutKwhKwpYear": 1653.5,
       "ghiMedianKwhM2Day": 5.59,
       "pvoutMedianKwhKwpDay": 4.55,
+      "ghiDistributionKwhM2Day": [
+        5.27,
+        5.41,
+        5.5,
+        5.57,
+        5.59,
+        5.67,
+        5.71,
+        5.74
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.29,
+        4.39,
+        4.47,
+        4.53,
+        4.55,
+        4.62,
+        4.64,
+        4.67
+      ],
       "rankPvout": 71,
       "rankGhi": 59
     },
@@ -1003,9 +2535,29 @@
       "ghiKwhM2Day": 5.21,
       "ghiKwhM2Year": 1901.7,
       "pvoutKwhKwpDay": 4.2,
-      "pvoutKwhKwpYear": 1533.0,
+      "pvoutKwhKwpYear": 1533,
       "ghiMedianKwhM2Day": 5.21,
       "pvoutMedianKwhKwpDay": 4.18,
+      "ghiDistributionKwhM2Day": [
+        4.74,
+        5.05,
+        5.12,
+        5.21,
+        5.21,
+        5.3,
+        5.38,
+        5.67
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.82,
+        4,
+        4.1,
+        4.2,
+        4.18,
+        4.31,
+        4.4,
+        4.65
+      ],
       "rankPvout": 116,
       "rankGhi": 95
     },
@@ -1016,9 +2568,29 @@
       "ghiKwhM2Day": 3.91,
       "ghiKwhM2Year": 1427.2,
       "pvoutKwhKwpDay": 3.27,
-      "pvoutKwhKwpYear": 1193.5,
+      "pvoutKwhKwpYear": 1193.6,
       "ghiMedianKwhM2Day": 3.91,
       "pvoutMedianKwhKwpDay": 3.28,
+      "ghiDistributionKwhM2Day": [
+        3.69,
+        3.78,
+        3.84,
+        3.91,
+        3.91,
+        3.97,
+        4.02,
+        4.14
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.09,
+        3.17,
+        3.22,
+        3.27,
+        3.28,
+        3.32,
+        3.37,
+        3.45
+      ],
       "rankPvout": 190,
       "rankGhi": 170
     },
@@ -1032,6 +2604,26 @@
       "pvoutKwhKwpYear": 1554.9,
       "ghiMedianKwhM2Day": 5.11,
       "pvoutMedianKwhKwpDay": 4.21,
+      "ghiDistributionKwhM2Day": [
+        4.37,
+        4.81,
+        4.94,
+        5.16,
+        5.11,
+        5.33,
+        5.65,
+        6.12
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.8,
+        3.98,
+        4.08,
+        4.26,
+        4.21,
+        4.37,
+        4.71,
+        4.93
+      ],
       "rankPvout": 110,
       "rankGhi": 100
     },
@@ -1042,9 +2634,29 @@
       "ghiKwhM2Day": 3.74,
       "ghiKwhM2Year": 1365.1,
       "pvoutKwhKwpDay": 3.63,
-      "pvoutKwhKwpYear": 1325.0,
+      "pvoutKwhKwpYear": 1325,
       "ghiMedianKwhM2Day": 3.62,
       "pvoutMedianKwhKwpDay": 3.49,
+      "ghiDistributionKwhM2Day": [
+        3.39,
+        3.54,
+        3.58,
+        3.74,
+        3.62,
+        3.91,
+        4.15,
+        4.3
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.34,
+        3.41,
+        3.44,
+        3.63,
+        3.49,
+        3.87,
+        4.03,
+        4.18
+      ],
       "rankPvout": 171,
       "rankGhi": 176
     },
@@ -1058,6 +2670,26 @@
       "pvoutKwhKwpYear": 1708.2,
       "ghiMedianKwhM2Day": 5.59,
       "pvoutMedianKwhKwpDay": 4.72,
+      "ghiDistributionKwhM2Day": [
+        4.41,
+        4.99,
+        5.32,
+        5.54,
+        5.59,
+        5.83,
+        5.97,
+        6.14
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.93,
+        4.33,
+        4.52,
+        4.68,
+        4.72,
+        4.86,
+        4.96,
+        5.1
+      ],
       "rankPvout": 54,
       "rankGhi": 63
     },
@@ -1071,6 +2703,26 @@
       "pvoutKwhKwpYear": 1255.6,
       "ghiMedianKwhM2Day": 3.53,
       "pvoutMedianKwhKwpDay": 3.45,
+      "ghiDistributionKwhM2Day": [
+        3.31,
+        3.43,
+        3.47,
+        3.52,
+        3.53,
+        3.58,
+        3.61,
+        3.64
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.29,
+        3.36,
+        3.4,
+        3.44,
+        3.45,
+        3.48,
+        3.51,
+        3.53
+      ],
       "rankPvout": 182,
       "rankGhi": 184
     },
@@ -1081,9 +2733,29 @@
       "ghiKwhM2Day": 4.62,
       "ghiKwhM2Year": 1686.3,
       "pvoutKwhKwpDay": 3.77,
-      "pvoutKwhKwpYear": 1376.0,
+      "pvoutKwhKwpYear": 1376.1,
       "ghiMedianKwhM2Day": 4.61,
       "pvoutMedianKwhKwpDay": 3.68,
+      "ghiDistributionKwhM2Day": [
+        3.45,
+        4.27,
+        4.45,
+        4.62,
+        4.61,
+        4.78,
+        5.05,
+        5.74
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.18,
+        3.48,
+        3.58,
+        3.77,
+        3.68,
+        3.91,
+        4.21,
+        4.71
+      ],
       "rankPvout": 160,
       "rankGhi": 135
     },
@@ -1097,6 +2769,26 @@
       "pvoutKwhKwpYear": 1007.4,
       "ghiMedianKwhM2Day": 2.72,
       "pvoutMedianKwhKwpDay": 2.77,
+      "ghiDistributionKwhM2Day": [
+        2.6,
+        2.68,
+        2.7,
+        2.72,
+        2.72,
+        2.75,
+        2.76,
+        2.79
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.61,
+        2.7,
+        2.73,
+        2.76,
+        2.77,
+        2.8,
+        2.82,
+        2.84
+      ],
       "rankPvout": 206,
       "rankGhi": 205
     },
@@ -1110,6 +2802,26 @@
       "pvoutKwhKwpYear": 1576.8,
       "ghiMedianKwhM2Day": 5.2,
       "pvoutMedianKwhKwpDay": 4.35,
+      "ghiDistributionKwhM2Day": [
+        3.77,
+        4.63,
+        4.89,
+        5.1,
+        5.2,
+        5.34,
+        5.49,
+        5.64
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.63,
+        4.03,
+        4.17,
+        4.32,
+        4.35,
+        4.44,
+        4.66,
+        4.85
+      ],
       "rankPvout": 96,
       "rankGhi": 105
     },
@@ -1118,11 +2830,31 @@
       "name": "Ireland",
       "region": "Other",
       "ghiKwhM2Day": 2.53,
-      "ghiKwhM2Year": 923.4,
+      "ghiKwhM2Year": 923.5,
       "pvoutKwhKwpDay": 2.51,
-      "pvoutKwhKwpYear": 916.1,
+      "pvoutKwhKwpYear": 916.2,
       "ghiMedianKwhM2Day": 2.53,
       "pvoutMedianKwhKwpDay": 2.51,
+      "ghiDistributionKwhM2Day": [
+        2.3,
+        2.42,
+        2.47,
+        2.53,
+        2.53,
+        2.58,
+        2.66,
+        2.82
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.22,
+        2.39,
+        2.45,
+        2.51,
+        2.51,
+        2.57,
+        2.65,
+        2.82
+      ],
       "rankPvout": 209,
       "rankGhi": 209
     },
@@ -1136,6 +2868,26 @@
       "pvoutKwhKwpYear": 1795.8,
       "ghiMedianKwhM2Day": 5.56,
       "pvoutMedianKwhKwpDay": 4.93,
+      "ghiDistributionKwhM2Day": [
+        3.67,
+        5.01,
+        5.31,
+        5.52,
+        5.56,
+        5.86,
+        6.03,
+        6.23
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.44,
+        4.59,
+        4.76,
+        4.92,
+        4.93,
+        5.14,
+        5.3,
+        5.47
+      ],
       "rankPvout": 21,
       "rankGhi": 65
     },
@@ -1149,6 +2901,26 @@
       "pvoutKwhKwpYear": 1708.2,
       "ghiMedianKwhM2Day": 5.45,
       "pvoutMedianKwhKwpDay": 4.63,
+      "ghiDistributionKwhM2Day": [
+        4.88,
+        5.2,
+        5.3,
+        5.46,
+        5.45,
+        5.64,
+        5.75,
+        5.89
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.41,
+        4.56,
+        4.59,
+        4.68,
+        4.63,
+        4.72,
+        4.86,
+        5.25
+      ],
       "rankPvout": 55,
       "rankGhi": 67
     },
@@ -1162,6 +2934,26 @@
       "pvoutKwhKwpYear": 1854.2,
       "ghiMedianKwhM2Day": 5.77,
       "pvoutMedianKwhKwpDay": 5.1,
+      "ghiDistributionKwhM2Day": [
+        5.25,
+        5.44,
+        5.52,
+        5.75,
+        5.77,
+        5.96,
+        6.09,
+        6.2
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.62,
+        4.77,
+        4.85,
+        5.08,
+        5.1,
+        5.28,
+        5.39,
+        5.51
+      ],
       "rankPvout": 11,
       "rankGhi": 40
     },
@@ -1175,6 +2967,26 @@
       "pvoutKwhKwpYear": 1456.4,
       "ghiMedianKwhM2Day": 4.07,
       "pvoutMedianKwhKwpDay": 3.99,
+      "ghiDistributionKwhM2Day": [
+        2.92,
+        3.55,
+        3.85,
+        4.07,
+        4.07,
+        4.37,
+        4.56,
+        4.93
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.44,
+        3.73,
+        3.8,
+        3.99,
+        3.99,
+        4.15,
+        4.29,
+        4.56
+      ],
       "rankPvout": 139,
       "rankGhi": 163
     },
@@ -1188,6 +3000,26 @@
       "pvoutKwhKwpYear": 1602.3,
       "ghiMedianKwhM2Day": 5.19,
       "pvoutMedianKwhKwpDay": 4.37,
+      "ghiDistributionKwhM2Day": [
+        4.18,
+        4.9,
+        5.07,
+        5.21,
+        5.19,
+        5.39,
+        5.6,
+        5.9
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.69,
+        4.15,
+        4.26,
+        4.39,
+        4.37,
+        4.52,
+        4.66,
+        4.85
+      ],
       "rankPvout": 87,
       "rankGhi": 96
     },
@@ -1201,6 +3033,26 @@
       "pvoutKwhKwpYear": 1941.8,
       "ghiMedianKwhM2Day": 5.99,
       "pvoutMedianKwhKwpDay": 5.28,
+      "ghiDistributionKwhM2Day": [
+        5.5,
+        5.82,
+        5.9,
+        6.02,
+        5.99,
+        6.17,
+        6.29,
+        6.4
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.71,
+        5.11,
+        5.2,
+        5.32,
+        5.28,
+        5.49,
+        5.58,
+        5.72
+      ],
       "rankPvout": 3,
       "rankGhi": 18
     },
@@ -1209,11 +3061,31 @@
       "name": "Japan",
       "region": "Other",
       "ghiKwhM2Day": 3.61,
-      "ghiKwhM2Year": 1317.6,
+      "ghiKwhM2Year": 1317.7,
       "pvoutKwhKwpDay": 3.45,
-      "pvoutKwhKwpYear": 1259.2,
+      "pvoutKwhKwpYear": 1259.3,
       "ghiMedianKwhM2Day": 3.61,
       "pvoutMedianKwhKwpDay": 3.46,
+      "ghiDistributionKwhM2Day": [
+        2.94,
+        3.21,
+        3.38,
+        3.61,
+        3.61,
+        3.87,
+        4.01,
+        4.27
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.81,
+        3.05,
+        3.21,
+        3.45,
+        3.46,
+        3.68,
+        3.8,
+        4.11
+      ],
       "rankPvout": 180,
       "rankGhi": 180
     },
@@ -1224,9 +3096,29 @@
       "ghiKwhM2Day": 3.82,
       "ghiKwhM2Year": 1394.3,
       "pvoutKwhKwpDay": 3.69,
-      "pvoutKwhKwpYear": 1346.8,
+      "pvoutKwhKwpYear": 1346.9,
       "ghiMedianKwhM2Day": 3.82,
       "pvoutMedianKwhKwpDay": 3.64,
+      "ghiDistributionKwhM2Day": [
+        3.09,
+        3.34,
+        3.54,
+        3.82,
+        3.82,
+        4.12,
+        4.3,
+        4.58
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.16,
+        3.31,
+        3.45,
+        3.69,
+        3.64,
+        3.93,
+        4.13,
+        4.27
+      ],
       "rankPvout": 166,
       "rankGhi": 175
     },
@@ -1240,6 +3132,26 @@
       "pvoutKwhKwpYear": 1642.5,
       "ghiMedianKwhM2Day": 5.71,
       "pvoutMedianKwhKwpDay": 4.43,
+      "ghiDistributionKwhM2Day": [
+        5.02,
+        5.35,
+        5.47,
+        5.78,
+        5.71,
+        6.11,
+        6.32,
+        6.6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.04,
+        4.19,
+        4.26,
+        4.5,
+        4.43,
+        4.75,
+        4.92,
+        5.15
+      ],
       "rankPvout": 74,
       "rankGhi": 30
     },
@@ -1253,6 +3165,26 @@
       "pvoutKwhKwpYear": 1500.2,
       "ghiMedianKwhM2Day": 4.16,
       "pvoutMedianKwhKwpDay": 4.07,
+      "ghiDistributionKwhM2Day": [
+        3.24,
+        3.71,
+        3.92,
+        4.11,
+        4.16,
+        4.33,
+        4.46,
+        4.69
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.47,
+        3.79,
+        3.91,
+        4.11,
+        4.07,
+        4.32,
+        4.52,
+        4.76
+      ],
       "rankPvout": 125,
       "rankGhi": 161
     },
@@ -1261,11 +3193,31 @@
       "name": "Cambodia",
       "region": "EAP",
       "ghiKwhM2Day": 5.09,
-      "ghiKwhM2Year": 1857.8,
+      "ghiKwhM2Year": 1857.9,
       "pvoutKwhKwpDay": 4.13,
       "pvoutKwhKwpYear": 1507.5,
       "ghiMedianKwhM2Day": 5.15,
       "pvoutMedianKwhKwpDay": 4.14,
+      "ghiDistributionKwhM2Day": [
+        4.27,
+        4.74,
+        5.04,
+        5.09,
+        5.15,
+        5.22,
+        5.31,
+        5.45
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.6,
+        3.99,
+        4.09,
+        4.13,
+        4.14,
+        4.19,
+        4.24,
+        4.34
+      ],
       "rankPvout": 122,
       "rankGhi": 106
     },
@@ -1274,11 +3226,31 @@
       "name": "Kiribati",
       "region": "EAP",
       "ghiKwhM2Day": 6.13,
-      "ghiKwhM2Year": 2237.4,
+      "ghiKwhM2Year": 2237.5,
       "pvoutKwhKwpDay": 4.82,
       "pvoutKwhKwpYear": 1759.3,
       "ghiMedianKwhM2Day": 6.14,
       "pvoutMedianKwhKwpDay": 4.84,
+      "ghiDistributionKwhM2Day": [
+        5.35,
+        5.76,
+        6,
+        6.13,
+        6.14,
+        6.31,
+        6.46,
+        6.62
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.24,
+        4.55,
+        4.71,
+        4.82,
+        4.84,
+        4.97,
+        5.08,
+        5.17
+      ],
       "rankPvout": 37,
       "rankGhi": 9
     },
@@ -1292,6 +3264,26 @@
       "pvoutKwhKwpYear": 1697.3,
       "ghiMedianKwhM2Day": 5.62,
       "pvoutMedianKwhKwpDay": 4.7,
+      "ghiDistributionKwhM2Day": [
+        4.97,
+        5.13,
+        5.4,
+        5.58,
+        5.62,
+        5.82,
+        5.9,
+        6
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.09,
+        4.23,
+        4.48,
+        4.65,
+        4.7,
+        4.85,
+        4.94,
+        4.99
+      ],
       "rankPvout": 58,
       "rankGhi": 57
     },
@@ -1305,6 +3297,26 @@
       "pvoutKwhKwpYear": 1394.3,
       "ghiMedianKwhM2Day": 3.99,
       "pvoutMedianKwhKwpDay": 3.83,
+      "ghiDistributionKwhM2Day": [
+        3.65,
+        3.86,
+        3.93,
+        3.99,
+        3.99,
+        4.05,
+        4.11,
+        4.2
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.32,
+        3.7,
+        3.76,
+        3.82,
+        3.83,
+        3.89,
+        3.94,
+        4.02
+      ],
       "rankPvout": 157,
       "rankGhi": 167
     },
@@ -1318,6 +3330,26 @@
       "pvoutKwhKwpYear": 1759.3,
       "ghiMedianKwhM2Day": 5.68,
       "pvoutMedianKwhKwpDay": 4.82,
+      "ghiDistributionKwhM2Day": [
+        5.52,
+        5.61,
+        5.65,
+        5.68,
+        5.68,
+        5.71,
+        5.73,
+        5.76
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.63,
+        4.75,
+        4.79,
+        4.82,
+        4.82,
+        4.86,
+        4.87,
+        4.89
+      ],
       "rankPvout": 38,
       "rankGhi": 44
     },
@@ -1328,9 +3360,29 @@
       "ghiKwhM2Day": 4.48,
       "ghiKwhM2Year": 1635.2,
       "pvoutKwhKwpDay": 3.87,
-      "pvoutKwhKwpYear": 1412.5,
+      "pvoutKwhKwpYear": 1412.6,
       "ghiMedianKwhM2Day": 4.5,
       "pvoutMedianKwhKwpDay": 3.91,
+      "ghiDistributionKwhM2Day": [
+        3.68,
+        4.05,
+        4.25,
+        4.48,
+        4.5,
+        4.73,
+        4.91,
+        5.14
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.2,
+        3.62,
+        3.77,
+        3.87,
+        3.91,
+        4.01,
+        4.08,
+        4.21
+      ],
       "rankPvout": 153,
       "rankGhi": 148
     },
@@ -1341,9 +3393,29 @@
       "ghiKwhM2Day": 5.36,
       "ghiKwhM2Year": 1956.4,
       "pvoutKwhKwpDay": 4.83,
-      "pvoutKwhKwpYear": 1763.0,
+      "pvoutKwhKwpYear": 1763,
       "ghiMedianKwhM2Day": 5.4,
       "pvoutMedianKwhKwpDay": 4.89,
+      "ghiDistributionKwhM2Day": [
+        4.59,
+        4.95,
+        5.15,
+        5.36,
+        5.4,
+        5.62,
+        5.68,
+        5.76
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.11,
+        4.44,
+        4.63,
+        4.83,
+        4.89,
+        5.07,
+        5.13,
+        5.31
+      ],
       "rankPvout": 34,
       "rankGhi": 80
     },
@@ -1357,6 +3429,26 @@
       "pvoutKwhKwpYear": 1416.2,
       "ghiMedianKwhM2Day": 4.9,
       "pvoutMedianKwhKwpDay": 3.9,
+      "ghiDistributionKwhM2Day": [
+        4.43,
+        4.62,
+        4.78,
+        4.88,
+        4.9,
+        4.99,
+        5.08,
+        5.22
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.54,
+        3.68,
+        3.8,
+        3.88,
+        3.9,
+        3.97,
+        4.05,
+        4.18
+      ],
       "rankPvout": 151,
       "rankGhi": 120
     },
@@ -1365,11 +3457,31 @@
       "name": "Libya",
       "region": "MENA",
       "ghiKwhM2Day": 6.13,
-      "ghiKwhM2Year": 2237.4,
+      "ghiKwhM2Year": 2237.5,
       "pvoutKwhKwpDay": 5.12,
       "pvoutKwhKwpYear": 1868.8,
       "ghiMedianKwhM2Day": 6.15,
       "pvoutMedianKwhKwpDay": 5.18,
+      "ghiDistributionKwhM2Day": [
+        5.37,
+        5.72,
+        5.91,
+        6.13,
+        6.15,
+        6.37,
+        6.55,
+        6.68
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.61,
+        4.86,
+        4.98,
+        5.12,
+        5.18,
+        5.26,
+        5.31,
+        5.47
+      ],
       "rankPvout": 9,
       "rankGhi": 10
     },
@@ -1378,11 +3490,31 @@
       "name": "Saint Lucia",
       "region": "LCR",
       "ghiKwhM2Day": 5.4,
-      "ghiKwhM2Year": 1971.0,
+      "ghiKwhM2Year": 1971,
       "pvoutKwhKwpDay": 4.52,
       "pvoutKwhKwpYear": 1649.8,
       "ghiMedianKwhM2Day": 5.41,
       "pvoutMedianKwhKwpDay": 4.55,
+      "ghiDistributionKwhM2Day": [
+        4.78,
+        4.99,
+        5.16,
+        5.4,
+        5.41,
+        5.62,
+        5.8,
+        5.94
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.95,
+        4.22,
+        4.4,
+        4.52,
+        4.55,
+        4.69,
+        4.8,
+        4.82
+      ],
       "rankPvout": 72,
       "rankGhi": 74
     },
@@ -1391,11 +3523,31 @@
       "name": "Liechtenstein",
       "region": "Other",
       "ghiKwhM2Day": 3.17,
-      "ghiKwhM2Year": 1157.0,
+      "ghiKwhM2Year": 1157.1,
       "pvoutKwhKwpDay": 3.25,
-      "pvoutKwhKwpYear": 1186.2,
+      "pvoutKwhKwpYear": 1186.3,
       "ghiMedianKwhM2Day": 3.21,
       "pvoutMedianKwhKwpDay": 3.27,
+      "ghiDistributionKwhM2Day": [
+        2.66,
+        2.92,
+        3.05,
+        3.17,
+        3.21,
+        3.31,
+        3.36,
+        3.41
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.79,
+        3.09,
+        3.21,
+        3.25,
+        3.27,
+        3.31,
+        3.35,
+        3.39
+      ],
       "rankPvout": 193,
       "rankGhi": 192
     },
@@ -1409,6 +3561,26 @@
       "pvoutKwhKwpYear": 1536.7,
       "ghiMedianKwhM2Day": 5.34,
       "pvoutMedianKwhKwpDay": 4.22,
+      "ghiDistributionKwhM2Day": [
+        4.43,
+        4.95,
+        5.19,
+        5.28,
+        5.34,
+        5.42,
+        5.5,
+        5.64
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.75,
+        4.06,
+        4.16,
+        4.21,
+        4.22,
+        4.28,
+        4.36,
+        4.49
+      ],
       "rankPvout": 112,
       "rankGhi": 89
     },
@@ -1422,6 +3594,26 @@
       "pvoutKwhKwpYear": 1872.5,
       "ghiMedianKwhM2Day": 5.56,
       "pvoutMedianKwhKwpDay": 5.14,
+      "ghiDistributionKwhM2Day": [
+        5.11,
+        5.38,
+        5.47,
+        5.54,
+        5.56,
+        5.64,
+        5.68,
+        5.72
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.84,
+        5.02,
+        5.09,
+        5.13,
+        5.14,
+        5.19,
+        5.25,
+        5.35
+      ],
       "rankPvout": 8,
       "rankGhi": 64
     },
@@ -1432,9 +3624,29 @@
       "ghiKwhM2Day": 2.82,
       "ghiKwhM2Year": 1029.3,
       "pvoutKwhKwpDay": 2.87,
-      "pvoutKwhKwpYear": 1047.5,
+      "pvoutKwhKwpYear": 1047.6,
       "ghiMedianKwhM2Day": 2.82,
       "pvoutMedianKwhKwpDay": 2.87,
+      "ghiDistributionKwhM2Day": [
+        2.76,
+        2.79,
+        2.8,
+        2.82,
+        2.82,
+        2.84,
+        2.87,
+        2.96
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.78,
+        2.82,
+        2.84,
+        2.87,
+        2.87,
+        2.89,
+        2.92,
+        3.05
+      ],
       "rankPvout": 200,
       "rankGhi": 201
     },
@@ -1448,6 +3660,26 @@
       "pvoutKwhKwpYear": 1076.8,
       "ghiMedianKwhM2Day": 3.03,
       "pvoutMedianKwhKwpDay": 2.95,
+      "ghiDistributionKwhM2Day": [
+        2.9,
+        2.95,
+        2.98,
+        3.02,
+        3.03,
+        3.06,
+        3.08,
+        3.1
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.83,
+        2.89,
+        2.92,
+        2.95,
+        2.95,
+        2.98,
+        3,
+        3.03
+      ],
       "rankPvout": 198,
       "rankGhi": 195
     },
@@ -1456,11 +3688,31 @@
       "name": "Latvia",
       "region": "ECA",
       "ghiKwhM2Day": 2.77,
-      "ghiKwhM2Year": 1011.0,
+      "ghiKwhM2Year": 1011.1,
       "pvoutKwhKwpDay": 2.85,
-      "pvoutKwhKwpYear": 1040.2,
+      "pvoutKwhKwpYear": 1040.3,
       "ghiMedianKwhM2Day": 2.77,
       "pvoutMedianKwhKwpDay": 2.85,
+      "ghiDistributionKwhM2Day": [
+        2.69,
+        2.72,
+        2.74,
+        2.77,
+        2.77,
+        2.79,
+        2.83,
+        2.94
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.77,
+        2.81,
+        2.82,
+        2.85,
+        2.85,
+        2.87,
+        2.91,
+        3.05
+      ],
       "rankPvout": 202,
       "rankGhi": 203
     },
@@ -1469,11 +3721,31 @@
       "name": "Macau, SAR",
       "region": "EAP",
       "ghiKwhM2Day": 4.09,
-      "ghiKwhM2Year": 1492.8,
+      "ghiKwhM2Year": 1492.9,
       "pvoutKwhKwpDay": 3.4,
-      "pvoutKwhKwpYear": 1241.0,
+      "pvoutKwhKwpYear": 1241,
       "ghiMedianKwhM2Day": 4.1,
       "pvoutMedianKwhKwpDay": 3.42,
+      "ghiDistributionKwhM2Day": [
+        4.01,
+        4.03,
+        4.04,
+        4.09,
+        4.1,
+        4.12,
+        4.14,
+        4.15
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.33,
+        3.35,
+        3.39,
+        3.4,
+        3.42,
+        3.43,
+        3.44,
+        3.45
+      ],
       "rankPvout": 185,
       "rankGhi": 162
     },
@@ -1484,9 +3756,29 @@
       "ghiKwhM2Day": 5.56,
       "ghiKwhM2Year": 2029.4,
       "pvoutKwhKwpDay": 5.01,
-      "pvoutKwhKwpYear": 1828.6,
+      "pvoutKwhKwpYear": 1828.7,
       "ghiMedianKwhM2Day": 5.56,
       "pvoutMedianKwhKwpDay": 5.04,
+      "ghiDistributionKwhM2Day": [
+        4.76,
+        5.11,
+        5.32,
+        5.56,
+        5.56,
+        5.84,
+        6,
+        6.13
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.39,
+        4.63,
+        4.82,
+        5.01,
+        5.04,
+        5.21,
+        5.31,
+        5.54
+      ],
       "rankPvout": 13,
       "rankGhi": 61
     },
@@ -1497,9 +3789,29 @@
       "ghiKwhM2Day": 3.55,
       "ghiKwhM2Year": 1295.8,
       "pvoutKwhKwpDay": 3.45,
-      "pvoutKwhKwpYear": 1259.2,
+      "pvoutKwhKwpYear": 1259.3,
       "ghiMedianKwhM2Day": 3.55,
       "pvoutMedianKwhKwpDay": 3.44,
+      "ghiDistributionKwhM2Day": [
+        3.37,
+        3.44,
+        3.48,
+        3.55,
+        3.55,
+        3.62,
+        3.67,
+        3.73
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.28,
+        3.35,
+        3.39,
+        3.45,
+        3.44,
+        3.51,
+        3.56,
+        3.61
+      ],
       "rankPvout": 181,
       "rankGhi": 182
     },
@@ -1508,11 +3820,31 @@
       "name": "Madagascar",
       "region": "AFR",
       "ghiKwhM2Day": 5.63,
-      "ghiKwhM2Year": 2054.9,
+      "ghiKwhM2Year": 2055,
       "pvoutKwhKwpDay": 4.76,
       "pvoutKwhKwpYear": 1737.4,
       "ghiMedianKwhM2Day": 5.84,
       "pvoutMedianKwhKwpDay": 4.92,
+      "ghiDistributionKwhM2Day": [
+        4.36,
+        4.84,
+        5.25,
+        5.63,
+        5.84,
+        6.01,
+        6.09,
+        6.19
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.72,
+        4.14,
+        4.47,
+        4.76,
+        4.92,
+        5.05,
+        5.13,
+        5.25
+      ],
       "rankPvout": 41,
       "rankGhi": 49
     },
@@ -1521,11 +3853,31 @@
       "name": "Maldives",
       "region": "SOA",
       "ghiKwhM2Day": 5.59,
-      "ghiKwhM2Year": 2040.3,
+      "ghiKwhM2Year": 2040.4,
       "pvoutKwhKwpDay": 4.44,
       "pvoutKwhKwpYear": 1620.6,
       "ghiMedianKwhM2Day": 5.6,
       "pvoutMedianKwhKwpDay": 4.44,
+      "ghiDistributionKwhM2Day": [
+        5.53,
+        5.54,
+        5.57,
+        5.59,
+        5.6,
+        5.63,
+        5.64,
+        5.65
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.42,
+        4.42,
+        4.43,
+        4.44,
+        4.44,
+        4.46,
+        4.46,
+        4.47
+      ],
       "rankPvout": 81,
       "rankGhi": 55
     },
@@ -1539,6 +3891,26 @@
       "pvoutKwhKwpYear": 1795.8,
       "ghiMedianKwhM2Day": 5.86,
       "pvoutMedianKwhKwpDay": 5.07,
+      "ghiDistributionKwhM2Day": [
+        4.61,
+        5.16,
+        5.46,
+        5.73,
+        5.86,
+        6.02,
+        6.13,
+        6.29
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.84,
+        4.33,
+        4.64,
+        4.92,
+        5.07,
+        5.25,
+        5.33,
+        5.51
+      ],
       "rankPvout": 22,
       "rankGhi": 41
     },
@@ -1547,11 +3919,31 @@
       "name": "Marshall Islands",
       "region": "EAP",
       "ghiKwhM2Day": 5.37,
-      "ghiKwhM2Year": 1960.0,
+      "ghiKwhM2Year": 1960.1,
       "pvoutKwhKwpDay": 4.24,
       "pvoutKwhKwpYear": 1547.6,
       "ghiMedianKwhM2Day": 5.34,
       "pvoutMedianKwhKwpDay": 4.21,
+      "ghiDistributionKwhM2Day": [
+        4.94,
+        4.98,
+        5.04,
+        5.37,
+        5.34,
+        5.64,
+        5.94,
+        6.14
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.96,
+        4,
+        4.03,
+        4.24,
+        4.21,
+        4.34,
+        4.57,
+        4.76
+      ],
       "rankPvout": 111,
       "rankGhi": 78
     },
@@ -1560,11 +3952,31 @@
       "name": "North Macedonia",
       "region": "ECA",
       "ghiKwhM2Day": 4.05,
-      "ghiKwhM2Year": 1478.2,
+      "ghiKwhM2Year": 1478.3,
       "pvoutKwhKwpDay": 3.88,
       "pvoutKwhKwpYear": 1416.2,
       "ghiMedianKwhM2Day": 4.06,
       "pvoutMedianKwhKwpDay": 3.9,
+      "ghiDistributionKwhM2Day": [
+        3.58,
+        3.85,
+        3.96,
+        4.05,
+        4.06,
+        4.18,
+        4.22,
+        4.28
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.55,
+        3.74,
+        3.82,
+        3.88,
+        3.9,
+        3.96,
+        4,
+        4.1
+      ],
       "rankPvout": 152,
       "rankGhi": 165
     },
@@ -1578,6 +3990,26 @@
       "pvoutKwhKwpYear": 1708.2,
       "ghiMedianKwhM2Day": 6.05,
       "pvoutMedianKwhKwpDay": 4.66,
+      "ghiDistributionKwhM2Day": [
+        5.7,
+        5.82,
+        5.93,
+        6.02,
+        6.05,
+        6.09,
+        6.16,
+        6.29
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.48,
+        4.55,
+        4.6,
+        4.68,
+        4.66,
+        4.75,
+        4.81,
+        5.07
+      ],
       "rankPvout": 56,
       "rankGhi": 19
     },
@@ -1586,11 +4018,31 @@
       "name": "Malta",
       "region": "MENA",
       "ghiKwhM2Day": 5.01,
-      "ghiKwhM2Year": 1828.6,
+      "ghiKwhM2Year": 1828.7,
       "pvoutKwhKwpDay": 4.56,
       "pvoutKwhKwpYear": 1664.4,
       "ghiMedianKwhM2Day": 5.01,
       "pvoutMedianKwhKwpDay": 4.56,
+      "ghiDistributionKwhM2Day": [
+        4.95,
+        4.97,
+        4.99,
+        5.01,
+        5.01,
+        5.03,
+        5.04,
+        5.05
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.49,
+        4.52,
+        4.54,
+        4.56,
+        4.56,
+        4.58,
+        4.61,
+        4.62
+      ],
       "rankPvout": 68,
       "rankGhi": 113
     },
@@ -1604,6 +4056,26 @@
       "pvoutKwhKwpYear": 1511.1,
       "ghiMedianKwhM2Day": 4.79,
       "pvoutMedianKwhKwpDay": 4.15,
+      "ghiDistributionKwhM2Day": [
+        3.17,
+        4.17,
+        4.56,
+        4.69,
+        4.79,
+        4.95,
+        5.07,
+        5.23
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.67,
+        3.94,
+        4.05,
+        4.14,
+        4.15,
+        4.26,
+        4.34,
+        4.44
+      ],
       "rankPvout": 121,
       "rankGhi": 134
     },
@@ -1617,6 +4089,26 @@
       "pvoutKwhKwpYear": 1394.3,
       "ghiMedianKwhM2Day": 3.84,
       "pvoutMedianKwhKwpDay": 3.88,
+      "ghiDistributionKwhM2Day": [
+        3.13,
+        3.6,
+        3.67,
+        3.86,
+        3.84,
+        4.07,
+        4.17,
+        4.32
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.36,
+        3.54,
+        3.62,
+        3.82,
+        3.88,
+        3.99,
+        4.04,
+        4.12
+      ],
       "rankPvout": 158,
       "rankGhi": 172
     },
@@ -1630,6 +4122,26 @@
       "pvoutKwhKwpYear": 1737.4,
       "ghiMedianKwhM2Day": 4.31,
       "pvoutMedianKwhKwpDay": 4.8,
+      "ghiDistributionKwhM2Day": [
+        3.4,
+        3.88,
+        4.07,
+        4.32,
+        4.31,
+        4.63,
+        4.73,
+        4.87
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.72,
+        4.34,
+        4.55,
+        4.76,
+        4.8,
+        5.02,
+        5.14,
+        5.23
+      ],
       "rankPvout": 42,
       "rankGhi": 153
     },
@@ -1643,6 +4155,26 @@
       "pvoutKwhKwpYear": 1697.3,
       "ghiMedianKwhM2Day": 5.66,
       "pvoutMedianKwhKwpDay": 4.67,
+      "ghiDistributionKwhM2Day": [
+        4.59,
+        5.25,
+        5.45,
+        5.56,
+        5.66,
+        5.74,
+        5.78,
+        5.85
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.39,
+        4.55,
+        4.62,
+        4.65,
+        4.67,
+        4.71,
+        4.73,
+        4.78
+      ],
       "rankPvout": 59,
       "rankGhi": 62
     },
@@ -1656,6 +4188,26 @@
       "pvoutKwhKwpYear": 1620.6,
       "ghiMedianKwhM2Day": 5.39,
       "pvoutMedianKwhKwpDay": 4.43,
+      "ghiDistributionKwhM2Day": [
+        4.77,
+        5.16,
+        5.31,
+        5.38,
+        5.39,
+        5.48,
+        5.58,
+        5.87
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.16,
+        4.31,
+        4.37,
+        4.44,
+        4.43,
+        4.5,
+        4.56,
+        4.78
+      ],
       "rankPvout": 82,
       "rankGhi": 75
     },
@@ -1669,6 +4221,26 @@
       "pvoutKwhKwpYear": 1733.8,
       "ghiMedianKwhM2Day": 6.06,
       "pvoutMedianKwhKwpDay": 4.7,
+      "ghiDistributionKwhM2Day": [
+        5.85,
+        5.92,
+        5.97,
+        6.04,
+        6.06,
+        6.1,
+        6.13,
+        6.19
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.58,
+        4.63,
+        4.66,
+        4.75,
+        4.7,
+        4.8,
+        4.94,
+        5.29
+      ],
       "rankPvout": 44,
       "rankGhi": 16
     },
@@ -1677,11 +4249,31 @@
       "name": "Mauritius",
       "region": "AFR",
       "ghiKwhM2Day": 5.01,
-      "ghiKwhM2Year": 1828.6,
+      "ghiKwhM2Year": 1828.7,
       "pvoutKwhKwpDay": 4.21,
       "pvoutKwhKwpYear": 1536.7,
       "ghiMedianKwhM2Day": 5.02,
       "pvoutMedianKwhKwpDay": 4.25,
+      "ghiDistributionKwhM2Day": [
+        4.35,
+        4.54,
+        4.71,
+        5.01,
+        5.02,
+        5.27,
+        5.51,
+        5.75
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.66,
+        3.79,
+        3.96,
+        4.21,
+        4.25,
+        4.44,
+        4.6,
+        4.78
+      ],
       "rankPvout": 113,
       "rankGhi": 114
     },
@@ -1690,11 +4282,31 @@
       "name": "Malawi",
       "region": "AFR",
       "ghiKwhM2Day": 5.59,
-      "ghiKwhM2Year": 2040.3,
+      "ghiKwhM2Year": 2040.4,
       "pvoutKwhKwpDay": 4.6,
-      "pvoutKwhKwpYear": 1679.0,
+      "pvoutKwhKwpYear": 1679,
       "ghiMedianKwhM2Day": 5.62,
       "pvoutMedianKwhKwpDay": 4.62,
+      "ghiDistributionKwhM2Day": [
+        4.88,
+        5.34,
+        5.48,
+        5.59,
+        5.62,
+        5.73,
+        5.84,
+        6.04
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.15,
+        4.41,
+        4.51,
+        4.6,
+        4.62,
+        4.69,
+        4.77,
+        4.95
+      ],
       "rankPvout": 63,
       "rankGhi": 56
     },
@@ -1708,6 +4320,26 @@
       "pvoutKwhKwpYear": 1365.1,
       "ghiMedianKwhM2Day": 4.71,
       "pvoutMedianKwhKwpDay": 3.73,
+      "ghiDistributionKwhM2Day": [
+        4.05,
+        4.44,
+        4.56,
+        4.71,
+        4.71,
+        4.86,
+        4.99,
+        5.2
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.4,
+        3.55,
+        3.62,
+        3.74,
+        3.73,
+        3.85,
+        3.95,
+        4.11
+      ],
       "rankPvout": 162,
       "rankGhi": 133
     },
@@ -1716,11 +4348,31 @@
       "name": "Namibia",
       "region": "AFR",
       "ghiKwhM2Day": 6.4,
-      "ghiKwhM2Year": 2336.0,
+      "ghiKwhM2Year": 2336,
       "pvoutKwhKwpDay": 5.38,
       "pvoutKwhKwpYear": 1963.7,
       "ghiMedianKwhM2Day": 6.43,
       "pvoutMedianKwhKwpDay": 5.4,
+      "ghiDistributionKwhM2Day": [
+        5.88,
+        6.17,
+        6.27,
+        6.4,
+        6.43,
+        6.54,
+        6.63,
+        6.71
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        5.02,
+        5.12,
+        5.26,
+        5.38,
+        5.4,
+        5.51,
+        5.58,
+        5.74
+      ],
       "rankPvout": 1,
       "rankGhi": 2
     },
@@ -1734,6 +4386,26 @@
       "pvoutKwhKwpYear": 1452.7,
       "ghiMedianKwhM2Day": 4.6,
       "pvoutMedianKwhKwpDay": 3.98,
+      "ghiDistributionKwhM2Day": [
+        3.63,
+        4.11,
+        4.34,
+        4.57,
+        4.6,
+        4.81,
+        5.04,
+        5.33
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.33,
+        3.61,
+        3.81,
+        3.98,
+        3.98,
+        4.17,
+        4.33,
+        4.49
+      ],
       "rankPvout": 141,
       "rankGhi": 140
     },
@@ -1747,6 +4419,26 @@
       "pvoutKwhKwpYear": 1766.6,
       "ghiMedianKwhM2Day": 6.28,
       "pvoutMedianKwhKwpDay": 4.81,
+      "ghiDistributionKwhM2Day": [
+        5.81,
+        6.04,
+        6.17,
+        6.26,
+        6.28,
+        6.38,
+        6.46,
+        6.58
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.52,
+        4.68,
+        4.74,
+        4.84,
+        4.81,
+        4.92,
+        5.07,
+        5.32
+      ],
       "rankPvout": 31,
       "rankGhi": 6
     },
@@ -1760,6 +4452,26 @@
       "pvoutKwhKwpYear": 1569.5,
       "ghiMedianKwhM2Day": 5.54,
       "pvoutMedianKwhKwpDay": 4.38,
+      "ghiDistributionKwhM2Day": [
+        4.29,
+        4.66,
+        5.08,
+        5.44,
+        5.54,
+        5.9,
+        5.98,
+        6.06
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.4,
+        3.69,
+        4.01,
+        4.3,
+        4.38,
+        4.67,
+        4.72,
+        4.79
+      ],
       "rankPvout": 100,
       "rankGhi": 69
     },
@@ -1772,7 +4484,27 @@
       "pvoutKwhKwpDay": 4.11,
       "pvoutKwhKwpYear": 1500.2,
       "ghiMedianKwhM2Day": 4.92,
-      "pvoutMedianKwhKwpDay": 4.0,
+      "pvoutMedianKwhKwpDay": 4,
+      "ghiDistributionKwhM2Day": [
+        4.43,
+        4.68,
+        4.8,
+        5.04,
+        4.92,
+        5.2,
+        5.7,
+        6.03
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.57,
+        3.78,
+        3.88,
+        4.11,
+        4,
+        4.33,
+        4.62,
+        4.87
+      ],
       "rankPvout": 126,
       "rankGhi": 112
     },
@@ -1786,6 +4518,26 @@
       "pvoutKwhKwpYear": 1043.9,
       "ghiMedianKwhM2Day": 2.87,
       "pvoutMedianKwhKwpDay": 2.86,
+      "ghiDistributionKwhM2Day": [
+        2.75,
+        2.78,
+        2.81,
+        2.86,
+        2.87,
+        2.9,
+        2.96,
+        3.04
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.74,
+        2.78,
+        2.81,
+        2.86,
+        2.86,
+        2.9,
+        2.97,
+        3.07
+      ],
       "rankPvout": 201,
       "rankGhi": 200
     },
@@ -1799,6 +4551,26 @@
       "pvoutKwhKwpYear": 1007.4,
       "ghiMedianKwhM2Day": 2.61,
       "pvoutMedianKwhKwpDay": 2.8,
+      "ghiDistributionKwhM2Day": [
+        2.11,
+        2.4,
+        2.54,
+        2.58,
+        2.61,
+        2.66,
+        2.71,
+        2.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.17,
+        2.52,
+        2.67,
+        2.76,
+        2.8,
+        2.88,
+        2.94,
+        3.06
+      ],
       "rankPvout": 207,
       "rankGhi": 208
     },
@@ -1808,10 +4580,30 @@
       "region": "SOA",
       "ghiKwhM2Day": 4.53,
       "ghiKwhM2Year": 1653.5,
-      "pvoutKwhKwpDay": 4.0,
-      "pvoutKwhKwpYear": 1460.0,
+      "pvoutKwhKwpDay": 4,
+      "pvoutKwhKwpYear": 1460,
       "ghiMedianKwhM2Day": 4.57,
       "pvoutMedianKwhKwpDay": 3.91,
+      "ghiDistributionKwhM2Day": [
+        3.3,
+        4,
+        4.33,
+        4.53,
+        4.57,
+        4.77,
+        4.96,
+        5.73
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.5,
+        3.73,
+        3.82,
+        4,
+        3.91,
+        4.08,
+        4.28,
+        5.66
+      ],
       "rankPvout": 138,
       "rankGhi": 143
     },
@@ -1825,6 +4617,26 @@
       "pvoutKwhKwpYear": 1697.3,
       "ghiMedianKwhM2Day": 5.88,
       "pvoutMedianKwhKwpDay": 4.65,
+      "ghiDistributionKwhM2Day": [
+        5.87,
+        5.87,
+        5.88,
+        5.88,
+        5.88,
+        5.88,
+        5.89,
+        5.89
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.64,
+        4.64,
+        4.65,
+        4.65,
+        4.65,
+        4.65,
+        4.66,
+        4.66
+      ],
       "rankPvout": 60,
       "rankGhi": 24
     },
@@ -1838,6 +4650,26 @@
       "pvoutKwhKwpYear": 1343.2,
       "ghiMedianKwhM2Day": 3.62,
       "pvoutMedianKwhKwpDay": 3.67,
+      "ghiDistributionKwhM2Day": [
+        2.32,
+        3.01,
+        3.34,
+        3.54,
+        3.62,
+        3.81,
+        3.93,
+        4.21
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.07,
+        3.4,
+        3.53,
+        3.68,
+        3.67,
+        3.82,
+        3.97,
+        4.32
+      ],
       "rankPvout": 169,
       "rankGhi": 183
     },
@@ -1848,9 +4680,29 @@
       "ghiKwhM2Day": 6.28,
       "ghiKwhM2Year": 2292.2,
       "pvoutKwhKwpDay": 5.17,
-      "pvoutKwhKwpYear": 1887.0,
+      "pvoutKwhKwpYear": 1887.1,
       "ghiMedianKwhM2Day": 6.24,
       "pvoutMedianKwhKwpDay": 5.14,
+      "ghiDistributionKwhM2Day": [
+        5.67,
+        6.1,
+        6.16,
+        6.28,
+        6.24,
+        6.4,
+        6.52,
+        6.77
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.74,
+        5.02,
+        5.08,
+        5.17,
+        5.14,
+        5.22,
+        5.4,
+        5.63
+      ],
       "rankPvout": 6,
       "rankGhi": 4
     },
@@ -1864,6 +4716,26 @@
       "pvoutKwhKwpYear": 1719.2,
       "ghiMedianKwhM2Day": 5.5,
       "pvoutMedianKwhKwpDay": 4.67,
+      "ghiDistributionKwhM2Day": [
+        3.62,
+        4.58,
+        4.89,
+        5.34,
+        5.5,
+        5.81,
+        6.02,
+        6.22
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.99,
+        4.22,
+        4.38,
+        4.71,
+        4.67,
+        5.04,
+        5.31,
+        5.55
+      ],
       "rankPvout": 50,
       "rankGhi": 82
     },
@@ -1877,6 +4749,26 @@
       "pvoutKwhKwpYear": 1449.1,
       "ghiMedianKwhM2Day": 4.79,
       "pvoutMedianKwhKwpDay": 3.98,
+      "ghiDistributionKwhM2Day": [
+        3.47,
+        4.13,
+        4.47,
+        4.74,
+        4.79,
+        5.08,
+        5.32,
+        5.56
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.95,
+        3.59,
+        3.81,
+        3.97,
+        3.98,
+        4.21,
+        4.29,
+        4.45
+      ],
       "rankPvout": 143,
       "rankGhi": 129
     },
@@ -1890,6 +4782,26 @@
       "pvoutKwhKwpYear": 1788.5,
       "ghiMedianKwhM2Day": 4.9,
       "pvoutMedianKwhKwpDay": 5.02,
+      "ghiDistributionKwhM2Day": [
+        3.51,
+        4.41,
+        4.74,
+        5.15,
+        4.9,
+        5.65,
+        6.34,
+        6.95
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.26,
+        3.93,
+        4.42,
+        4.9,
+        5.02,
+        5.46,
+        5.66,
+        5.88
+      ],
       "rankPvout": 24,
       "rankGhi": 101
     },
@@ -1903,6 +4815,26 @@
       "pvoutKwhKwpYear": 1434.5,
       "ghiMedianKwhM2Day": 4.76,
       "pvoutMedianKwhKwpDay": 3.93,
+      "ghiDistributionKwhM2Day": [
+        3.67,
+        4.25,
+        4.53,
+        4.73,
+        4.76,
+        4.98,
+        5.17,
+        5.46
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.24,
+        3.65,
+        3.77,
+        3.93,
+        3.93,
+        4.09,
+        4.24,
+        4.55
+      ],
       "rankPvout": 144,
       "rankGhi": 131
     },
@@ -1913,9 +4845,29 @@
       "ghiKwhM2Day": 4.98,
       "ghiKwhM2Year": 1817.7,
       "pvoutKwhKwpDay": 4.01,
-      "pvoutKwhKwpYear": 1463.6,
+      "pvoutKwhKwpYear": 1463.7,
       "ghiMedianKwhM2Day": 4.99,
       "pvoutMedianKwhKwpDay": 4.01,
+      "ghiDistributionKwhM2Day": [
+        4.82,
+        4.85,
+        4.88,
+        4.98,
+        4.99,
+        5.05,
+        5.09,
+        5.24
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.86,
+        3.89,
+        3.96,
+        4.01,
+        4.01,
+        4.06,
+        4.09,
+        4.16
+      ],
       "rankPvout": 135,
       "rankGhi": 115
     },
@@ -1926,9 +4878,29 @@
       "ghiKwhM2Day": 4.48,
       "ghiKwhM2Year": 1635.2,
       "pvoutKwhKwpDay": 3.69,
-      "pvoutKwhKwpYear": 1346.8,
+      "pvoutKwhKwpYear": 1346.9,
       "ghiMedianKwhM2Day": 4.51,
       "pvoutMedianKwhKwpDay": 3.67,
+      "ghiDistributionKwhM2Day": [
+        3.3,
+        3.9,
+        4.24,
+        4.48,
+        4.51,
+        4.76,
+        5.03,
+        5.41
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.8,
+        3.34,
+        3.52,
+        3.69,
+        3.67,
+        3.9,
+        4.07,
+        4.35
+      ],
       "rankPvout": 167,
       "rankGhi": 149
     },
@@ -1942,6 +4914,26 @@
       "pvoutKwhKwpYear": 1087.7,
       "ghiMedianKwhM2Day": 2.99,
       "pvoutMedianKwhKwpDay": 2.99,
+      "ghiDistributionKwhM2Day": [
+        2.8,
+        2.87,
+        2.91,
+        2.98,
+        2.99,
+        3.04,
+        3.09,
+        3.13
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.81,
+        2.9,
+        2.94,
+        2.98,
+        2.99,
+        3.03,
+        3.07,
+        3.11
+      ],
       "rankPvout": 195,
       "rankGhi": 197
     },
@@ -1950,11 +4942,31 @@
       "name": "Puerto Rico (U.S.)",
       "region": "Other",
       "ghiKwhM2Day": 5.27,
-      "ghiKwhM2Year": 1923.5,
+      "ghiKwhM2Year": 1923.6,
       "pvoutKwhKwpDay": 4.4,
-      "pvoutKwhKwpYear": 1606.0,
+      "pvoutKwhKwpYear": 1606,
       "ghiMedianKwhM2Day": 5.23,
       "pvoutMedianKwhKwpDay": 4.36,
+      "ghiDistributionKwhM2Day": [
+        4.61,
+        4.95,
+        5.08,
+        5.27,
+        5.23,
+        5.45,
+        5.7,
+        5.92
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.94,
+        4.16,
+        4.24,
+        4.4,
+        4.36,
+        4.55,
+        4.73,
+        4.87
+      ],
       "rankPvout": 85,
       "rankGhi": 90
     },
@@ -1968,6 +4980,26 @@
       "pvoutKwhKwpYear": 1430.8,
       "ghiMedianKwhM2Day": 3.87,
       "pvoutMedianKwhKwpDay": 3.89,
+      "ghiDistributionKwhM2Day": [
+        3.53,
+        3.7,
+        3.78,
+        3.86,
+        3.87,
+        3.94,
+        4,
+        4.13
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.62,
+        3.78,
+        3.84,
+        3.92,
+        3.89,
+        3.95,
+        4.07,
+        4.44
+      ],
       "rankPvout": 146,
       "rankGhi": 173
     },
@@ -1981,6 +5013,26 @@
       "pvoutKwhKwpYear": 1576.8,
       "ghiMedianKwhM2Day": 4.61,
       "pvoutMedianKwhKwpDay": 4.35,
+      "ghiDistributionKwhM2Day": [
+        3.41,
+        4.22,
+        4.39,
+        4.57,
+        4.61,
+        4.8,
+        4.89,
+        5.08
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.19,
+        4.05,
+        4.19,
+        4.32,
+        4.35,
+        4.49,
+        4.54,
+        4.73
+      ],
       "rankPvout": 97,
       "rankGhi": 141
     },
@@ -1994,6 +5046,26 @@
       "pvoutKwhKwpYear": 1562.2,
       "ghiMedianKwhM2Day": 5.09,
       "pvoutMedianKwhKwpDay": 4.3,
+      "ghiDistributionKwhM2Day": [
+        4.89,
+        4.96,
+        5.03,
+        5.08,
+        5.09,
+        5.13,
+        5.17,
+        5.24
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.04,
+        4.2,
+        4.27,
+        4.28,
+        4.3,
+        4.32,
+        4.34,
+        4.38
+      ],
       "rankPvout": 104,
       "rankGhi": 107
     },
@@ -2004,9 +5076,29 @@
       "ghiKwhM2Day": 5.61,
       "ghiKwhM2Year": 2047.7,
       "pvoutKwhKwpDay": 4.93,
-      "pvoutKwhKwpYear": 1799.4,
+      "pvoutKwhKwpYear": 1799.5,
       "ghiMedianKwhM2Day": 5.59,
       "pvoutMedianKwhKwpDay": 4.91,
+      "ghiDistributionKwhM2Day": [
+        5.38,
+        5.48,
+        5.52,
+        5.61,
+        5.59,
+        5.7,
+        5.77,
+        5.85
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.6,
+        4.8,
+        4.84,
+        4.93,
+        4.91,
+        5.04,
+        5.12,
+        5.2
+      ],
       "rankPvout": 19,
       "rankGhi": 52
     },
@@ -2020,6 +5112,26 @@
       "pvoutKwhKwpYear": 1602.3,
       "ghiMedianKwhM2Day": 5.35,
       "pvoutMedianKwhKwpDay": 4.52,
+      "ghiDistributionKwhM2Day": [
+        3.85,
+        4.35,
+        4.84,
+        5.26,
+        5.35,
+        5.77,
+        5.88,
+        6.38
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.32,
+        3.82,
+        4.18,
+        4.39,
+        4.52,
+        4.68,
+        4.77,
+        5.07
+      ],
       "rankPvout": 88,
       "rankGhi": 91
     },
@@ -2033,6 +5145,26 @@
       "pvoutKwhKwpYear": 1795.8,
       "ghiMedianKwhM2Day": 5.91,
       "pvoutMedianKwhKwpDay": 4.93,
+      "ghiDistributionKwhM2Day": [
+        5.63,
+        5.81,
+        5.89,
+        5.9,
+        5.91,
+        5.94,
+        5.96,
+        5.98
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.67,
+        4.86,
+        4.91,
+        4.92,
+        4.93,
+        4.95,
+        4.97,
+        5
+      ],
       "rankPvout": 23,
       "rankGhi": 23
     },
@@ -2041,11 +5173,31 @@
       "name": "Romania",
       "region": "ECA",
       "ghiKwhM2Day": 3.57,
-      "ghiKwhM2Year": 1303.0,
+      "ghiKwhM2Year": 1303.1,
       "pvoutKwhKwpDay": 3.52,
       "pvoutKwhKwpYear": 1284.8,
       "ghiMedianKwhM2Day": 3.57,
       "pvoutMedianKwhKwpDay": 3.52,
+      "ghiDistributionKwhM2Day": [
+        3.01,
+        3.31,
+        3.45,
+        3.57,
+        3.57,
+        3.76,
+        3.83,
+        3.89
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.19,
+        3.36,
+        3.43,
+        3.52,
+        3.52,
+        3.64,
+        3.66,
+        3.71
+      ],
       "rankPvout": 177,
       "rankGhi": 181
     },
@@ -2059,6 +5211,26 @@
       "pvoutKwhKwpYear": 1226.4,
       "ghiMedianKwhM2Day": 3.06,
       "pvoutMedianKwhKwpDay": 3.24,
+      "ghiDistributionKwhM2Day": [
+        2.57,
+        2.75,
+        2.87,
+        3.12,
+        3.06,
+        3.34,
+        3.59,
+        3.89
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.75,
+        2.95,
+        3.08,
+        3.36,
+        3.24,
+        3.49,
+        4.06,
+        4.61
+      ],
       "rankPvout": 188,
       "rankGhi": 193
     },
@@ -2072,6 +5244,26 @@
       "pvoutKwhKwpYear": 1496.5,
       "ghiMedianKwhM2Day": 5.14,
       "pvoutMedianKwhKwpDay": 4.12,
+      "ghiDistributionKwhM2Day": [
+        4.2,
+        4.74,
+        4.96,
+        5.08,
+        5.14,
+        5.24,
+        5.33,
+        5.52
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.51,
+        3.93,
+        4.05,
+        4.1,
+        4.12,
+        4.19,
+        4.25,
+        4.36
+      ],
       "rankPvout": 127,
       "rankGhi": 108
     },
@@ -2085,6 +5277,26 @@
       "pvoutKwhKwpYear": 1883.4,
       "ghiMedianKwhM2Day": 6.25,
       "pvoutMedianKwhKwpDay": 5.18,
+      "ghiDistributionKwhM2Day": [
+        5.69,
+        5.9,
+        6.07,
+        6.21,
+        6.25,
+        6.36,
+        6.45,
+        6.62
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.51,
+        4.9,
+        5.06,
+        5.16,
+        5.18,
+        5.28,
+        5.38,
+        5.62
+      ],
       "rankPvout": 7,
       "rankGhi": 8
     },
@@ -2098,6 +5310,26 @@
       "pvoutKwhKwpYear": 1803.1,
       "ghiMedianKwhM2Day": 6.35,
       "pvoutMedianKwhKwpDay": 4.94,
+      "ghiDistributionKwhM2Day": [
+        5.53,
+        6.04,
+        6.23,
+        6.32,
+        6.35,
+        6.47,
+        6.55,
+        6.67
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.32,
+        4.71,
+        4.82,
+        4.94,
+        4.94,
+        5.06,
+        5.2,
+        5.52
+      ],
       "rankPvout": 18,
       "rankGhi": 3
     },
@@ -2106,11 +5338,31 @@
       "name": "Senegal",
       "region": "AFR",
       "ghiKwhM2Day": 5.8,
-      "ghiKwhM2Year": 2117.0,
+      "ghiKwhM2Year": 2117,
       "pvoutKwhKwpDay": 4.58,
       "pvoutKwhKwpYear": 1671.7,
       "ghiMedianKwhM2Day": 5.81,
       "pvoutMedianKwhKwpDay": 4.58,
+      "ghiDistributionKwhM2Day": [
+        5.63,
+        5.7,
+        5.74,
+        5.8,
+        5.81,
+        5.86,
+        5.88,
+        5.9
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.46,
+        4.5,
+        4.52,
+        4.58,
+        4.58,
+        4.64,
+        4.67,
+        4.79
+      ],
       "rankPvout": 64,
       "rankGhi": 29
     },
@@ -2124,6 +5376,26 @@
       "pvoutKwhKwpYear": 1295.8,
       "ghiMedianKwhM2Day": 4.48,
       "pvoutMedianKwhKwpDay": 3.53,
+      "ghiDistributionKwhM2Day": [
+        4.38,
+        4.42,
+        4.44,
+        4.49,
+        4.48,
+        4.53,
+        4.59,
+        4.63
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.46,
+        3.49,
+        3.5,
+        3.55,
+        3.53,
+        3.59,
+        3.65,
+        3.66
+      ],
       "rankPvout": 174,
       "rankGhi": 147
     },
@@ -2132,11 +5404,31 @@
       "name": "Solomon Islands",
       "region": "EAP",
       "ghiKwhM2Day": 4.4,
-      "ghiKwhM2Year": 1606.0,
+      "ghiKwhM2Year": 1606,
       "pvoutKwhKwpDay": 3.69,
-      "pvoutKwhKwpYear": 1346.8,
+      "pvoutKwhKwpYear": 1346.9,
       "ghiMedianKwhM2Day": 4.42,
       "pvoutMedianKwhKwpDay": 3.68,
+      "ghiDistributionKwhM2Day": [
+        3.49,
+        3.99,
+        4.23,
+        4.4,
+        4.42,
+        4.6,
+        4.79,
+        5.11
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.15,
+        3.38,
+        3.53,
+        3.69,
+        3.68,
+        3.87,
+        4.02,
+        4.12
+      ],
       "rankPvout": 168,
       "rankGhi": 151
     },
@@ -2147,9 +5439,29 @@
       "ghiKwhM2Day": 5.12,
       "ghiKwhM2Year": 1868.8,
       "pvoutKwhKwpDay": 4.09,
-      "pvoutKwhKwpYear": 1492.8,
+      "pvoutKwhKwpYear": 1492.9,
       "ghiMedianKwhM2Day": 5.12,
       "pvoutMedianKwhKwpDay": 4.09,
+      "ghiDistributionKwhM2Day": [
+        4.76,
+        4.89,
+        5,
+        5.12,
+        5.12,
+        5.24,
+        5.36,
+        5.5
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.81,
+        3.91,
+        3.99,
+        4.09,
+        4.09,
+        4.18,
+        4.27,
+        4.39
+      ],
       "rankPvout": 129,
       "rankGhi": 103
     },
@@ -2160,9 +5472,29 @@
       "ghiKwhM2Day": 5.92,
       "ghiKwhM2Year": 2160.8,
       "pvoutKwhKwpDay": 4.83,
-      "pvoutKwhKwpYear": 1763.0,
+      "pvoutKwhKwpYear": 1763,
       "ghiMedianKwhM2Day": 5.98,
       "pvoutMedianKwhKwpDay": 4.85,
+      "ghiDistributionKwhM2Day": [
+        5.16,
+        5.6,
+        5.84,
+        5.92,
+        5.98,
+        6.07,
+        6.12,
+        6.19
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.39,
+        4.67,
+        4.78,
+        4.83,
+        4.85,
+        4.9,
+        4.95,
+        5.02
+      ],
       "rankPvout": 35,
       "rankGhi": 22
     },
@@ -2176,6 +5508,26 @@
       "pvoutKwhKwpYear": 1372.4,
       "ghiMedianKwhM2Day": 3.94,
       "pvoutMedianKwhKwpDay": 3.76,
+      "ghiDistributionKwhM2Day": [
+        3.78,
+        3.91,
+        3.92,
+        3.93,
+        3.94,
+        3.95,
+        3.96,
+        3.98
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.7,
+        3.73,
+        3.75,
+        3.76,
+        3.76,
+        3.77,
+        3.79,
+        3.81
+      ],
       "rankPvout": 161,
       "rankGhi": 169
     },
@@ -2184,11 +5536,31 @@
       "name": "Somalia",
       "region": "AFR",
       "ghiKwhM2Day": 6.03,
-      "ghiKwhM2Year": 2201.0,
+      "ghiKwhM2Year": 2201,
       "pvoutKwhKwpDay": 4.76,
       "pvoutKwhKwpYear": 1737.4,
       "ghiMedianKwhM2Day": 5.99,
       "pvoutMedianKwhKwpDay": 4.72,
+      "ghiDistributionKwhM2Day": [
+        5.38,
+        5.54,
+        5.68,
+        6.03,
+        5.99,
+        6.37,
+        6.55,
+        6.74
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.2,
+        4.32,
+        4.45,
+        4.76,
+        4.72,
+        5.07,
+        5.25,
+        5.44
+      ],
       "rankPvout": 43,
       "rankGhi": 17
     },
@@ -2202,6 +5574,26 @@
       "pvoutKwhKwpYear": 1284.8,
       "ghiMedianKwhM2Day": 3.67,
       "pvoutMedianKwhKwpDay": 3.52,
+      "ghiDistributionKwhM2Day": [
+        3.45,
+        3.59,
+        3.64,
+        3.68,
+        3.67,
+        3.7,
+        3.77,
+        3.98
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.32,
+        3.46,
+        3.49,
+        3.52,
+        3.52,
+        3.54,
+        3.6,
+        3.77
+      ],
       "rankPvout": 178,
       "rankGhi": 178
     },
@@ -2215,12 +5607,32 @@
       "pvoutKwhKwpYear": 1627.9,
       "ghiMedianKwhM2Day": 5.67,
       "pvoutMedianKwhKwpDay": 4.45,
+      "ghiDistributionKwhM2Day": [
+        5.26,
+        5.4,
+        5.55,
+        5.68,
+        5.67,
+        5.83,
+        5.95,
+        6.11
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.09,
+        4.25,
+        4.36,
+        4.46,
+        4.45,
+        4.56,
+        4.66,
+        4.8
+      ],
       "rankPvout": 77,
       "rankGhi": 45
     },
     {
       "iso3": "STP",
-      "name": "S\u00e3o Tom\u00e9 and Pr\u00edncipe",
+      "name": "São Tomé and Príncipe",
       "region": "AFR",
       "ghiKwhM2Day": 4.3,
       "ghiKwhM2Year": 1569.5,
@@ -2228,6 +5640,26 @@
       "pvoutKwhKwpYear": 1266.6,
       "ghiMedianKwhM2Day": 4.27,
       "pvoutMedianKwhKwpDay": 3.45,
+      "ghiDistributionKwhM2Day": [
+        3.67,
+        3.84,
+        3.99,
+        4.3,
+        4.27,
+        4.59,
+        4.8,
+        5.03
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.02,
+        3.12,
+        3.22,
+        3.47,
+        3.45,
+        3.69,
+        3.78,
+        4.03
+      ],
       "rankPvout": 179,
       "rankGhi": 155
     },
@@ -2241,6 +5673,26 @@
       "pvoutKwhKwpYear": 1558.5,
       "ghiMedianKwhM2Day": 5.38,
       "pvoutMedianKwhKwpDay": 4.24,
+      "ghiDistributionKwhM2Day": [
+        5.07,
+        5.25,
+        5.32,
+        5.38,
+        5.38,
+        5.44,
+        5.49,
+        5.79
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.07,
+        4.15,
+        4.19,
+        4.27,
+        4.24,
+        4.33,
+        4.44,
+        4.64
+      ],
       "rankPvout": 105,
       "rankGhi": 76
     },
@@ -2249,11 +5701,31 @@
       "name": "Slovakia",
       "region": "ECA",
       "ghiKwhM2Day": 3.25,
-      "ghiKwhM2Year": 1186.2,
+      "ghiKwhM2Year": 1186.3,
       "pvoutKwhKwpDay": 3.27,
-      "pvoutKwhKwpYear": 1193.5,
+      "pvoutKwhKwpYear": 1193.6,
       "ghiMedianKwhM2Day": 3.27,
       "pvoutMedianKwhKwpDay": 3.29,
+      "ghiDistributionKwhM2Day": [
+        2.76,
+        3.04,
+        3.14,
+        3.25,
+        3.27,
+        3.39,
+        3.46,
+        3.49
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.92,
+        3.08,
+        3.19,
+        3.27,
+        3.29,
+        3.37,
+        3.4,
+        3.42
+      ],
       "rankPvout": 191,
       "rankGhi": 190
     },
@@ -2262,11 +5734,31 @@
       "name": "Slovenia",
       "region": "ECA",
       "ghiKwhM2Day": 3.45,
-      "ghiKwhM2Year": 1259.2,
+      "ghiKwhM2Year": 1259.3,
       "pvoutKwhKwpDay": 3.43,
-      "pvoutKwhKwpYear": 1252.0,
+      "pvoutKwhKwpYear": 1252,
       "ghiMedianKwhM2Day": 3.49,
       "pvoutMedianKwhKwpDay": 3.43,
+      "ghiDistributionKwhM2Day": [
+        2.65,
+        3.28,
+        3.41,
+        3.45,
+        3.49,
+        3.53,
+        3.58,
+        3.81
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.1,
+        3.34,
+        3.38,
+        3.43,
+        3.43,
+        3.48,
+        3.56,
+        3.73
+      ],
       "rankPvout": 183,
       "rankGhi": 186
     },
@@ -2280,6 +5772,26 @@
       "pvoutKwhKwpYear": 1036.6,
       "ghiMedianKwhM2Day": 2.67,
       "pvoutMedianKwhKwpDay": 2.83,
+      "ghiDistributionKwhM2Day": [
+        2.55,
+        2.6,
+        2.63,
+        2.69,
+        2.67,
+        2.72,
+        2.79,
+        2.99
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.65,
+        2.71,
+        2.78,
+        2.84,
+        2.83,
+        2.89,
+        2.96,
+        3.16
+      ],
       "rankPvout": 205,
       "rankGhi": 206
     },
@@ -2288,11 +5800,31 @@
       "name": "Eswatini",
       "region": "AFR",
       "ghiKwhM2Day": 4.85,
-      "ghiKwhM2Year": 1770.2,
+      "ghiKwhM2Year": 1770.3,
       "pvoutKwhKwpDay": 4.32,
       "pvoutKwhKwpYear": 1576.8,
       "ghiMedianKwhM2Day": 4.84,
       "pvoutMedianKwhKwpDay": 4.3,
+      "ghiDistributionKwhM2Day": [
+        4.66,
+        4.76,
+        4.8,
+        4.85,
+        4.84,
+        4.89,
+        4.97,
+        5.07
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.1,
+        4.22,
+        4.26,
+        4.32,
+        4.3,
+        4.36,
+        4.47,
+        4.59
+      ],
       "rankPvout": 98,
       "rankGhi": 123
     },
@@ -2303,9 +5835,29 @@
       "ghiKwhM2Day": 5.84,
       "ghiKwhM2Year": 2131.6,
       "pvoutKwhKwpDay": 4.87,
-      "pvoutKwhKwpYear": 1777.5,
+      "pvoutKwhKwpYear": 1777.6,
       "ghiMedianKwhM2Day": 5.84,
       "pvoutMedianKwhKwpDay": 4.86,
+      "ghiDistributionKwhM2Day": [
+        5.71,
+        5.75,
+        5.8,
+        5.84,
+        5.84,
+        5.88,
+        5.92,
+        5.96
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.79,
+        4.81,
+        4.84,
+        4.87,
+        4.86,
+        4.89,
+        4.94,
+        4.96
+      ],
       "rankPvout": 27,
       "rankGhi": 27
     },
@@ -2314,11 +5866,31 @@
       "name": "Seychelles",
       "region": "AFR",
       "ghiKwhM2Day": 5.63,
-      "ghiKwhM2Year": 2054.9,
+      "ghiKwhM2Year": 2055,
       "pvoutKwhKwpDay": 4.35,
       "pvoutKwhKwpYear": 1587.7,
       "ghiMedianKwhM2Day": 5.69,
       "pvoutMedianKwhKwpDay": 4.39,
+      "ghiDistributionKwhM2Day": [
+        4.92,
+        5.12,
+        5.31,
+        5.63,
+        5.69,
+        5.96,
+        6.02,
+        6.11
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.99,
+        4.13,
+        4.21,
+        4.35,
+        4.39,
+        4.47,
+        4.54,
+        4.63
+      ],
       "rankPvout": 91,
       "rankGhi": 50
     },
@@ -2327,11 +5899,31 @@
       "name": "Syrian Arab Republic",
       "region": "MENA",
       "ghiKwhM2Day": 5.45,
-      "ghiKwhM2Year": 1989.2,
+      "ghiKwhM2Year": 1989.3,
       "pvoutKwhKwpDay": 4.85,
-      "pvoutKwhKwpYear": 1770.2,
+      "pvoutKwhKwpYear": 1770.3,
       "ghiMedianKwhM2Day": 5.41,
       "pvoutMedianKwhKwpDay": 4.79,
+      "ghiDistributionKwhM2Day": [
+        4.82,
+        5.21,
+        5.29,
+        5.45,
+        5.41,
+        5.64,
+        5.79,
+        5.9
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.34,
+        4.65,
+        4.72,
+        4.85,
+        4.79,
+        5.01,
+        5.17,
+        5.37
+      ],
       "rankPvout": 29,
       "rankGhi": 68
     },
@@ -2340,11 +5932,31 @@
       "name": "Turks and Caicos Islands (U.K.)",
       "region": "Other",
       "ghiKwhM2Day": 5.6,
-      "ghiKwhM2Year": 2044.0,
+      "ghiKwhM2Year": 2044,
       "pvoutKwhKwpDay": 4.72,
       "pvoutKwhKwpYear": 1722.8,
       "ghiMedianKwhM2Day": 5.6,
       "pvoutMedianKwhKwpDay": 4.73,
+      "ghiDistributionKwhM2Day": [
+        5.38,
+        5.41,
+        5.45,
+        5.6,
+        5.6,
+        5.71,
+        5.82,
+        5.88
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.54,
+        4.56,
+        4.59,
+        4.72,
+        4.73,
+        4.84,
+        4.91,
+        4.95
+      ],
       "rankPvout": 48,
       "rankGhi": 54
     },
@@ -2358,6 +5970,26 @@
       "pvoutKwhKwpYear": 1766.6,
       "ghiMedianKwhM2Day": 6.23,
       "pvoutMedianKwhKwpDay": 4.77,
+      "ghiDistributionKwhM2Day": [
+        5.84,
+        5.94,
+        6.06,
+        6.26,
+        6.23,
+        6.5,
+        6.6,
+        6.76
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.58,
+        4.64,
+        4.68,
+        4.84,
+        4.77,
+        4.91,
+        5.16,
+        5.54
+      ],
       "rankPvout": 32,
       "rankGhi": 7
     },
@@ -2371,6 +6003,26 @@
       "pvoutKwhKwpYear": 1503.8,
       "ghiMedianKwhM2Day": 5.24,
       "pvoutMedianKwhKwpDay": 4.15,
+      "ghiDistributionKwhM2Day": [
+        4.74,
+        4.91,
+        5.09,
+        5.22,
+        5.24,
+        5.37,
+        5.49,
+        5.65
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.74,
+        3.88,
+        4.03,
+        4.12,
+        4.15,
+        4.24,
+        4.32,
+        4.46
+      ],
       "rankPvout": 123,
       "rankGhi": 93
     },
@@ -2379,11 +6031,31 @@
       "name": "Thailand",
       "region": "EAP",
       "ghiKwhM2Day": 4.93,
-      "ghiKwhM2Year": 1799.4,
+      "ghiKwhM2Year": 1799.5,
       "pvoutKwhKwpDay": 4.06,
       "pvoutKwhKwpYear": 1481.9,
       "ghiMedianKwhM2Day": 4.93,
       "pvoutMedianKwhKwpDay": 4.08,
+      "ghiDistributionKwhM2Day": [
+        4.34,
+        4.68,
+        4.8,
+        4.93,
+        4.93,
+        5.1,
+        5.2,
+        5.28
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.67,
+        3.87,
+        3.99,
+        4.06,
+        4.08,
+        4.17,
+        4.22,
+        4.25
+      ],
       "rankPvout": 130,
       "rankGhi": 117
     },
@@ -2392,11 +6064,31 @@
       "name": "Tajikistan",
       "region": "ECA",
       "ghiKwhM2Day": 4.51,
-      "ghiKwhM2Year": 1646.1,
+      "ghiKwhM2Year": 1646.2,
       "pvoutKwhKwpDay": 4.34,
       "pvoutKwhKwpYear": 1584.1,
       "ghiMedianKwhM2Day": 4.53,
       "pvoutMedianKwhKwpDay": 4.26,
+      "ghiDistributionKwhM2Day": [
+        3.59,
+        4.06,
+        4.29,
+        4.51,
+        4.53,
+        4.75,
+        4.92,
+        5.21
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.67,
+        3.99,
+        4.13,
+        4.34,
+        4.26,
+        4.4,
+        4.97,
+        5.32
+      ],
       "rankPvout": 94,
       "rankGhi": 144
     },
@@ -2407,9 +6099,29 @@
       "ghiKwhM2Day": 4.72,
       "ghiKwhM2Year": 1722.8,
       "pvoutKwhKwpDay": 4.37,
-      "pvoutKwhKwpYear": 1595.0,
+      "pvoutKwhKwpYear": 1595.1,
       "ghiMedianKwhM2Day": 4.7,
       "pvoutMedianKwhKwpDay": 4.4,
+      "ghiDistributionKwhM2Day": [
+        4.22,
+        4.44,
+        4.55,
+        4.72,
+        4.7,
+        4.92,
+        5.03,
+        5.14
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.98,
+        4.18,
+        4.23,
+        4.37,
+        4.4,
+        4.5,
+        4.53,
+        4.63
+      ],
       "rankPvout": 89,
       "rankGhi": 132
     },
@@ -2423,6 +6135,26 @@
       "pvoutKwhKwpYear": 1584.1,
       "ghiMedianKwhM2Day": 5.35,
       "pvoutMedianKwhKwpDay": 4.36,
+      "ghiDistributionKwhM2Day": [
+        4.39,
+        4.86,
+        5.1,
+        5.32,
+        5.35,
+        5.55,
+        5.73,
+        5.9
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.78,
+        4.05,
+        4.21,
+        4.34,
+        4.36,
+        4.49,
+        4.6,
+        4.77
+      ],
       "rankPvout": 95,
       "rankGhi": 85
     },
@@ -2431,11 +6163,31 @@
       "name": "Tonga",
       "region": "EAP",
       "ghiKwhM2Day": 4.8,
-      "ghiKwhM2Year": 1752.0,
+      "ghiKwhM2Year": 1752,
       "pvoutKwhKwpDay": 4.01,
-      "pvoutKwhKwpYear": 1463.6,
+      "pvoutKwhKwpYear": 1463.7,
       "ghiMedianKwhM2Day": 4.8,
-      "pvoutMedianKwhKwpDay": 4.0,
+      "pvoutMedianKwhKwpDay": 4,
+      "ghiDistributionKwhM2Day": [
+        4.33,
+        4.63,
+        4.72,
+        4.8,
+        4.8,
+        4.93,
+        4.99,
+        5.11
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.84,
+        3.92,
+        3.96,
+        4.01,
+        4,
+        4.05,
+        4.11,
+        4.18
+      ],
       "rankPvout": 136,
       "rankGhi": 125
     },
@@ -2449,6 +6201,26 @@
       "pvoutKwhKwpYear": 1587.7,
       "ghiMedianKwhM2Day": 5.38,
       "pvoutMedianKwhKwpDay": 4.33,
+      "ghiDistributionKwhM2Day": [
+        4.95,
+        5.16,
+        5.3,
+        5.38,
+        5.38,
+        5.48,
+        5.61,
+        5.88
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.09,
+        4.22,
+        4.28,
+        4.35,
+        4.33,
+        4.4,
+        4.5,
+        4.77
+      ],
       "rankPvout": 92,
       "rankGhi": 77
     },
@@ -2462,6 +6234,26 @@
       "pvoutKwhKwpYear": 1730.1,
       "ghiMedianKwhM2Day": 5.35,
       "pvoutMedianKwhKwpDay": 4.81,
+      "ghiDistributionKwhM2Day": [
+        4.57,
+        4.81,
+        5.05,
+        5.3,
+        5.35,
+        5.56,
+        5.71,
+        5.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.13,
+        4.35,
+        4.55,
+        4.74,
+        4.81,
+        4.93,
+        5.05,
+        5.19
+      ],
       "rankPvout": 46,
       "rankGhi": 87
     },
@@ -2470,11 +6262,31 @@
       "name": "Turkey",
       "region": "ECA",
       "ghiKwhM2Day": 4.6,
-      "ghiKwhM2Year": 1679.0,
+      "ghiKwhM2Year": 1679,
       "pvoutKwhKwpDay": 4.32,
       "pvoutKwhKwpYear": 1576.8,
       "ghiMedianKwhM2Day": 4.68,
       "pvoutMedianKwhKwpDay": 4.38,
+      "ghiDistributionKwhM2Day": [
+        3.13,
+        4.04,
+        4.37,
+        4.6,
+        4.68,
+        4.89,
+        5.05,
+        5.26
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.36,
+        3.86,
+        4.17,
+        4.32,
+        4.38,
+        4.54,
+        4.66,
+        4.87
+      ],
       "rankPvout": 99,
       "rankGhi": 138
     },
@@ -2488,6 +6300,26 @@
       "pvoutKwhKwpYear": 1558.5,
       "ghiMedianKwhM2Day": 5.25,
       "pvoutMedianKwhKwpDay": 4.2,
+      "ghiDistributionKwhM2Day": [
+        5.05,
+        5.23,
+        5.24,
+        5.34,
+        5.25,
+        5.47,
+        5.5,
+        5.51
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.18,
+        4.19,
+        4.19,
+        4.27,
+        4.2,
+        4.35,
+        4.38,
+        4.38
+      ],
       "rankPvout": 106,
       "rankGhi": 83
     },
@@ -2498,9 +6330,29 @@
       "ghiKwhM2Day": 5.66,
       "ghiKwhM2Year": 2065.9,
       "pvoutKwhKwpDay": 4.51,
-      "pvoutKwhKwpYear": 1646.1,
+      "pvoutKwhKwpYear": 1646.2,
       "ghiMedianKwhM2Day": 5.65,
       "pvoutMedianKwhKwpDay": 4.49,
+      "ghiDistributionKwhM2Day": [
+        4.74,
+        5.16,
+        5.3,
+        5.66,
+        5.65,
+        6.02,
+        6.18,
+        6.53
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.93,
+        4.12,
+        4.23,
+        4.51,
+        4.49,
+        4.78,
+        4.91,
+        5.15
+      ],
       "rankPvout": 73,
       "rankGhi": 46
     },
@@ -2514,6 +6366,26 @@
       "pvoutKwhKwpYear": 1627.9,
       "ghiMedianKwhM2Day": 5.72,
       "pvoutMedianKwhKwpDay": 4.52,
+      "ghiDistributionKwhM2Day": [
+        4.37,
+        5.17,
+        5.35,
+        5.64,
+        5.72,
+        5.93,
+        6.05,
+        6.29
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.88,
+        4.11,
+        4.25,
+        4.46,
+        4.52,
+        4.66,
+        4.74,
+        4.92
+      ],
       "rankPvout": 78,
       "rankGhi": 48
     },
@@ -2527,6 +6399,26 @@
       "pvoutKwhKwpYear": 1204.5,
       "ghiMedianKwhM2Day": 3.35,
       "pvoutMedianKwhKwpDay": 3.29,
+      "ghiDistributionKwhM2Day": [
+        2.96,
+        3.11,
+        3.2,
+        3.35,
+        3.35,
+        3.49,
+        3.62,
+        3.8
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.99,
+        3.09,
+        3.18,
+        3.3,
+        3.29,
+        3.4,
+        3.51,
+        3.67
+      ],
       "rankPvout": 189,
       "rankGhi": 188
     },
@@ -2535,11 +6427,31 @@
       "name": "Uruguay",
       "region": "LCR",
       "ghiKwhM2Day": 4.79,
-      "ghiKwhM2Year": 1748.3,
+      "ghiKwhM2Year": 1748.4,
       "pvoutKwhKwpDay": 4.3,
       "pvoutKwhKwpYear": 1569.5,
       "ghiMedianKwhM2Day": 4.79,
       "pvoutMedianKwhKwpDay": 4.32,
+      "ghiDistributionKwhM2Day": [
+        4.52,
+        4.63,
+        4.7,
+        4.79,
+        4.79,
+        4.86,
+        4.95,
+        5
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.11,
+        4.18,
+        4.25,
+        4.3,
+        4.32,
+        4.37,
+        4.4,
+        4.42
+      ],
       "rankPvout": 101,
       "rankGhi": 126
     },
@@ -2553,6 +6465,26 @@
       "pvoutKwhKwpYear": 1591.4,
       "ghiMedianKwhM2Day": 4.51,
       "pvoutMedianKwhKwpDay": 4.25,
+      "ghiDistributionKwhM2Day": [
+        2.34,
+        3.72,
+        4.04,
+        4.5,
+        4.51,
+        4.92,
+        5.47,
+        5.97
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.17,
+        3.87,
+        4.08,
+        4.36,
+        4.25,
+        4.63,
+        5.09,
+        5.47
+      ],
       "rankPvout": 90,
       "rankGhi": 146
     },
@@ -2561,11 +6493,31 @@
       "name": "Uzbekistan",
       "region": "ECA",
       "ghiKwhM2Day": 4.51,
-      "ghiKwhM2Year": 1646.1,
+      "ghiKwhM2Year": 1646.2,
       "pvoutKwhKwpDay": 4.27,
       "pvoutKwhKwpYear": 1558.5,
       "ghiMedianKwhM2Day": 4.52,
       "pvoutMedianKwhKwpDay": 4.34,
+      "ghiDistributionKwhM2Day": [
+        4,
+        4.16,
+        4.32,
+        4.51,
+        4.52,
+        4.72,
+        4.84,
+        5
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.65,
+        3.98,
+        4.12,
+        4.27,
+        4.34,
+        4.43,
+        4.48,
+        4.63
+      ],
       "rankPvout": 107,
       "rankGhi": 145
     },
@@ -2579,6 +6531,26 @@
       "pvoutKwhKwpYear": 1558.5,
       "ghiMedianKwhM2Day": 5.25,
       "pvoutMedianKwhKwpDay": 4.3,
+      "ghiDistributionKwhM2Day": [
+        4.04,
+        4.37,
+        4.73,
+        5.19,
+        5.25,
+        5.67,
+        5.95,
+        6.03
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.42,
+        3.63,
+        3.84,
+        4.27,
+        4.3,
+        4.73,
+        4.87,
+        4.91
+      ],
       "rankPvout": 108,
       "rankGhi": 99
     },
@@ -2587,11 +6559,31 @@
       "name": "R. B. de Venezuela",
       "region": "LCR",
       "ghiKwhM2Day": 5.35,
-      "ghiKwhM2Year": 1952.7,
+      "ghiKwhM2Year": 1952.8,
       "pvoutKwhKwpDay": 4.35,
       "pvoutKwhKwpYear": 1587.7,
       "ghiMedianKwhM2Day": 5.4,
       "pvoutMedianKwhKwpDay": 4.37,
+      "ghiDistributionKwhM2Day": [
+        3.92,
+        4.97,
+        5.2,
+        5.35,
+        5.4,
+        5.56,
+        5.66,
+        6.12
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.62,
+        4.17,
+        4.27,
+        4.35,
+        4.37,
+        4.44,
+        4.53,
+        4.96
+      ],
       "rankPvout": 93,
       "rankGhi": 81
     },
@@ -2602,9 +6594,29 @@
       "ghiKwhM2Day": 5.76,
       "ghiKwhM2Year": 2102.4,
       "pvoutKwhKwpDay": 4.85,
-      "pvoutKwhKwpYear": 1770.2,
+      "pvoutKwhKwpYear": 1770.3,
       "ghiMedianKwhM2Day": 5.77,
       "pvoutMedianKwhKwpDay": 4.9,
+      "ghiDistributionKwhM2Day": [
+        5.42,
+        5.53,
+        5.64,
+        5.76,
+        5.77,
+        5.91,
+        5.95,
+        5.98
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.58,
+        4.7,
+        4.78,
+        4.85,
+        4.9,
+        4.93,
+        4.98,
+        4.99
+      ],
       "rankPvout": 30,
       "rankGhi": 35
     },
@@ -2618,6 +6630,26 @@
       "pvoutKwhKwpYear": 1733.8,
       "ghiMedianKwhM2Day": 5.7,
       "pvoutMedianKwhKwpDay": 4.76,
+      "ghiDistributionKwhM2Day": [
+        5.4,
+        5.51,
+        5.58,
+        5.69,
+        5.7,
+        5.78,
+        5.87,
+        5.97
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.47,
+        4.6,
+        4.68,
+        4.75,
+        4.76,
+        4.82,
+        4.89,
+        4.96
+      ],
       "rankPvout": 45,
       "rankGhi": 43
     },
@@ -2626,11 +6658,31 @@
       "name": "Vietnam",
       "region": "EAP",
       "ghiKwhM2Day": 4.25,
-      "ghiKwhM2Year": 1551.2,
+      "ghiKwhM2Year": 1551.3,
       "pvoutKwhKwpDay": 3.55,
       "pvoutKwhKwpYear": 1295.8,
       "ghiMedianKwhM2Day": 4.15,
       "pvoutMedianKwhKwpDay": 3.74,
+      "ghiDistributionKwhM2Day": [
+        3.16,
+        3.43,
+        3.65,
+        4.25,
+        4.15,
+        4.88,
+        5.08,
+        5.52
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.67,
+        2.87,
+        3.02,
+        3.55,
+        3.74,
+        3.99,
+        4.1,
+        4.44
+      ],
       "rankPvout": 175,
       "rankGhi": 157
     },
@@ -2641,9 +6693,29 @@
       "ghiKwhM2Day": 4.3,
       "ghiKwhM2Year": 1569.5,
       "pvoutKwhKwpDay": 3.53,
-      "pvoutKwhKwpYear": 1288.4,
+      "pvoutKwhKwpYear": 1288.5,
       "ghiMedianKwhM2Day": 4.35,
       "pvoutMedianKwhKwpDay": 3.62,
+      "ghiDistributionKwhM2Day": [
+        3.3,
+        3.78,
+        4.05,
+        4.3,
+        4.35,
+        4.59,
+        4.76,
+        5.02
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        2.7,
+        2.97,
+        3.23,
+        3.53,
+        3.62,
+        3.84,
+        3.98,
+        4.17
+      ],
       "rankPvout": 176,
       "rankGhi": 156
     },
@@ -2654,9 +6726,29 @@
       "ghiKwhM2Day": 4.78,
       "ghiKwhM2Year": 1744.7,
       "pvoutKwhKwpDay": 4.05,
-      "pvoutKwhKwpYear": 1478.2,
+      "pvoutKwhKwpYear": 1478.3,
       "ghiMedianKwhM2Day": 4.74,
       "pvoutMedianKwhKwpDay": 4.09,
+      "ghiDistributionKwhM2Day": [
+        4.17,
+        4.39,
+        4.55,
+        4.78,
+        4.74,
+        5.04,
+        5.23,
+        5.33
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.5,
+        3.73,
+        3.83,
+        4.05,
+        4.09,
+        4.31,
+        4.34,
+        4.35
+      ],
       "rankPvout": 132,
       "rankGhi": 127
     },
@@ -2665,11 +6757,31 @@
       "name": "Kosovo",
       "region": "ECA",
       "ghiKwhM2Day": 3.85,
-      "ghiKwhM2Year": 1405.2,
+      "ghiKwhM2Year": 1405.3,
       "pvoutKwhKwpDay": 3.7,
       "pvoutKwhKwpYear": 1350.5,
       "ghiMedianKwhM2Day": 3.89,
       "pvoutMedianKwhKwpDay": 3.7,
+      "ghiDistributionKwhM2Day": [
+        3.36,
+        3.66,
+        3.78,
+        3.85,
+        3.89,
+        3.95,
+        3.99,
+        4.05
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        3.41,
+        3.58,
+        3.65,
+        3.7,
+        3.7,
+        3.76,
+        3.8,
+        3.92
+      ],
       "rankPvout": 165,
       "rankGhi": 174
     },
@@ -2678,11 +6790,31 @@
       "name": "Republic of Yemen",
       "region": "MENA",
       "ghiKwhM2Day": 6.47,
-      "ghiKwhM2Year": 2361.5,
+      "ghiKwhM2Year": 2361.6,
       "pvoutKwhKwpDay": 5.21,
       "pvoutKwhKwpYear": 1901.7,
       "ghiMedianKwhM2Day": 6.57,
       "pvoutMedianKwhKwpDay": 5.32,
+      "ghiDistributionKwhM2Day": [
+        5.46,
+        6,
+        6.41,
+        6.47,
+        6.57,
+        6.65,
+        6.73,
+        6.88
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.31,
+        4.69,
+        5.05,
+        5.21,
+        5.32,
+        5.45,
+        5.53,
+        5.71
+      ],
       "rankPvout": 5,
       "rankGhi": 1
     },
@@ -2691,11 +6823,31 @@
       "name": "South Africa",
       "region": "AFR",
       "ghiKwhM2Day": 5.63,
-      "ghiKwhM2Year": 2054.9,
-      "pvoutKwhKwpDay": 5.0,
-      "pvoutKwhKwpYear": 1825.0,
+      "ghiKwhM2Year": 2055,
+      "pvoutKwhKwpDay": 5,
+      "pvoutKwhKwpYear": 1825,
       "ghiMedianKwhM2Day": 5.71,
       "pvoutMedianKwhKwpDay": 5.1,
+      "ghiDistributionKwhM2Day": [
+        4.36,
+        4.84,
+        5.32,
+        5.63,
+        5.71,
+        6.01,
+        6.21,
+        6.39
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.02,
+        4.35,
+        4.78,
+        5,
+        5.1,
+        5.29,
+        5.46,
+        5.63
+      ],
       "rankPvout": 15,
       "rankGhi": 51
     },
@@ -2706,9 +6858,29 @@
       "ghiKwhM2Day": 5.88,
       "ghiKwhM2Year": 2146.2,
       "pvoutKwhKwpDay": 4.83,
-      "pvoutKwhKwpYear": 1763.0,
+      "pvoutKwhKwpYear": 1763,
       "ghiMedianKwhM2Day": 5.9,
       "pvoutMedianKwhKwpDay": 4.84,
+      "ghiDistributionKwhM2Day": [
+        5.58,
+        5.72,
+        5.81,
+        5.88,
+        5.9,
+        5.96,
+        6.01,
+        6.15
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.55,
+        4.67,
+        4.75,
+        4.83,
+        4.84,
+        4.91,
+        4.97,
+        5.04
+      ],
       "rankPvout": 36,
       "rankGhi": 25
     },
@@ -2722,6 +6894,26 @@
       "pvoutKwhKwpYear": 1773.9,
       "ghiMedianKwhM2Day": 5.83,
       "pvoutMedianKwhKwpDay": 4.9,
+      "ghiDistributionKwhM2Day": [
+        5.25,
+        5.43,
+        5.67,
+        5.78,
+        5.83,
+        5.94,
+        6.01,
+        6.1
+      ],
+      "pvoutDistributionKwhKwpDay": [
+        4.44,
+        4.6,
+        4.77,
+        4.86,
+        4.9,
+        4.99,
+        5.04,
+        5.15
+      ],
       "rankPvout": 28,
       "rankGhi": 31
     }
