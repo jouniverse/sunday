@@ -11,6 +11,7 @@ import type { ViewportPreview } from "@/core/platform";
 import { useLayerStore } from "@/core/store/layerStore";
 import { useScreeningStore } from "@/core/store/screeningStore";
 import { useUiStore } from "@/core/store/uiStore";
+import { whenStyleReady } from "./styleReady";
 
 const BUSY_KEY = "landcover";
 
@@ -109,13 +110,7 @@ function upsertImage(
   applyOpacity(map, opacity);
 }
 
-export async function refreshLandCoverLayers(map: MapLibreMap): Promise<void> {
-  try {
-    if (!map.getStyle() || !map.isStyleLoaded()) return;
-  } catch {
-    return;
-  }
-
+async function paintLandCover(map: MapLibreMap): Promise<void> {
   const visible = useLayerStore.getState().runtime[LAYER_CATALOGUE_ID]?.visible ?? false;
   const opacity = useLayerStore.getState().runtime[LAYER_CATALOGUE_ID]?.opacity ?? 1;
   const aoi = useScreeningStore.getState().activeBounds();
@@ -160,8 +155,15 @@ export async function refreshLandCoverLayers(map: MapLibreMap): Promise<void> {
     aoi.maxLat.toFixed(4),
   ].join("|");
 
-  if (map.getSource(SOURCE_ID) && lastKey === key && preview) {
-    applyOpacity(map, opacity);
+  // Style wipe removes the source but leaves lastKey/preview — re-attach from cache.
+  if (lastKey === key && preview) {
+    if (map.getSource(SOURCE_ID)) {
+      applyOpacity(map, opacity);
+      return;
+    }
+    const url = objectUrl ?? previewToDataUrl(preview);
+    if (!objectUrl) objectUrl = url;
+    upsertImage(map, url, preview.bounds, opacity);
     return;
   }
 
@@ -203,6 +205,12 @@ export async function refreshLandCoverLayers(map: MapLibreMap): Promise<void> {
   })();
 
   await inFlight;
+}
+
+export async function refreshLandCoverLayers(map: MapLibreMap): Promise<void> {
+  whenStyleReady(map, () => {
+    void paintLandCover(map);
+  });
 }
 
 export function installLandCoverLayerSync(map: MapLibreMap): () => void {

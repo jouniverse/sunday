@@ -14,6 +14,7 @@ import { useScreeningStore } from "@/core/store/screeningStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { ensurePmtilesProtocol } from "./pmtilesProtocol";
+import { whenStyleReady } from "./styleReady";
 
 export const WDPA_SOURCE_ID = "sunday-wdpa";
 export const WDPA_FILL_LAYER = "wdpa-fill";
@@ -110,13 +111,7 @@ async function ensureSource(map: MapLibreMap, bounds: Bounds, fileUrl: string): 
   lastKey = key;
 }
 
-export async function refreshProtectedAreaLayers(map: MapLibreMap): Promise<void> {
-  try {
-    if (!map.getStyle() || !map.isStyleLoaded()) return;
-  } catch {
-    return;
-  }
-
+async function paintProtectedAreas(map: MapLibreMap): Promise<void> {
   const visible = useLayerStore.getState().runtime.wdpa?.visible ?? false;
   const opacity = useLayerStore.getState().runtime.wdpa?.opacity ?? 1;
   const installed = Boolean(useSettingsStore.getState().datasets.wdpa?.downloaded);
@@ -175,6 +170,12 @@ export async function refreshProtectedAreaLayers(map: MapLibreMap): Promise<void
     console.warn("[sunday map] WDPA paint failed", error);
     removeWdpaLayers(map);
   }
+}
+
+export async function refreshProtectedAreaLayers(map: MapLibreMap): Promise<void> {
+  whenStyleReady(map, () => {
+    void paintProtectedAreas(map);
+  });
 }
 
 /** Subscribe layer + screening changes; returns unsubscribe. */

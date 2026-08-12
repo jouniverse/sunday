@@ -14,6 +14,7 @@ import { useMapStore } from "@/core/store/mapStore";
 import { useScreeningStore } from "@/core/store/screeningStore";
 import { useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
+import { whenStyleReady } from "./styleReady";
 
 export const POWER_SOURCE_ID = "sunday-osm-power";
 export const POWER_LINE_LAYER = "osm-power-line";
@@ -197,50 +198,46 @@ function ensureSource(map: MapLibreMap, bounds: Bounds): void {
 }
 
 export async function refreshPowerGridLayers(map: MapLibreMap): Promise<void> {
-  try {
-    if (!map.getStyle() || !map.isStyleLoaded()) return;
-  } catch {
-    return;
-  }
+  whenStyleReady(map, () => {
+    const visible = useLayerStore.getState().runtime[LAYER_CATALOGUE_ID]?.visible ?? false;
+    const opacity = useLayerStore.getState().runtime[LAYER_CATALOGUE_ID]?.opacity ?? 1;
+    const focus = powerGridFocusBounds();
 
-  const visible = useLayerStore.getState().runtime[LAYER_CATALOGUE_ID]?.visible ?? false;
-  const opacity = useLayerStore.getState().runtime[LAYER_CATALOGUE_ID]?.opacity ?? 1;
-  const focus = powerGridFocusBounds();
+    if (!visible) {
+      removeLayers(map);
+      guidedMissingFocus = false;
+      return;
+    }
 
-  if (!visible) {
-    removeLayers(map);
+    if (!focus) {
+      removeLayers(map);
+      if (!guidedMissingFocus) {
+        guidedMissingFocus = true;
+        useUiStore.getState().notify({
+          tone: "info",
+          message: "Draw a screening area or select a site first",
+          detail: "Power grid only paints around a screening area or site (~50 km).",
+        });
+      }
+      useLayerStore.getState().setVisible(LAYER_CATALOGUE_ID, false);
+      return;
+    }
+
     guidedMissingFocus = false;
-    return;
-  }
 
-  if (!focus) {
-    removeLayers(map);
-    if (!guidedMissingFocus) {
-      guidedMissingFocus = true;
+    try {
+      ensureSource(map, focus);
+      applyOpacity(map, opacity);
+    } catch (error) {
+      console.warn("[sunday map] power grid paint failed", error);
+      removeLayers(map);
       useUiStore.getState().notify({
-        tone: "info",
-        message: "Draw a screening area or select a site first",
-        detail: "Power grid only paints around a screening area or site (~50 km).",
+        tone: "warning",
+        message: "Could not paint power grid",
+        detail: error instanceof Error ? error.message : String(error),
       });
     }
-    useLayerStore.getState().setVisible(LAYER_CATALOGUE_ID, false);
-    return;
-  }
-
-  guidedMissingFocus = false;
-
-  try {
-    ensureSource(map, focus);
-    applyOpacity(map, opacity);
-  } catch (error) {
-    console.warn("[sunday map] power grid paint failed", error);
-    removeLayers(map);
-    useUiStore.getState().notify({
-      tone: "warning",
-      message: "Could not paint power grid",
-      detail: error instanceof Error ? error.message : String(error),
-    });
-  }
+  });
 }
 
 function formatVoltage(props: Record<string, unknown>): string | null {

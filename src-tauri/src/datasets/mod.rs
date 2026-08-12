@@ -514,7 +514,8 @@ fn install_gem(paths: &Paths, source: &Path) -> Result<InstallResult> {
     store.register_dataset(
         "gem-solar",
         "Global Energy Monitor, Global Solar Power Tracker",
-        Some("2026-02"),
+        // Catalog vintage is not required; users install local files.
+        None,
         Some("CC BY 4.0"),
         None,
     )?;
@@ -859,7 +860,7 @@ fn read_gem_csv(path: &Path) -> Result<Vec<Feature>> {
             country: country_i.and_then(|i| fields.get(i).cloned()),
             name: name_i.and_then(|i| fields.get(i).cloned()),
             source: "Global Energy Monitor, Global Solar Power Tracker".into(),
-            vintage: Some("2026-02".into()),
+            vintage: None,
             properties: json!({}),
             geometry: Some(json!({ "type": "Point", "coordinates": [lon, lat] })),
         });

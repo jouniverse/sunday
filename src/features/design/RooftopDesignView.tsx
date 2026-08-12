@@ -34,7 +34,7 @@ import { formatNumber, formatPercent, scaleEnergy, scaleMoney, scalePower } from
 import { defaultMeta, toCsv, writeExport } from "@/services/export";
 import { exportDesignHtml } from "@/services/export/design-html";
 import { buildZip } from "@/services/export/zip";
-import { fetchBuildingInsights, findSolarConfig } from "@/services/solar/google-solar";
+import { fetchBuildingInsights, findSolarConfig, dataLayerRadiusMeters } from "@/services/solar/google-solar";
 import {
   imageDataToDataUrl,
   rasterToImageData,
@@ -93,6 +93,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
   const [fluxRaster, setFluxRaster] = useState<DecodedRaster | null>(null);
   const [roofMaskRaster, setRoofMaskRaster] = useState<DecodedRaster | null>(null);
   const [monthlyFluxUrl, setMonthlyFluxUrl] = useState<string | null>(null);
+  /** Last dataLayers radius — used when monthly GeoTIFFs omit georeference. */
+  const [dataLayerRadiusM, setDataLayerRadiusM] = useState(90);
   const [fluxMonth, setFluxMonth] = useState(0);
   const [showRgb, setShowRgb] = useState(true);
   const [showFlux, setShowFlux] = useState(false);
@@ -180,7 +182,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
     setInactivePanels(new Set());
   }, [insights]);
 
-  async function loadDataLayers() {
+  async function loadDataLayers(fromInsights?: BuildingInsights | null) {
     setFetching(true);
     try {
       const key = await revealApiKey("google_solar");
@@ -191,6 +193,13 @@ export function RooftopDesignView({ site }: { site: Site }) {
         });
         return;
       }
+      const bi = fromInsights ?? insights;
+      // Prefer the building centre Google returned — site click can be tens of metres off.
+      const longitude = bi?.centre[0] ?? site.centre[0];
+      const latitude = bi?.centre[1] ?? site.centre[1];
+      const radiusMeters = dataLayerRadiusMeters(bi?.wholeRoofAreaM2);
+      setDataLayerRadiusM(radiusMeters);
+
       const { fetchDataLayerUrls } = await import("@/services/solar/google-solar");
       const {
         decodeGoogleSolarBand,
@@ -198,9 +207,9 @@ export function RooftopDesignView({ site }: { site: Site }) {
         decodeGoogleSolarRgb,
       } = await import("@/services/solar/geotiff-decode");
       const layers = await fetchDataLayerUrls({
-        latitude: site.centre[1],
-        longitude: site.centre[0],
-        radiusMeters: 90,
+        latitude,
+        longitude,
+        radiusMeters,
         apiKey: key,
         view: "FULL_LAYERS",
         requiredQuality: "BASE",
@@ -213,7 +222,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
           const rgb = await decodeGoogleSolarRgb({ url: layers.rgbUrl, apiKey: key });
           const bounds =
             rgb.bounds ??
-            boundsAroundPoint(site.centre[0], site.centre[1], 90);
+            boundsAroundPoint(longitude, latitude, radiusMeters);
           setRgbOverlay({ dataUrl: rgb.dataUrl, bounds });
           setShowRgb(true);
         } catch (error) {
@@ -248,7 +257,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
       if (!raster.bounds) {
         raster = {
           ...raster,
-          bounds: boundsAroundPoint(site.centre[0], site.centre[1], 90),
+          bounds: boundsAroundPoint(longitude, latitude, radiusMeters),
         };
       }
 
@@ -280,7 +289,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
       });
       notify({
         tone: "success",
-        message: `Data layers loaded (${raster.width}×${raster.height})`,
+        message: `Data layers loaded (${raster.width}×${raster.height}, r=${radiusMeters} m)`,
         detail: stats.roofMasked
           ? "Flux summary uses the Google Solar roof mask."
           : raster.method,
@@ -314,7 +323,11 @@ export function RooftopDesignView({ site }: { site: Site }) {
       if (!raster.bounds) {
         raster = {
           ...raster,
-          bounds: boundsAroundPoint(site.centre[0], site.centre[1], 90),
+          bounds: boundsAroundPoint(
+            insights?.centre[0] ?? site.centre[0],
+            insights?.centre[1] ?? site.centre[1],
+            dataLayerRadiusM,
+          ),
         };
       }
       const stats = fluxStatsUnderMask(raster, roofMaskRaster);
@@ -386,7 +399,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
         detail: result.caveats[0],
       });
       // Pull RGB + flux for the map without blocking the insights success path.
-      void loadDataLayers();
+      // Pass `result` — React state has not flushed `insights` yet.
+      void loadDataLayers(result);
     } catch (error) {
       notify({
         tone: "error",
@@ -806,7 +820,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
                         ? "Refresh building insights"
                         : "Query Google Solar"}
                   </Button>
-                  <Button block disabled={fetching} onClick={loadDataLayers}>
+                  <Button block disabled={fetching} onClick={() => void loadDataLayers()}>
                     {fluxSummary || rgbOverlay
                       ? "Refresh RGB + flux layers"
                       : "Load RGB + flux layers"}

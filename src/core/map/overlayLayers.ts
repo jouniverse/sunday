@@ -6,14 +6,15 @@
  */
 
 import type { Map as MapLibreMap, StyleSpecification } from "maplibre-gl";
+import { useLayerStore } from "@/core/store/layerStore";
 import { refreshFootprintLayers } from "./footprintLayers";
 import { refreshPlantLayer } from "./plantLayers";
-import { refreshProtectedAreaLayers } from "./protectedAreaLayers";
+import { refreshProtectedAreaLayers, WDPA_SOURCE_ID } from "./protectedAreaLayers";
 import { refreshResourceRasterLayers } from "./resourceRasterLayers";
 import { renderScreeningLayers } from "./screeningLayers";
 import { renderSiteLayers } from "./siteLayers";
 import { refreshLandCoverLayers } from "./landCoverLayers";
-import { refreshPowerGridLayers } from "./powerGridLayers";
+import { POWER_SOURCE_ID, refreshPowerGridLayers } from "./powerGridLayers";
 import { refreshTerrainSlopeLayers } from "./terrainSlopeLayers";
 import { whenStyleReady } from "./styleReady";
 
@@ -50,6 +51,7 @@ function waitForStyle(map: MapLibreMap): Promise<void> {
   }
   return new Promise((resolve) => {
     let done = false;
+    let timer = 0;
     const finish = () => {
       if (done) return;
       done = true;
@@ -60,7 +62,7 @@ function waitForStyle(map: MapLibreMap): Promise<void> {
     };
     map.on("style.load", finish);
     map.on("idle", finish);
-    const timer = window.setTimeout(finish, 2_000);
+    timer = window.setTimeout(finish, 2_000);
   });
 }
 
@@ -92,6 +94,9 @@ export function setStyleAndRepaint(map: MapLibreMap, style: StyleSpecification):
 
     await new Promise<void>((resolve) => {
       let settled = false;
+      // Declared before settle — style.load can fire synchronously during setStyle
+      // and must not hit the temporal dead zone on `const timer`.
+      let timer = 0;
       const settle = () => {
         if (settled) return;
         settled = true;
@@ -100,7 +105,7 @@ export function setStyleAndRepaint(map: MapLibreMap, style: StyleSpecification):
         map.resize();
         whenStyleReady(map, () => {
           paintOverlays(map);
-          // Backstop if the first paint raced an incomplete style.
+          // Backstop: sites may restore while power/GSA/terrain still need a second pass.
           map.once("idle", () => {
             if (overlaysNeedRepair(map)) paintOverlays(map);
           });
@@ -109,7 +114,7 @@ export function setStyleAndRepaint(map: MapLibreMap, style: StyleSpecification):
       };
       map.once("style.load", settle);
       map.setStyle(latest);
-      const timer = window.setTimeout(settle, 2_000);
+      timer = window.setTimeout(settle, 2_000);
     });
   });
 }
@@ -119,11 +124,21 @@ export function repaintOverlayLayers(map: MapLibreMap): void {
   whenStyleReady(map, () => paintOverlays(map));
 }
 
-/** True when app overlay sources are missing (style swap wiped them). */
+/** True when a visible overlay's MapLibre source is missing (style swap wiped it). */
 export function overlaysNeedRepair(map: MapLibreMap): boolean {
   try {
     if (!map.getStyle() || !map.isStyleLoaded()) return false;
-    return !map.getSource("sunday-sites");
+    if (!map.getSource("sunday-sites")) return true;
+
+    const runtime = useLayerStore.getState().runtime;
+    if (runtime["osm-power"]?.visible && !map.getSource(POWER_SOURCE_ID)) return true;
+    if (runtime["gsa-ghi"]?.visible && !map.getSource("sunday-gsa-gsa-ghi")) return true;
+    if (runtime["gsa-dni"]?.visible && !map.getSource("sunday-gsa-gsa-dni")) return true;
+    if (runtime["gsa-pvout"]?.visible && !map.getSource("sunday-gsa-gsa-pvout")) return true;
+    if (runtime["terrain-slope"]?.visible && !map.getSource("sunday-terrain-slope")) return true;
+    if (runtime.landcover?.visible && !map.getSource("sunday-landcover")) return true;
+    if (runtime.wdpa?.visible && !map.getSource(WDPA_SOURCE_ID)) return true;
+    return false;
   } catch {
     return false;
   }

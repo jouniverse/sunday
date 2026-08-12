@@ -250,8 +250,15 @@ async function fetchOne(map: MapLibreMap, id: GsaLayerId): Promise<void> {
     map.getZoom().toFixed(1),
   ].join("|");
 
+  // Style wipe removes MapLibre sources but leaves lastKey — re-attach from cache.
   if (key === runtime[id].lastKey && runtime[id].preview) {
-    applyOpacity(map, id, opacity);
+    if (map.getSource(sourceId(id))) {
+      applyOpacity(map, id, opacity);
+      return;
+    }
+    const cached = runtime[id].preview;
+    const url = previewToObjectUrl(cached);
+    upsertImage(map, id, url, cached.bounds, opacity);
     return;
   }
 

@@ -325,6 +325,26 @@ export async function fetchDataLayerUrls(options: {
   };
 }
 
+/**
+ * Radius for `dataLayers:get` from whole-roof area.
+ *
+ * Google does not size the request from the building; callers pick `radiusMeters`.
+ * Heuristic: √(area) ≈ side of an equivalent square, rounded up to 5 m. Cap at
+ * 175 m so FULL_LAYERS (monthly flux) stays valid; floor at 25 m for tiny roofs.
+ * When area is unknown, keep the historical 90 m default.
+ */
+export function dataLayerRadiusMeters(wholeRoofAreaM2?: number | null): number {
+  const DEFAULT_M = 90;
+  const MIN_M = 25;
+  /** FULL_LAYERS includes monthly flux; API rejects radius > 175 for that view. */
+  const MAX_M = 175;
+  if (wholeRoofAreaM2 == null || !(wholeRoofAreaM2 > 0) || !Number.isFinite(wholeRoofAreaM2)) {
+    return DEFAULT_M;
+  }
+  const roundedUp5 = Math.ceil(Math.sqrt(wholeRoofAreaM2) / 5) * 5;
+  return Math.min(MAX_M, Math.max(MIN_M, roundedUp5));
+}
+
 /** Appends the key to a data-layer URL so the raster can be fetched. */
 export function authorizeLayerUrl(url: string, apiKey: string): string {
   return url.includes("?") ? `${url}&key=${apiKey}` : `${url}?key=${apiKey}`;

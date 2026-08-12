@@ -121,7 +121,7 @@ export const LAYER_CATALOGUE: LayerDefinition[] = [
     purpose: "Named utility-scale plants with capacity, status and technology.",
     source: "Global Energy Monitor, Global Solar Power Tracker",
     sourceUrl: "https://globalenergymonitor.org/projects/global-solar-power-tracker",
-    vintage: "February 2026",
+    // No catalog vintage — users install local files; do not invent a release month.
     licence: "CC BY 4.0 (rows cross-referenced to TZ-SAM are BY-NC)",
     availability: { state: "needs-download", dataset: "gem-solar", approximateMb: 33 },
     defaultVisible: false,
