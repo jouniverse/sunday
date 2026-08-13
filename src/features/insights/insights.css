@@ -41,6 +41,27 @@
   cursor: pointer;
 }
 
+.insights__nav-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.insights__nav--rail {
+  padding: 4px 0;
+  align-items: center;
+}
+
+.insights__nav--rail .insights__nav-btn {
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0 auto;
+}
+
 .insights__nav-btn:hover {
   background: var(--surface-container-high);
   color: var(--on-surface);
