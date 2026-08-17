@@ -113,6 +113,8 @@ export interface RooftopPanelMapProps {
   fluxOpacity?: number;
   /** When false, hide panel fills so flux/RGB legends dominate. */
   showPanels?: boolean;
+  /** When false the map stays mounted but hidden — RGB/flux layers are kept. */
+  visible?: boolean;
 }
 
 export function RooftopPanelMap({
@@ -125,6 +127,7 @@ export function RooftopPanelMap({
   showFlux = false,
   fluxOpacity = 0.55,
   showPanels = true,
+  visible = true,
 }: RooftopPanelMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -266,60 +269,82 @@ export function RooftopPanelMap({
     map.once("idle", apply);
   }, [showPanels]);
 
-  // RGB overlay image source.
+  // RGB overlay. Wait for style load so a remount still paints.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-    const bounds = overlays?.rgbBounds;
-    const url = overlays?.rgbDataUrl;
-    if (map.getLayer(RGB_LAYER)) map.removeLayer(RGB_LAYER);
-    if (map.getSource(RGB_SOURCE)) map.removeSource(RGB_SOURCE);
-    if (!url || !bounds) return;
-    const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
-      [bounds.west, bounds.north],
-      [bounds.east, bounds.north],
-      [bounds.east, bounds.south],
-      [bounds.west, bounds.south],
-    ];
-    map.addSource(RGB_SOURCE, { type: "image", url, coordinates });
-    map.addLayer(
-      {
-        id: RGB_LAYER,
-        type: "raster",
-        source: RGB_SOURCE,
-        paint: { "raster-opacity": rgbOpacity },
-      },
-      PANEL_LAYER,
-    );
+    if (!map) return;
+    const apply = () => {
+      const bounds = overlays?.rgbBounds;
+      const url = overlays?.rgbDataUrl;
+      if (map.getLayer(RGB_LAYER)) map.removeLayer(RGB_LAYER);
+      if (map.getSource(RGB_SOURCE)) map.removeSource(RGB_SOURCE);
+      if (!url || !bounds) return;
+      const coordinates: [
+        [number, number],
+        [number, number],
+        [number, number],
+        [number, number],
+      ] = [
+        [bounds.west, bounds.north],
+        [bounds.east, bounds.north],
+        [bounds.east, bounds.south],
+        [bounds.west, bounds.south],
+      ];
+      map.addSource(RGB_SOURCE, { type: "image", url, coordinates });
+      map.addLayer(
+        {
+          id: RGB_LAYER,
+          type: "raster",
+          source: RGB_SOURCE,
+          paint: { "raster-opacity": rgbOpacity },
+        },
+        map.getLayer(PANEL_LAYER) ? PANEL_LAYER : undefined,
+      );
+    };
+    return whenStyleReady(map, apply);
   }, [overlays?.rgbDataUrl, overlays?.rgbBounds, rgbOpacity]);
 
   // Annual / monthly flux overlay.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map?.isStyleLoaded()) return;
-    const raster = overlays?.fluxRaster;
-    if (map.getLayer(FLUX_LAYER)) map.removeLayer(FLUX_LAYER);
-    if (map.getSource(FLUX_SOURCE)) map.removeSource(FLUX_SOURCE);
-    if (!showFlux || !raster?.bounds) return;
-    const dataUrl = imageDataToDataUrl(rasterToImageData(raster));
-    const { west, south, east, north } = raster.bounds;
-    const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
-      [west, north],
-      [east, north],
-      [east, south],
-      [west, south],
-    ];
-    map.addSource(FLUX_SOURCE, { type: "image", url: dataUrl, coordinates });
-    map.addLayer(
-      {
-        id: FLUX_LAYER,
-        type: "raster",
-        source: FLUX_SOURCE,
-        paint: { "raster-opacity": fluxOpacity },
-      },
-      PANEL_LAYER,
-    );
+    if (!map) return;
+    const apply = () => {
+      const raster = overlays?.fluxRaster;
+      if (map.getLayer(FLUX_LAYER)) map.removeLayer(FLUX_LAYER);
+      if (map.getSource(FLUX_SOURCE)) map.removeSource(FLUX_SOURCE);
+      if (!showFlux || !raster?.bounds) return;
+      const dataUrl = imageDataToDataUrl(rasterToImageData(raster));
+      const { west, south, east, north } = raster.bounds;
+      const coordinates: [
+        [number, number],
+        [number, number],
+        [number, number],
+        [number, number],
+      ] = [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south],
+      ];
+      map.addSource(FLUX_SOURCE, { type: "image", url: dataUrl, coordinates });
+      map.addLayer(
+        {
+          id: FLUX_LAYER,
+          type: "raster",
+          source: FLUX_SOURCE,
+          paint: { "raster-opacity": fluxOpacity },
+        },
+        map.getLayer(PANEL_LAYER) ? PANEL_LAYER : undefined,
+      );
+    };
+    return whenStyleReady(map, apply);
   }, [overlays?.fluxRaster, showFlux, fluxOpacity]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!visible || !map) return;
+    requestAnimationFrame(() => map.resize());
+  }, [visible]);
 
   const shown = Math.min(panelCount, insights.solarPanels.length);
   let inactiveShown = 0;
@@ -492,4 +517,16 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     image.onerror = () => reject(new Error("Could not decode RGB imagery"));
     image.src = src;
   });
+}
+
+/** Run `apply` now if the style is ready, otherwise on the next `load`. */
+function whenStyleReady(map: MapLibreMap, apply: () => void): () => void {
+  if (map.isStyleLoaded()) {
+    apply();
+    return () => undefined;
+  }
+  map.once("load", apply);
+  return () => {
+    map.off("load", apply);
+  };
 }

@@ -212,6 +212,26 @@
   min-width: 0;
 }
 
+.design-preview-stack > .design-summary-panel {
+  top: 14px;
+}
+
+.rooftop-layout-pane {
+  position: absolute;
+  inset: 0;
+}
+
+.rooftop-layout-pane .array-map-preview,
+.rooftop-layout-pane .rooftop-panel-map {
+  height: 100%;
+  min-height: 0;
+}
+
+.rooftop-layout-pane--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .array-map-preview {
   position: relative;
   display: flex;
@@ -306,6 +326,10 @@
   gap: 6px;
 }
 
+.design-preview-stack__map .rooftop-panel-map {
+  min-height: 0;
+}
+
 .rooftop-panel-map__canvas {
   flex: 1;
   min-height: 240px;
@@ -346,12 +370,7 @@
 .rooftop-panel-map__swatch--flux {
   flex: 1;
   max-width: 64px;
-  background: linear-gradient(
-    90deg,
-    rgb(59, 47, 107),
-    rgb(217, 164, 65),
-    rgb(255, 240, 194)
-  );
+  background: linear-gradient(90deg, rgb(59, 47, 107), rgb(217, 164, 65), rgb(255, 240, 194));
 }
 
 /* MapLibre popup: force readable dark text on light chrome. */

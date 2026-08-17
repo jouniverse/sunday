@@ -1,9 +1,9 @@
 /**
  * Rooftop / BIPV design panel.
  *
- * Uses Google Solar building insights when a key is present, otherwise packs a
- * drawn roof outline with the same reviewable auto-layout engine. Automation
- * proposes a module count; the designer can change orientation and setbacks.
+ * Local packing is the default: modules are placed in the drawn roof outline and
+ * shown as a schematic (same basemap modes as greenfield). Google Solar building
+ * insights are optional; querying them does not discard the local layout.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -27,28 +27,48 @@ import {
 import { PanelIcon, PolygonIcon } from "@/design-system/icons";
 import { COST_DEFAULTS, computeOwnerCashFlow } from "@/domain/finance/cashflow";
 import { ringToLocalFrame } from "@/domain/geometry";
-import { MODULE_LIBRARY, moduleById, ROOFTOP_DEFAULTS } from "@/domain/packing/priors";
+import {
+  defaultSystemLosses,
+  MODULE_LIBRARY,
+  moduleById,
+  ROOFTOP_DEFAULTS,
+} from "@/domain/packing/priors";
 import type { ModuleOrientation } from "@/domain/packing/rooftop";
 import { packRooftop, searchRooftopLayout } from "@/domain/packing/rooftop";
-import { formatNumber, formatPercent, scaleEnergy, scaleMoney, scalePower } from "@/domain/units";
+import {
+  equatorFacingAzimuth,
+  formatNumber,
+  formatPercent,
+  scaleArea,
+  scaleEnergy,
+  scaleMoney,
+  scalePower,
+} from "@/domain/units";
+import { modelledOrFirstOrder } from "@/services/engine/client";
 import { defaultMeta, toCsv, writeExport } from "@/services/export";
 import { exportDesignHtml } from "@/services/export/design-html";
 import { buildZip } from "@/services/export/zip";
-import { fetchBuildingInsights, findSolarConfig, dataLayerRadiusMeters } from "@/services/solar/google-solar";
 import {
+  type DecodedRaster,
   imageDataToDataUrl,
   rasterToImageData,
-  type DecodedRaster,
 } from "@/services/solar/geotiff-decode";
+import {
+  dataLayerRadiusMeters,
+  fetchBuildingInsights,
+  findSolarConfig,
+} from "@/services/solar/google-solar";
 import type { BuildingInsights } from "@/services/solar/types";
 import { SidePanel } from "@/shell/SidePanel";
-import { DesignExportMenu, type DesignExportFormat } from "./DesignExportMenu";
+import { type DesignExportFormat, DesignExportMenu } from "./DesignExportMenu";
+import { RooftopPackingMap } from "./RooftopPackingMap";
 import {
   activePanelsExport,
   allPanelsExport,
   composeRgbPanelsDataUrl,
   RooftopPanelMap,
 } from "./RooftopPanelMap";
+import { buildRooftopSchematicSvg, packingModulesToLngLat } from "./rooftop-schematic";
 import "./design.css";
 
 export function RooftopDesignView({ site }: { site: Site }) {
@@ -82,6 +102,14 @@ export function RooftopDesignView({ site }: { site: Site }) {
     const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
     return active?.rooftopSetbackM ?? ROOFTOP_DEFAULTS.perimeterSetbackM;
   });
+  const [gridRotation, setGridRotation] = useState(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return active?.parameters?.azimuthDegrees ?? 0;
+  });
+  /** Local packing is the default Design; Google Solar is an optional overlay. */
+  const [layoutSource, setLayoutSource] = useState<"local" | "google">("local");
+  const [previewMode, setPreviewMode] = useState<"schematic" | "blend" | "satellite">("schematic");
+  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
   const [insights, setInsights] = useState<BuildingInsights | null>(null);
   const [panelCount, setPanelCount] = useState(() => {
     const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
@@ -125,6 +153,16 @@ export function RooftopDesignView({ site }: { site: Site }) {
     return active?.name ?? "";
   });
   const [siteNameDraft, setSiteNameDraft] = useState(site.name);
+  const [energy, setEnergy] = useState<{
+    annualKwh: number;
+    specificYieldKwhPerKwp: number;
+    capacityFactor: number;
+    performanceRatio: number;
+    fidelity: "modelled" | "first_order";
+    method: string;
+    caveats: string[];
+  } | null>(null);
+  const [running, setRunning] = useState(false);
 
   const module = useMemo(() => {
     const selected = moduleById(moduleId);
@@ -145,10 +183,10 @@ export function RooftopDesignView({ site }: { site: Site }) {
       roof: localRoof,
       module,
       orientation,
-      gridRotationDegrees: site.design?.azimuthDegrees ?? 0,
+      gridRotationDegrees: gridRotation,
       perimeterSetbackM: setbackM,
     });
-  }, [localRoof, module, orientation, setbackM, site.design?.azimuthDegrees]);
+  }, [localRoof, module, orientation, setbackM, gridRotation]);
 
   const search = useMemo(() => {
     if (!localRoof) return null;
@@ -173,20 +211,22 @@ export function RooftopDesignView({ site }: { site: Site }) {
   // Scale Google reference-panel energy/capacity to the module the designer selected.
   const googleWatts = insights?.panelCapacityWatts || module.ratedPowerW;
   const moduleScale = googleWatts > 0 ? module.ratedPowerW / googleWatts : 1;
-  const capacityKw =
-    insights && activePanelRows.length > 0
+  const showingGoogle = layoutSource === "google" && Boolean(insights?.solarPanels.length);
+  const capacityKw = showingGoogle
+    ? activePanelRows.length > 0
       ? (activePanelRows.length * module.ratedPowerW) / 1000
-      : insights && bestConfig
+      : bestConfig
         ? (bestConfig.panelCount * module.ratedPowerW) / 1000
-        : (packing?.capacityKwDc ?? 0);
-  const annualKwh =
-    insights && activePanelRows.length > 0
+        : 0
+    : (packing?.capacityKwDc ?? 0);
+  const googleAnnualKwh = showingGoogle
+    ? activePanelRows.length > 0
       ? activeEnergyKwh * moduleScale
       : bestConfig
         ? bestConfig.yearlyEnergyDcKwh * moduleScale
-        : site.resource?.ghiKwhM2Year && capacityKw
-          ? site.resource.ghiKwhM2Year * capacityKw * 0.75
-          : null;
+        : null
+    : null;
+  const annualKwh = showingGoogle ? googleAnnualKwh : (energy?.annualKwh ?? null);
 
   // Restore saved Google panel count when insights (re)load. `site.designs` is
   // read from this render — do not depend on the array identity or Save would
@@ -230,11 +270,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
       setDataLayerRadiusM(radiusMeters);
 
       const { fetchDataLayerUrls } = await import("@/services/solar/google-solar");
-      const {
-        decodeGoogleSolarBand,
-        decodeGoogleSolarGeoTiff,
-        decodeGoogleSolarRgb,
-      } = await import("@/services/solar/geotiff-decode");
+      const { decodeGoogleSolarBand, decodeGoogleSolarGeoTiff, decodeGoogleSolarRgb } =
+        await import("@/services/solar/geotiff-decode");
       const layers = await fetchDataLayerUrls({
         latitude,
         longitude,
@@ -249,9 +286,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
         try {
           const { boundsAroundPoint } = await import("@/services/solar/geotiff-decode");
           const rgb = await decodeGoogleSolarRgb({ url: layers.rgbUrl, apiKey: key });
-          const bounds =
-            rgb.bounds ??
-            boundsAroundPoint(longitude, latitude, radiusMeters);
+          const bounds = rgb.bounds ?? boundsAroundPoint(longitude, latitude, radiusMeters);
           setRgbOverlay({ dataUrl: rgb.dataUrl, bounds });
           setShowRgb(true);
         } catch (error) {
@@ -319,9 +354,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
       notify({
         tone: "success",
         message: `Data layers loaded (${raster.width}×${raster.height}, r=${radiusMeters} m)`,
-        detail: stats.roofMasked
-          ? "Flux summary uses the Google Solar roof mask."
-          : raster.method,
+        detail: stats.roofMasked ? "Flux summary uses the Google Solar roof mask." : raster.method,
       });
     } catch (error) {
       notify({
@@ -369,9 +402,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
         mean: stats.mean,
         width: raster.width,
         height: raster.height,
-        method: stats.roofMasked
-          ? `${raster.method} · stats over roof MASK`
-          : raster.method,
+        method: stats.roofMasked ? `${raster.method} · stats over roof MASK` : raster.method,
         imageryDate: prev?.imageryDate,
         roofMasked: stats.roofMasked,
       }));
@@ -408,6 +439,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
         qualityFallback: true,
       });
       setInsights(result);
+      setLayoutSource("google");
       if (result.maxSunshineHoursPerYear) {
         const top = result.configurations[0];
         setResource(site.id, {
@@ -446,14 +478,69 @@ export function RooftopDesignView({ site }: { site: Site }) {
     }
   }
 
+  async function runEnergyModel() {
+    const ghi = site.resource?.ghiKwhM2Year;
+    if (!ghi) {
+      notify({
+        tone: "warning",
+        message: "Fetch the solar resource first",
+        detail: "Open the site report, or fetch resource in the inspector, then estimate again.",
+      });
+      return;
+    }
+    if (capacityKw <= 0) {
+      notify({
+        tone: "warning",
+        message: "No modules to model",
+        detail: showingGoogle
+          ? "Activate at least one Google Solar panel, or switch to local packing."
+          : "Adjust orientation, setback or grid rotation until modules fit the roof outline.",
+      });
+      return;
+    }
+    setRunning(true);
+    try {
+      const segment = insights?.roofSegments[0];
+      const tilt = segment?.pitchDegrees ?? site.resource?.optimalTiltDegrees ?? 20;
+      const azimuth = segment?.azimuthDegrees ?? equatorFacingAzimuth(site.centre[1]);
+      const result = await modelledOrFirstOrder({
+        site: { latitude: site.centre[1], longitude: site.centre[0] },
+        array: {
+          surface_tilt: tilt,
+          surface_azimuth: azimuth,
+          dc_capacity_kw: capacityKw,
+          gamma_pdc: module.gammaPdc,
+          system_losses: defaultSystemLosses(),
+          mount: "fixed",
+        },
+        fallbackGhiKwhM2Year: ghi,
+        meanAmbientTempC: site.resource?.meanAirTempC,
+      });
+      setEnergy(result);
+      if (result.fidelity === "first_order") {
+        notify({
+          tone: "info",
+          message: "Using a first-order estimate",
+          detail: result.caveats.join(" "),
+        });
+      }
+    } catch (error) {
+      notify({
+        tone: "error",
+        message: "Could not model the system",
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setRunning(false);
+    }
+  }
+
   function persistDesign(options: { asNew: boolean }) {
     const segment = insights?.roofSegments[0];
     const id = options.asNew ? newDesignId() : (site.activeDesignId ?? newDesignId());
     const fallback = `Design ${savedDesigns.filter((entry) => entry.kind === "rooftop").length + (options.asNew || !site.activeDesignId ? 1 : 0)}`;
     const name =
-      designNameDraft.trim() ||
-      savedDesigns.find((entry) => entry.id === id)?.name ||
-      fallback;
+      designNameDraft.trim() || savedDesigns.find((entry) => entry.id === id)?.name || fallback;
     saveNamedDesign(site.id, {
       id,
       name,
@@ -463,10 +550,10 @@ export function RooftopDesignView({ site }: { site: Site }) {
         moduleId,
         mount: "fixed_tilt",
         tiltDegrees: segment?.pitchDegrees ?? 20,
-        azimuthDegrees: segment?.azimuthDegrees ?? 180,
+        azimuthDegrees: gridRotation,
         groundCoverageRatio: packing?.coverage ?? 0.5,
         balanceOfSystemFraction: 0.05,
-        systemLosses: 0.1,
+        systemLosses: defaultSystemLosses(),
       },
       capacityKwDc: capacityKw,
       annualKwh: annualKwh ?? undefined,
@@ -477,7 +564,10 @@ export function RooftopDesignView({ site }: { site: Site }) {
     });
     setDesignNameDraft(name);
     markDirty();
-    void useProjectLibraryStore.getState().saveActiveToLibrary().catch(() => undefined);
+    void useProjectLibraryStore
+      .getState()
+      .saveActiveToLibrary()
+      .catch(() => undefined);
     notify({
       tone: "success",
       message: options.asNew ? `Saved new design “${name}”` : `Updated design “${name}”`,
@@ -498,6 +588,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
     setModuleId(selected.parameters.moduleId);
     if (selected.rooftopOrientation) setOrientation(selected.rooftopOrientation);
     if (selected.rooftopSetbackM != null) setSetbackM(selected.rooftopSetbackM);
+    if (selected.parameters.azimuthDegrees != null)
+      setGridRotation(selected.parameters.azimuthDegrees);
     if (selected.googlePanelCount) setPanelCount(selected.googlePanelCount);
     setInactivePanels(new Set(selected.inactivePanelIndices ?? []));
   }
@@ -506,6 +598,16 @@ export function RooftopDesignView({ site }: { site: Site }) {
     const capacityScaled = scalePower(capacityKw);
     const energyScaled = annualKwh ? scaleEnergy(annualKwh) : null;
     const images = [];
+    if (packing && site.ring) {
+      const svg = buildRooftopSchematicSvg({ site, packing });
+      if (svg) {
+        images.push({
+          title: "Local packing schematic",
+          inlineSvg: svg,
+          caption: packing.method,
+        });
+      }
+    }
     if (rgbOverlay?.dataUrl) {
       images.push({
         title: "RGB imagery",
@@ -586,7 +688,9 @@ export function RooftopDesignView({ site }: { site: Site }) {
             },
             {
               label: "Active panels",
-              value: insights ? String(activePanelRows.length) : String(packing?.moduleCount ?? "—"),
+              value: showingGoogle
+                ? String(activePanelRows.length)
+                : String(packing?.moduleCount ?? "—"),
             },
             {
               label: "Inactive panels",
@@ -600,7 +704,11 @@ export function RooftopDesignView({ site }: { site: Site }) {
           rows: [
             { label: "Orientation", value: orientation },
             { label: "Perimeter setback", value: `${setbackM.toFixed(2)} m` },
-            { label: "Google panel count", value: insights ? String(panelCount) : "—" },
+            { label: "Google panel count", value: showingGoogle ? String(panelCount) : "—" },
+            {
+              label: "Grid rotation",
+              value: `${gridRotation.toFixed(0)}°`,
+            },
             {
               label: "Selected config",
               value: bestConfig
@@ -621,9 +729,11 @@ export function RooftopDesignView({ site }: { site: Site }) {
             },
             {
               label: "Method",
-              value: insights
+              value: showingGoogle
                 ? "Google Solar building insights · active panels only"
-                : "Local rooftop packing",
+                : energy
+                  ? energy.method
+                  : (packing?.method ?? "Local rooftop packing"),
             },
           ],
         },
@@ -637,62 +747,122 @@ export function RooftopDesignView({ site }: { site: Site }) {
   }
 
   async function runExport(format: DesignExportFormat) {
-    if (!insights) {
-      notify({ tone: "warning", message: "Load Google Solar insights before exporting panels." });
-      return;
-    }
     const base = `${site.name}-rooftop`;
     if (format === "html") {
       const path = await writeExport(`${base}-summary`, "html", await buildHtmlExport());
       if (path) notify({ tone: "success", message: `Exported HTML to ${path}` });
       return;
     }
-    const { panelRectangle } = await import("./RooftopPanelMap");
-    const geojson = JSON.stringify(
-      {
-        type: "FeatureCollection",
-        features: activePanelRows.map((row) => {
-          const panel = insights.solarPanels[row.panel - 1]!;
-          return {
+
+    let geojson: string;
+    let csv: string;
+    let json: string;
+
+    if (showingGoogle && insights) {
+      const { panelRectangle } = await import("./RooftopPanelMap");
+      geojson = JSON.stringify(
+        {
+          type: "FeatureCollection",
+          features: activePanelRows.flatMap((row) => {
+            const panel = insights.solarPanels[row.panel - 1];
+            if (!panel) return [];
+            return [
+              {
+                type: "Feature" as const,
+                properties: row,
+                geometry: {
+                  type: "Polygon" as const,
+                  coordinates: [panelRectangle(panel, insights.panelHeightM, insights.panelWidthM)],
+                },
+              },
+            ];
+          }),
+        },
+        null,
+        2,
+      );
+      csv = toCsv(allPanelsExport(insights, panelCount, inactivePanels), [
+        "panel",
+        "segment",
+        "lat",
+        "lon",
+        "energy",
+        "pitch",
+        "azimuth",
+        "orientation",
+        "active",
+      ]);
+      json = JSON.stringify(
+        {
+          site: site.name,
+          meta: defaultMeta(projectName),
+          layout: "google_solar",
+          panelCount,
+          activePanels: activePanelRows.length,
+          inactivePanels: inactivePanels.size,
+          capacityKwDc: capacityKw,
+          annualEnergyDcKwh: annualKwh,
+          googleReferencePanelWatts: insights.panelCapacityWatts,
+          selectedConfig: bestConfig,
+          parameters: { moduleId, orientation, setbackM, gridRotation },
+        },
+        null,
+        2,
+      );
+    } else if (packing) {
+      const rings = packingModulesToLngLat(site, packing);
+      geojson = JSON.stringify(
+        {
+          type: "FeatureCollection",
+          features: packing.modules.map((placed, index) => ({
             type: "Feature",
-            properties: row,
-            geometry: {
-              type: "Polygon",
-              coordinates: [panelRectangle(panel, insights.panelHeightM, insights.panelWidthM)],
+            properties: {
+              module: index + 1,
+              row: placed.row,
+              column: placed.column,
+              orientation: placed.orientation,
             },
-          };
-        }),
-      },
-      null,
-      2,
-    );
-    const csv = toCsv(allPanelsExport(insights, panelCount, inactivePanels), [
-      "panel",
-      "segment",
-      "lat",
-      "lon",
-      "energy",
-      "pitch",
-      "azimuth",
-      "orientation",
-      "active",
-    ]);
-    const json = JSON.stringify(
-      {
-        site: site.name,
-        meta: defaultMeta(projectName),
-        panelCount,
-        activePanels: activePanelRows.length,
-        inactivePanels: inactivePanels.size,
-        capacityKwDc: capacityKw,
-        annualEnergyDcKwh: annualKwh,
-        googleReferencePanelWatts: insights.panelCapacityWatts,
-        selectedConfig: bestConfig,
-        parameters: { moduleId, orientation, setbackM },
-      },
-      null,
-      2,
-    );
+            geometry: { type: "Polygon", coordinates: [rings[index] ?? []] },
+          })),
+        },
+        null,
+        2,
+      );
+      csv = toCsv(
+        packing.modules.map((placed, index) => ({
+          module: index + 1,
+          row: placed.row,
+          column: placed.column,
+          orientation: placed.orientation,
+          centreX: placed.centre.x,
+          centreY: placed.centre.y,
+        })),
+        ["module", "row", "column", "orientation", "centreX", "centreY"],
+      );
+      json = JSON.stringify(
+        {
+          site: site.name,
+          meta: defaultMeta(projectName),
+          layout: "local_packing",
+          moduleCount: packing.moduleCount,
+          capacityKwDc: capacityKw,
+          annualEnergyDcKwh: annualKwh,
+          coverage: packing.coverage,
+          method: packing.method,
+          parameters: { moduleId, orientation, setbackM, gridRotation },
+        },
+        null,
+        2,
+      );
+    } else {
+      notify({
+        tone: "warning",
+        message: "Nothing to export",
+        detail: "Draw a roof outline for local packing, or query Google Solar.",
+      });
+      return;
+    }
+
     if (format === "geojson") {
       const path = await writeExport(`${site.name}-panels`, "geojson", geojson);
       if (path) notify({ tone: "success", message: `Exported GeoJSON to ${path}` });
@@ -739,8 +909,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
             title="Rooftop design needs a roof outline or building insights"
             body={
               hasGoogleKey
-                ? "Query Google Solar for this location, or draw the roof outline on the map."
-                : "Draw the roof outline on the map, or add a Google Solar key to pull building geometry."
+                ? "Draw the roof outline on the map to run local packing (schematic and estimate). Or query Google Solar for imagery-based panel placements — you can switch back afterwards."
+                : "Draw the roof outline on the map to run local packing. Add a Google Solar key in Settings if you want building insights from imagery."
             }
             action={
               hasGoogleKey ? (
@@ -805,7 +975,11 @@ export function RooftopDesignView({ site }: { site: Site }) {
               tone="solar"
             />
           )}
-          {packing && <Stat label="Modules" value={String(packing.moduleCount)} />}
+          {showingGoogle ? (
+            <Stat label="Panels" value={String(activePanelRows.length)} />
+          ) : packing ? (
+            <Stat label="Modules" value={String(packing.moduleCount)} />
+          ) : null}
         </StatCluster>
       </div>
 
@@ -823,12 +997,15 @@ export function RooftopDesignView({ site }: { site: Site }) {
           ) : (
             <>
               <p className="design__lede">
-                Automation proposes a panel layout. Change orientation and setbacks; the count
-                updates live. Google Solar configurations, when available, are shown for comparison
-                — not as a single opaque answer.
+                Local packing places modules in the drawn roof outline as you change orientation,
+                setback and grid rotation. Query Google Solar when you want building insights and
+                panel placements from imagery — you can switch back without losing the local layout.
               </p>
 
-              <Field label="Saved designs" hint="Select a saved design, or save as new to keep variants.">
+              <Field
+                label="Saved designs"
+                hint="Select a saved design, or save as new to keep variants."
+              >
                 <Select
                   value={site.activeDesignId ?? ""}
                   onChange={(event) => loadSavedDesign(event.target.value)}
@@ -858,20 +1035,40 @@ export function RooftopDesignView({ site }: { site: Site }) {
                         ? "Refresh building insights"
                         : "Query Google Solar"}
                   </Button>
-                  <Button block disabled={fetching} onClick={() => void loadDataLayers()}>
-                    {fluxSummary || rgbOverlay
-                      ? "Refresh RGB + flux layers"
-                      : "Load RGB + flux layers"}
-                  </Button>
+                  {insights && (
+                    <Button
+                      block
+                      disabled={fetching || showingGoogle}
+                      onClick={() => setLayoutSource("google")}
+                    >
+                      Show Google Solar layout
+                    </Button>
+                  )}
+                  {showingGoogle && (
+                    <Button block disabled={!localRoof} onClick={() => setLayoutSource("local")}>
+                      Back to local packing
+                    </Button>
+                  )}
+                  {showingGoogle && (
+                    <Button
+                      block
+                      disabled={fetching || !insights}
+                      onClick={() => void loadDataLayers()}
+                    >
+                      {fluxSummary || rgbOverlay
+                        ? "Refresh RGB + flux layers"
+                        : "Load RGB + flux layers"}
+                    </Button>
+                  )}
                 </div>
               )}
 
               <Field
                 label="Module"
                 hint={
-                  insights
-                    ? "Summary DC uses Google’s reference panel watts when a Google layout is active."
-                    : undefined
+                  showingGoogle
+                    ? "Capacity uses this module’s watts on Google’s placement count."
+                    : "Live packing uses this footprint and rating."
                 }
               >
                 <Select
@@ -886,38 +1083,57 @@ export function RooftopDesignView({ site }: { site: Site }) {
                 />
               </Field>
 
-              <Field
-                label="Module orientation"
-                hint={insights ? "Local packing only — ignored while the Google panel map is shown." : undefined}
-              >
-                <Select
-                  value={orientation}
-                  onChange={(event) => setOrientation(event.target.value as ModuleOrientation)}
-                  options={[
-                    { value: "portrait", label: "Portrait" },
-                    { value: "landscape", label: "Landscape" },
-                  ]}
-                  disabled={Boolean(insights?.solarPanels.length)}
-                />
-              </Field>
+              {!showingGoogle && (
+                <>
+                  <Field
+                    label="Module orientation"
+                    hint="Used by local packing. Google Solar placements keep their own orientation."
+                  >
+                    <Select
+                      value={orientation}
+                      onChange={(event) => setOrientation(event.target.value as ModuleOrientation)}
+                      options={[
+                        { value: "portrait", label: "Portrait" },
+                        { value: "landscape", label: "Landscape" },
+                      ]}
+                    />
+                  </Field>
 
-              <Field
-                label="Perimeter setback"
-                hint={insights ? "Local packing only — ignored while the Google panel map is shown." : undefined}
-              >
-                <Stepper
-                  value={setbackM}
-                  onChange={setSetbackM}
-                  step={0.05}
-                  min={0.2}
-                  max={1.5}
-                  precision={2}
-                  unit="m"
-                  label="Perimeter setback"
-                />
-              </Field>
+                  <Field
+                    label="Perimeter setback"
+                    hint="Used by local packing. Google Solar placements ignore this."
+                  >
+                    <Stepper
+                      value={setbackM}
+                      onChange={setSetbackM}
+                      step={0.05}
+                      min={0.2}
+                      max={1.5}
+                      precision={2}
+                      unit="m"
+                      label="Perimeter setback"
+                    />
+                  </Field>
 
-              {insights && insights.solarPanels.length > 0 && (
+                  <Field
+                    label="Grid rotation"
+                    hint="Rotation of the module grid in the roof plane. Used by local packing."
+                  >
+                    <Stepper
+                      value={gridRotation}
+                      onChange={setGridRotation}
+                      step={1}
+                      min={0}
+                      max={90}
+                      precision={0}
+                      unit="°"
+                      label="Grid rotation"
+                    />
+                  </Field>
+                </>
+              )}
+
+              {showingGoogle && insights && insights.solarPanels.length > 0 && (
                 <Field
                   label="Panel count (Google Solar)"
                   hint="Shows the first N panels from Google's preferred order. Match a configuration ladder entry when possible."
@@ -937,7 +1153,11 @@ export function RooftopDesignView({ site }: { site: Site }) {
                     min={1}
                     max={Math.max(insights.solarPanels.length, insights.maxPanelCount, 1)}
                     recommendedMin={1}
-                    recommendedMax={Math.max(insights.solarPanels.length, insights.maxPanelCount, 1)}
+                    recommendedMax={Math.max(
+                      insights.solarPanels.length,
+                      insights.maxPanelCount,
+                      1,
+                    )}
                     step={1}
                     unit="panels"
                     label="Google Solar panel count"
@@ -945,49 +1165,79 @@ export function RooftopDesignView({ site }: { site: Site }) {
                 </Field>
               )}
 
-              {search && !insights?.solarPanels.length && (
+              {search && !showingGoogle && (
                 <Callout tone="note">
-                  Best searched layout: {search.best.moduleCount} modules ({search.best.orientation},{" "}
-                  {search.best.gridRotationDegrees.toFixed(0)}° grid).
+                  Best searched layout: {search.best.moduleCount} modules ({search.best.orientation}
+                  , {search.best.gridRotationDegrees.toFixed(0)}° grid).
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setOrientation(search.best.orientation);
+                      setGridRotation(search.best.gridRotationDegrees);
+                    }}
+                  >
+                    Apply best layout
+                  </Button>
                 </Callout>
               )}
-
-              <div className="design-button-stack">
-                <Button
-                  block
-                  variant="primary"
-                  icon={<PanelIcon size={13} />}
-                  onClick={() => persistDesign({ asNew: false })}
-                >
-                  Save design
-                </Button>
-                <Button block onClick={() => persistDesign({ asNew: true })}>
-                  Save as new design
-                </Button>
-              </div>
             </>
           )}
         </SidePanel>
 
-        <main className="canvas-host">
+        <main className="canvas canvas--schematic">
           <div className="canvas-toolbar design-canvas-toolbar">
-            <span className="canvas-toolbar__label">
-              {insights?.solarPanels.length
-                ? "Google Solar panel map"
-                : "Rooftop packing"}
-            </span>
+            {insights && (
+              <Select
+                aria-label="Layout source"
+                value={showingGoogle ? "google" : "local"}
+                onChange={(event) => {
+                  const next = event.target.value as "local" | "google";
+                  if (next === "local" && !localRoof) {
+                    notify({
+                      tone: "warning",
+                      message: "Draw a roof outline for local packing",
+                    });
+                    return;
+                  }
+                  setLayoutSource(next);
+                }}
+                options={[
+                  { value: "local", label: "Local packing" },
+                  { value: "google", label: "Google Solar" },
+                ]}
+              />
+            )}
+            {!showingGoogle && (
+              <Select
+                aria-label="Preview mode"
+                value={previewMode}
+                onChange={(event) =>
+                  setPreviewMode(event.target.value as "schematic" | "blend" | "satellite")
+                }
+                options={[
+                  { value: "schematic", label: "Schematic" },
+                  { value: "satellite", label: "Satellite" },
+                  { value: "blend", label: "Satellite + Schematic" },
+                ]}
+              />
+            )}
             <div className="design-canvas-toolbar__actions">
               <DesignExportMenu onExport={runExport} />
             </div>
           </div>
-          {insights && insights.solarPanels.length > 0 && (
+          {showingGoogle && insights && insights.solarPanels.length > 0 && (
             <div className="rooftop-map-controls">
               <div className="rooftop-map-controls__panel-group">
                 <label className="rooftop-map-controls__toggle">
                   <span>Panels</span>
                   <Switch checked={showPanels} label="Panels" onChange={setShowPanels} />
                 </label>
-                <div className="rooftop-map-controls__activate" role="group" aria-label="Panel activation">
+                <div
+                  className="rooftop-map-controls__activate"
+                  role="group"
+                  aria-label="Panel activation"
+                >
                   <Button size="sm" variant="ghost" onClick={() => setInactivePanels(new Set())}>
                     Activate all
                   </Button>
@@ -1102,66 +1352,132 @@ export function RooftopDesignView({ site }: { site: Site }) {
               )}
             </div>
           )}
-          <div className="design-canvas design-canvas--map">
-            {insights && insights.solarPanels.length > 0 ? (
-              <RooftopPanelMap
-                insights={insights}
-                panelCount={panelCount}
-                inactivePanels={inactivePanels}
-                showPanels={showPanels}
-                onTogglePanel={(index) => {
-                  setInactivePanels((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(index)) next.delete(index);
-                    else next.add(index);
-                    return next;
-                  });
-                }}
-                overlays={{
-                  rgbDataUrl: showRgb ? rgbOverlay?.dataUrl : undefined,
-                  rgbBounds: showRgb ? rgbOverlay?.bounds : undefined,
-                  fluxRaster,
-                }}
-                rgbOpacity={rgbOpacity}
-                showFlux={showFlux}
-                fluxOpacity={fluxOpacity}
-              />
-            ) : packing ? (
-              <ParamList
-                rows={[
-                  {
-                    key: "modules",
-                    label: "Modules placed",
-                    value: String(packing.moduleCount),
-                    tone: "accent",
-                  },
-                  {
-                    key: "coverage",
-                    label: "Roof coverage",
-                    value: formatPercent(packing.coverage),
-                  },
-                  {
-                    key: "usable",
-                    label: "Usable area",
-                    value: `${formatNumber(packing.usableAreaM2, 1)} m²`,
-                  },
-                  {
-                    key: "method",
-                    label: "Method",
-                    value: packing.method,
-                  },
-                ]}
-              />
-            ) : (
-              <Callout tone="note">
-                Draw a roof outline to run local packing, or query Google Solar for panel placements.
-              </Callout>
+          <div className="design-preview-stack">
+            <div className="design-preview-stack__map">
+              {insights && insights.solarPanels.length > 0 && (
+                <div
+                  className={`rooftop-layout-pane${showingGoogle ? "" : " rooftop-layout-pane--hidden"}`}
+                >
+                  <RooftopPanelMap
+                    insights={insights}
+                    panelCount={panelCount}
+                    inactivePanels={inactivePanels}
+                    showPanels={showPanels}
+                    visible={showingGoogle}
+                    onTogglePanel={(index) => {
+                      setInactivePanels((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(index)) next.delete(index);
+                        else next.add(index);
+                        return next;
+                      });
+                    }}
+                    overlays={{
+                      rgbDataUrl: showRgb ? rgbOverlay?.dataUrl : undefined,
+                      rgbBounds: showRgb ? rgbOverlay?.bounds : undefined,
+                      fluxRaster,
+                    }}
+                    rgbOpacity={rgbOpacity}
+                    showFlux={showFlux}
+                    fluxOpacity={fluxOpacity}
+                  />
+                </div>
+              )}
+              {!showingGoogle && (packing || localRoof) && (
+                <div className="rooftop-layout-pane">
+                  <RooftopPackingMap
+                    site={site}
+                    packing={packing}
+                    showModules={previewMode !== "satellite"}
+                    basemap={previewMode === "schematic" ? "schematic" : "satellite"}
+                  />
+                </div>
+              )}
+              {!showingGoogle && !packing && !localRoof && (
+                <div className="design-canvas design-canvas--map">
+                  <Callout tone="note">
+                    Draw a roof outline to run local packing, or query Google Solar for panel
+                    placements.
+                  </Callout>
+                </div>
+              )}
+            </div>
+
+            <div
+              className={`design-summary-panel${summaryCollapsed ? " design-summary-panel--collapsed" : ""}`}
+            >
+            <div className="design-summary-panel__head">
+              <h3 className="design__summary-title">System summary</h3>
+              <Button size="sm" variant="ghost" onClick={() => setSummaryCollapsed((v) => !v)}>
+                {summaryCollapsed ? "Expand" : "Minimize"}
+              </Button>
+            </div>
+            {!summaryCollapsed && (
+              <>
+                <ParamList
+                  rows={[
+                    {
+                      key: "area",
+                      label: "Roof area",
+                      value: `${scaleArea(packing?.roofAreaM2 ?? site.areaM2).value} ${scaleArea(packing?.roofAreaM2 ?? site.areaM2).unit}`,
+                    },
+                    {
+                      key: "modules",
+                      label: showingGoogle ? "Active panels" : "Modules placed",
+                      value: showingGoogle
+                        ? String(activePanelRows.length)
+                        : String(packing?.moduleCount ?? 0),
+                      tone: "accent",
+                    },
+                    {
+                      key: "capacity",
+                      label: "Capacity DC",
+                      value: `${capacity.value} ${capacity.unit}`,
+                      tone: "accent",
+                    },
+                    {
+                      key: "coverage",
+                      label: showingGoogle ? "Google layout" : "Roof coverage",
+                      value: showingGoogle
+                        ? `${panelCount} shown`
+                        : packing
+                          ? formatPercent(packing.coverage)
+                          : "—",
+                    },
+                    {
+                      key: "method",
+                      label: "Method",
+                      value: showingGoogle
+                        ? "Google Solar building insights"
+                        : (packing?.method ?? "Local packing"),
+                    },
+                  ]}
+                />
+                {packing?.notes.map((note) => (
+                  <Callout key={note} tone="warning">
+                    {note}
+                  </Callout>
+                ))}
+                <Button
+                  block
+                  variant="primary"
+                  icon={<PanelIcon size={13} />}
+                  disabled={running}
+                  onClick={() => void runEnergyModel()}
+                >
+                  {running ? "Modelling…" : "Estimate annual output"}
+                </Button>
+                <div className="design-button-stack">
+                  <Button block variant="primary" onClick={() => persistDesign({ asNew: false })}>
+                    Save design
+                  </Button>
+                  <Button block onClick={() => persistDesign({ asNew: true })}>
+                    Save as new design
+                  </Button>
+                </div>
+              </>
             )}
-            {packing?.notes.map((note) => (
-              <Callout key={note} tone="warning">
-                {note}
-              </Callout>
-            ))}
+          </div>
           </div>
         </main>
 
@@ -1173,6 +1489,49 @@ export function RooftopDesignView({ site }: { site: Site }) {
           </div>
         ) : null}
         <SidePanel side="right" title="Results" collapsed={rightCollapsed} onToggle={toggleRight}>
+          {energy && (
+            <>
+              <SectionLabel>Last estimate</SectionLabel>
+              <ParamList
+                rows={[
+                  {
+                    key: "annual",
+                    label: "Annual output",
+                    value: `${scaleEnergy(energy.annualKwh).value} ${scaleEnergy(energy.annualKwh).unit}`,
+                    tone: "solar",
+                  },
+                  {
+                    key: "specific",
+                    label: "Specific yield",
+                    value: `${formatNumber(energy.specificYieldKwhPerKwp, 0)} kWh/kWp`,
+                  },
+                  {
+                    key: "cf",
+                    label: "Capacity factor",
+                    value: formatPercent(energy.capacityFactor),
+                  },
+                  {
+                    key: "pr",
+                    label: "Performance ratio",
+                    value: formatPercent(energy.performanceRatio),
+                  },
+                ]}
+              />
+              <ProvenanceBadge
+                fidelity={energy.fidelity === "modelled" ? "modelled" : "estimated"}
+                source={
+                  energy.fidelity === "modelled" ? "pvlib solar engine" : "Sunday first-order model"
+                }
+                method={energy.method}
+              />
+              {energy.caveats.map((caveat) => (
+                <Callout key={caveat} tone="note">
+                  {caveat}
+                </Callout>
+              ))}
+            </>
+          )}
+
           {fluxSummary && (
             <>
               <SectionLabel>Annual flux GeoTIFF</SectionLabel>
@@ -1307,7 +1666,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
 
           {!insights && !packing && (
             <Callout tone="note">
-              Query Google Solar or draw a roof outline to see panel counts and payback.
+              Draw a roof outline for local packing, or query Google Solar. Then use Estimate annual
+              output for a labelled yield.
             </Callout>
           )}
         </SidePanel>

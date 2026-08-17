@@ -87,7 +87,7 @@ export function DesignView() {
           <EmptyState
             icon={<PolygonIcon size={28} />}
             title="Select a site"
-            body="Pick a site from the map, then open Design. Area sites use the greenfield packing engine or CSP design; rooftop sites use building insights and module packing."
+            body="Pick a site from the map, then open Design. Area sites use the greenfield packing engine or CSP design; rooftop sites use local module packing, with optional Google Solar building insights."
             action={<Button onClick={() => setView("map")}>Go to the map</Button>}
           />
         </div>

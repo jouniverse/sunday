@@ -36,6 +36,12 @@ export function HelpView() {
           What Sunday computes, how, and where the numbers come from. Every figure in the app can be
           traced to something on this page.
         </p>
+        <p className="help__body">
+          This beta covers <strong>greenfield PV</strong>, <strong>rooftop PV</strong>, and{" "}
+          <strong>concentrating solar power</strong> (power tower and parabolic trough). Screening
+          technology chips (PV fixed, tracker, CSP, rooftop) are independent of the System family
+          that routes Design. Solar water heating is not in this release.
+        </p>
 
         <div className="card">
           <div className="card__head">
@@ -56,12 +62,20 @@ export function HelpView() {
               report shows every source that answered, side by side.
             </li>
             <li>
-              <strong>Run the screening checks.</strong> Slope, aspect, resource floors, protected
-              areas and grid distance, each with the basis for its threshold.
+              <strong>Run the screening checks.</strong> Choose a screening profile (PV fixed,
+              tracker, CSP, or rooftop). Slope, aspect, resource floors, protected areas and grid
+              distance each carry the basis for their threshold.
             </li>
             <li>
-              <strong>Design the system.</strong> The automation proposes a feasible envelope; you
-              adjust inside it and watch capacity, yield and cost move.
+              <strong>Design the system.</strong> Set the System family (PV, rooftop PV, or CSP),
+              then open Design. Automation proposes a feasible envelope; you adjust inside it.
+              Greenfield PV packing, rooftop local packing (optional Google Solar), and CSP field
+              sketches are separate workspaces.
+            </li>
+            <li>
+              <strong>Read Report and Insights.</strong> Report is multi-source climatology, sun path
+              with far-field terrain horizon, and cloud amount. Insights is portfolio, rankings,
+              statistics, news, World Bank projects, and research — not a substitute for Design.
             </li>
           </ol>
         </div>
@@ -124,6 +138,13 @@ export function HelpView() {
             in-plane irradiation times capacity times a performance ratio, with the transposition
             factor derived geometrically. It is labelled <em>first-order</em> everywhere it appears,
             and the breakdown shows every term. It is a sanity check, not a substitute.
+          </p>
+          <p className="help__body">
+            CSP annual energy comes from PySAM (SAM SSC) in the same sidecar when{" "}
+            <span className="mono">nrel-pysam</span> is installed. Sunday does not invent a CSP
+            megawatt-hour: without PySAM the plant estimate stays blank. Report sun-path traces use
+            NREL SPA via pvlib; the far-field horizon overlay is AWS Terrarium terrain, not trees or
+            buildings.
           </p>
           <SectionLabel>Default loss stack</SectionLabel>
           <p className="help__body">
