@@ -476,10 +476,14 @@ export function ProjectsView() {
                               >
                                 {design.name}
                                 <span className="projects__meta">
-                                  {design.capacityKwDc != null
-                                    ? ` · ${design.capacityKwDc.toFixed(1)} kW`
-                                    : ""}
+                                  {design.capacityMwe != null
+                                    ? ` · ${design.capacityMwe.toFixed(1)} MWₑ`
+                                    : design.capacityKwDc != null
+                                      ? ` · ${design.capacityKwDc.toFixed(1)} kW`
+                                      : ""}
                                   {design.kind === "rooftop" ? " · rooftop" : ""}
+                                  {design.kind === "csp-tower" ? " · CSP tower" : ""}
+                                  {design.kind === "csp-trough" ? " · CSP trough" : ""}
                                 </span>
                               </button>
                             )}

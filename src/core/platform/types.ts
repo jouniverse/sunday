@@ -50,6 +50,8 @@ export interface EngineStatus {
   token: string | null;
   detail: string | null;
   pvlibVersion: string | null;
+  pysamVersion?: string | null;
+  cspAvailable?: boolean;
   external: boolean;
 }
 
@@ -255,6 +257,14 @@ export interface TerrainSlopeZonalResult {
   zoom: number;
 }
 
+/** Far-field terrain horizon from AWS Terrarium (desktop). */
+export interface TerrainHorizonResult {
+  samples: Array<{ azimuth: number; elevationDegrees: number }>;
+  observerElevationM: number | null;
+  radiusM: number;
+  method: string;
+}
+
 export interface TerrainApi {
   /** Colourised slope preview for a screening AOI bbox (desktop only). */
   slopePreview(bounds: {
@@ -265,6 +275,11 @@ export interface TerrainApi {
   }): Promise<ViewportPreview>;
   /** Site-ring zonal slope for Run screening checks. */
   slopeZonal(rings: Array<Array<[number, number]>>): Promise<TerrainSlopeZonalResult>;
+  /**
+   * Far-field terrain horizon (max elevation vs azimuth) from AWS Terrarium.
+   * Desktop only — browser fallback throws PlatformError.
+   */
+  horizonProfile(point: { longitude: number; latitude: number }): Promise<TerrainHorizonResult>;
 }
 
 export interface LandcoverApi {

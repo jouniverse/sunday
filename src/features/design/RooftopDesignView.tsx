@@ -59,6 +59,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
   const renameSite = useSiteStore((state) => state.renameSite);
   const markDirty = useProjectStore((state) => state.markDirty);
   const notify = useUiStore((state) => state.notify);
+  const startBusy = useUiStore((state) => state.startBusy);
+  const endBusy = useUiStore((state) => state.endBusy);
   const leftCollapsed = useUiStore((state) => state.leftPanelCollapsed);
   const toggleLeft = useUiStore((state) => state.toggleLeftPanel);
   const rightCollapsed = useUiStore((state) => state.rightPanelCollapsed);
@@ -68,12 +70,27 @@ export function RooftopDesignView({ site }: { site: Site }) {
   const currency = useSettingsStore((state) => state.preferences.currency);
   const hasGoogleKey = useSettingsStore((state) => state.configuredKeys.includes("google_solar"));
 
-  const [moduleId, setModuleId] = useState(site.design?.moduleId ?? "mono-450");
-  const [orientation, setOrientation] = useState<ModuleOrientation>("portrait");
-  const [setbackM, setSetbackM] = useState<number>(ROOFTOP_DEFAULTS.perimeterSetbackM);
+  const [moduleId, setModuleId] = useState(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return active?.parameters?.moduleId ?? site.design?.moduleId ?? "mono-450";
+  });
+  const [orientation, setOrientation] = useState<ModuleOrientation>(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return active?.rooftopOrientation ?? "portrait";
+  });
+  const [setbackM, setSetbackM] = useState<number>(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return active?.rooftopSetbackM ?? ROOFTOP_DEFAULTS.perimeterSetbackM;
+  });
   const [insights, setInsights] = useState<BuildingInsights | null>(null);
-  const [panelCount, setPanelCount] = useState(1);
-  const [inactivePanels, setInactivePanels] = useState<Set<number>>(() => new Set());
+  const [panelCount, setPanelCount] = useState(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return active?.googlePanelCount ?? 1;
+  });
+  const [inactivePanels, setInactivePanels] = useState<Set<number>>(() => {
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    return new Set(active?.inactivePanelIndices ?? []);
+  });
   const [fetching, setFetching] = useState(false);
   const [fluxSummary, setFluxSummary] = useState<{
     min: number;
@@ -102,7 +119,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
   const [rgbOpacity, setRgbOpacity] = useState(0.65);
   const [fluxOpacity, setFluxOpacity] = useState(0.55);
   const projectName = useProjectStore((state) => state.name);
-  const savedDesigns = site.designs ?? [];
+  const savedDesigns = (site.designs ?? []).filter((entry) => entry.kind === "rooftop");
   const [designNameDraft, setDesignNameDraft] = useState(() => {
     const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
     return active?.name ?? "";
@@ -171,19 +188,31 @@ export function RooftopDesignView({ site }: { site: Site }) {
           ? site.resource.ghiKwhM2Year * capacityKw * 0.75
           : null;
 
+  // Restore saved Google panel count when insights (re)load. `site.designs` is
+  // read from this render — do not depend on the array identity or Save would
+  // wipe an in-progress slider.
   useEffect(() => {
     if (!insights) return;
     const max = Math.max(insights.solarPanels.length, insights.maxPanelCount, 1);
+    const active = site.designs?.find((entry) => entry.id === site.activeDesignId);
+    const savedCount = active?.googlePanelCount;
+    if (savedCount && savedCount > 0) {
+      setPanelCount(Math.min(savedCount, max));
+      const savedInactive = active?.inactivePanelIndices ?? [];
+      setInactivePanels(new Set(savedInactive.filter((index) => index >= 0 && index < max)));
+      return;
+    }
     const preferred =
       insights.configurations.find((c) => c.panelCount > 4)?.panelCount ??
       insights.configurations[0]?.panelCount ??
       Math.min(max, Math.max(insights.solarPanels.length, 1));
     setPanelCount(Math.min(preferred, max));
     setInactivePanels(new Set());
-  }, [insights]);
+  }, [insights, site.activeDesignId]);
 
   async function loadDataLayers(fromInsights?: BuildingInsights | null) {
     setFetching(true);
+    startBusy("rooftop-layers", "Loading RGB and flux");
     try {
       const key = await revealApiKey("google_solar");
       if (!key) {
@@ -302,12 +331,14 @@ export function RooftopDesignView({ site }: { site: Site }) {
       });
     } finally {
       setFetching(false);
+      endBusy("rooftop-layers");
     }
   }
 
   async function loadMonthlyBand(month: number) {
     if (!monthlyFluxUrl || month <= 0) return;
     setFetching(true);
+    startBusy("rooftop-layers", "Loading monthly flux");
     try {
       const key = await revealApiKey("google_solar");
       if (!key) return;
@@ -353,11 +384,13 @@ export function RooftopDesignView({ site }: { site: Site }) {
       });
     } finally {
       setFetching(false);
+      endBusy("rooftop-layers");
     }
   }
 
   async function queryGoogleSolar() {
     setFetching(true);
+    startBusy("rooftop-insights", "Querying Google Solar");
     try {
       const key = await revealApiKey("google_solar");
       if (!key) {
@@ -391,7 +424,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
             ". Sunshine hours are a site proxy — not a GHI substitute.",
         });
       }
-      renameSite(site.id, result.name || site.name);
+      // Google's `name` is a resource id like buildings/ChIJ… — never overwrite the site title.
       markDirty();
       notify({
         tone: "success",
@@ -409,6 +442,7 @@ export function RooftopDesignView({ site }: { site: Site }) {
       });
     } finally {
       setFetching(false);
+      endBusy("rooftop-insights");
     }
   }
 
@@ -438,6 +472,8 @@ export function RooftopDesignView({ site }: { site: Site }) {
       annualKwh: annualKwh ?? undefined,
       googlePanelCount: panelCount,
       inactivePanelIndices: [...inactivePanels],
+      rooftopOrientation: orientation,
+      rooftopSetbackM: setbackM,
     });
     setDesignNameDraft(name);
     markDirty();
@@ -456,10 +492,12 @@ export function RooftopDesignView({ site }: { site: Site }) {
       return;
     }
     const selected = savedDesigns.find((entry) => entry.id === designId);
-    if (!selected) return;
+    if (!selected?.parameters) return;
     selectDesign(site.id, designId);
     setDesignNameDraft(selected.name);
     setModuleId(selected.parameters.moduleId);
+    if (selected.rooftopOrientation) setOrientation(selected.rooftopOrientation);
+    if (selected.rooftopSetbackM != null) setSetbackM(selected.rooftopSetbackM);
     if (selected.googlePanelCount) setPanelCount(selected.googlePanelCount);
     setInactivePanels(new Set(selected.inactivePanelIndices ?? []));
   }

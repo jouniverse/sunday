@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import type { Site } from "@/core/store/siteStore";
 import { useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { Button } from "@/design-system/controls";
@@ -23,6 +24,54 @@ import { formatNumber, scaleArea, scalePower } from "@/domain/units";
 import { countryByIso3, loadCountryRankings } from "@/services/datasets/country-rankings";
 import { gemOperatingGw, irenaCapacityGw } from "@/services/insights/bundles";
 import { iso3ForLngLat } from "@/services/insights/country-from-point";
+
+/** Sum named-design ratings so CSP MWₑ and rooftop kW show, not only greenfield packing. */
+function designedCapacityKw(site: Site): number | undefined {
+  const fromSaved = (site.designs ?? []).reduce((sum, design) => {
+    if (design.capacityMwe != null && Number.isFinite(design.capacityMwe) && design.capacityMwe > 0) {
+      return sum + design.capacityMwe * 1000;
+    }
+    if (design.capacityKwDc != null && Number.isFinite(design.capacityKwDc) && design.capacityKwDc > 0) {
+      return sum + design.capacityKwDc;
+    }
+    return sum;
+  }, 0);
+  if (fromSaved > 0) return fromSaved;
+
+  const module = site.design ? moduleById(site.design.moduleId) : undefined;
+  if (!site.design || !module || site.areaM2 <= 0) return undefined;
+  return computeFillFactor({
+    usableAreaM2: site.areaM2,
+    module,
+    mount: site.design.mount,
+    tiltDegrees: site.design.tiltDegrees,
+    gcr: site.design.groundCoverageRatio,
+    balanceOfSystemFraction: site.design.balanceOfSystemFraction,
+  }).capacityKwDc;
+}
+
+function greenfieldFillFactor(site: Site): number | undefined {
+  const designs = site.designs ?? [];
+  const hasGreenfield = designs.some((design) => design.kind === "greenfield");
+  const onlyOtherFamilies =
+    designs.length > 0 &&
+    !hasGreenfield &&
+    designs.every(
+      (design) =>
+        design.kind === "rooftop" || design.kind === "csp-tower" || design.kind === "csp-trough",
+    );
+  if (onlyOtherFamilies) return undefined;
+  const module = site.design ? moduleById(site.design.moduleId) : undefined;
+  if (!site.design || !module || site.areaM2 <= 0) return undefined;
+  return computeFillFactor({
+    usableAreaM2: site.areaM2,
+    module,
+    mount: site.design.mount,
+    tiltDegrees: site.design.tiltDegrees,
+    gcr: site.design.groundCoverageRatio,
+    balanceOfSystemFraction: site.design.balanceOfSystemFraction,
+  }).fillFactor;
+}
 
 interface CountryCard {
   iso3: string;
@@ -47,26 +96,16 @@ export function PortfolioPanel() {
   const rows = useMemo(
     () =>
       sites.map((site) => {
-        const module = site.design ? moduleById(site.design.moduleId) : undefined;
-        const packing =
-          site.design && module && site.areaM2 > 0
-            ? computeFillFactor({
-                usableAreaM2: site.areaM2,
-                module,
-                mount: site.design.mount,
-                tiltDegrees: site.design.tiltDegrees,
-                gcr: site.design.groundCoverageRatio,
-                balanceOfSystemFraction: site.design.balanceOfSystemFraction,
-              })
-            : null;
-
+        const designs = site.designs ?? [];
         return {
           id: site.id,
           name: site.name,
           areaM2: site.areaM2,
           ghi: site.resource?.ghiKwhM2Year,
-          capacityKw: packing?.capacityKwDc,
-          fillFactor: packing?.fillFactor,
+          capacityKw: designedCapacityKw(site),
+          fillFactor: greenfieldFillFactor(site),
+          designCount: designs.length,
+          designNames: designs.map((design) => design.name).join(", "),
           blocked: hasBlockingNudge(site.nudges),
           screened: site.nudges.length > 0,
         };
@@ -176,6 +215,12 @@ export function PortfolioPanel() {
               render: (row) => (row.ghi ? formatNumber(row.ghi, 0) : "—"),
             },
             {
+              key: "designs",
+              header: "Designs",
+              render: (row) =>
+                row.designCount > 0 ? row.designNames : "—",
+            },
+            {
               key: "capacity",
               header: "Capacity",
               numeric: true,
@@ -205,8 +250,8 @@ export function PortfolioPanel() {
           }}
         />
         <p className="report__units">
-          {totals.designed} of {sites.length} sites have a design. Click a row to open it on the
-          map.
+          {totals.designed} of {sites.length} sites have a saved or working design. Capacity sums
+          named designs (PV kW DC and CSP MWₑ). Click a row to open it on the map.
         </p>
       </div>
 

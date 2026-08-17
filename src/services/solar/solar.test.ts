@@ -114,6 +114,8 @@ describe("PVGIS radiation", () => {
     expect(report.dhiKwhM2Year).toBeCloseTo(660, 6);
     expect(report.meanAirTempC).toBeCloseTo(18, 6);
     expect(report.monthlyGhi).toHaveLength(12);
+    expect(report.monthlyDni).toHaveLength(12);
+    expect(report.monthlyDni?.every((point) => point.value === 190)).toBe(true);
     expect(report.dataset).toBe("PVGIS-SARAH3");
     expect(report.fidelity).toBe("modelled");
   });
@@ -151,6 +153,7 @@ describe("climatologyFromMrcalc", () => {
   it("keeps a single-year series as twelve months", () => {
     const climate = climatologyFromMrcalc(PVGIS_MRCALC.outputs.monthly);
     expect(climate.monthlyGhi).toHaveLength(12);
+    expect(climate.monthlyDni).toHaveLength(12);
     expect(climate.ghiKwhM2Year).toBeCloseTo(1800, 6);
     expect(climate.sampleYears).toBe(1);
   });
@@ -204,6 +207,7 @@ const POWER_CLIMATOLOGY = {
       ALLSKY_SFC_SW_DNI: monthly(6),
       ALLSKY_SFC_SW_DIFF: monthly(1.5),
       T2M: { ...monthly(17), ANN: 17 },
+      CLOUD_AMT: { ...monthly(42), ANN: 42 },
       SI_TILTED_AVG_OPTIMAL: monthly(5.8),
       SI_TILTED_AVG_OPTIMAL_ANG: { ...monthly(30), ANN: 30 },
     },
@@ -236,6 +240,7 @@ describe("NASA POWER", () => {
     expect(report.ghiKwhM2Year).toBeGreaterThan(1800);
     expect(report.ghiKwhM2Year).toBeLessThan(1840);
     expect(report.dniKwhM2Year).toBeGreaterThan(2100);
+    expect(report.monthlyDni).toHaveLength(12);
     expect(report.meanAirTempC).toBe(17);
     expect(report.optimalTiltDegrees).toBe(30);
   });
@@ -306,6 +311,8 @@ describe("NREL", () => {
     });
     expect(report.ghiKwhM2Year).toBeCloseTo(5.5 * 365.25, 4);
     expect(report.dniKwhM2Year).toBeCloseTo(7.0 * 365.25, 4);
+    expect(report.monthlyDni).toHaveLength(12);
+    expect(report.monthlyGhi).toBeDefined();
     // NSRDB is a validated satellite product, so it is labelled measured.
     expect(report.fidelity).toBe("measured");
   });
@@ -456,6 +463,8 @@ describe("site report orchestration", () => {
     expect(report.monthlyOptimalTilt?.[0]?.value).toBe(30);
     expect(report.monthlyAirTempC).toHaveLength(12);
     expect(report.monthlyAirTempC?.[0]?.value).toBe(17);
+    expect(report.monthlyCloudPct).toHaveLength(12);
+    expect(report.monthlyCloudPct?.[0]?.value).toBe(42);
   });
 
   it("survives one provider failing", async () => {

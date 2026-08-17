@@ -6,13 +6,15 @@ token is required so that nothing else running on the machine can drive it.
 
 from __future__ import annotations
 
+import asyncio
 import os
 
 import pvlib
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from . import __version__
+from .csp import CspUnavailable, probe_pysam, run_tower_layout, run_tower_plant, run_trough_plant
 from .engine import (
     EngineError,
     degradation,
@@ -77,13 +79,41 @@ async def engine_error_handler(_request: Request, exc: EngineError) -> JSONRespo
     return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
+def _csp_guidance(detail: str) -> str:
+    text = detail.lower()
+    if "not installed" in text or "nrel-pysam" in text:
+        return (
+            "Install the optional sidecar extra: pip install 'nrel-pysam>=5' "
+            "(macOS arm64 wheels exist). CSP design still opens; yield stays unavailable until PySAM is present."
+        )
+    return (
+        "The live schematic is still a labelled sketch. Annual energy stays blank until the plant run succeeds. "
+        "A native SSC crash is isolated from the HTTP process — the solar engine should stay up. Try Estimate again."
+    )
+
+
+@app.exception_handler(CspUnavailable)
+async def csp_unavailable_handler(_request: Request, exc: CspUnavailable) -> JSONResponse:
+    detail = str(exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": detail, "guidance": _csp_guidance(detail)},
+    )
+
+
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, object]:
     """Liveness plus versions. Rust polls this while starting the sidecar."""
+    pysam = probe_pysam()
     return {
         "status": "ok",
         "engine_version": __version__,
         "pvlib_version": pvlib.__version__,
+        "pysam_version": pysam.version,
+        "csp_available": pysam.available,
+        "csp_tower_layout": pysam.tower_layout,
+        "csp_tower_plant": pysam.tower_plant,
+        "csp_trough_plant": pysam.trough_plant,
     }
 
 
@@ -120,6 +150,28 @@ def post_degradation(
     request: DegradationRequest, _: None = Depends(require_token)
 ) -> DegradationResponse:
     return degradation(request)
+
+
+@app.post("/csp/tower/layout")
+async def post_csp_tower_layout(
+    payload: dict = Body(...), _: None = Depends(require_token)
+) -> dict:
+    # SSC is blocking C++; run off the event loop so /health still answers.
+    return await asyncio.to_thread(run_tower_layout, payload)
+
+
+@app.post("/csp/tower/plant")
+async def post_csp_tower_plant(
+    payload: dict = Body(...), _: None = Depends(require_token)
+) -> dict:
+    return await asyncio.to_thread(run_tower_plant, payload)
+
+
+@app.post("/csp/trough/plant")
+async def post_csp_trough_plant(
+    payload: dict = Body(...), _: None = Depends(require_token)
+) -> dict:
+    return await asyncio.to_thread(run_trough_plant, payload)
 
 
 def main() -> None:

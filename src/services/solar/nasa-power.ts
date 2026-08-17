@@ -72,6 +72,7 @@ export async function fetchNasaPowerClimatology(options: {
     "ALLSKY_SFC_SW_DNI", // DNI
     "ALLSKY_SFC_SW_DIFF", // diffuse
     "T2M", // air temperature at 2 m
+    "CLOUD_AMT", // cloud amount %
     "SI_EF_TILTED_SURFACE",
   ].join(",");
 
@@ -123,9 +124,11 @@ export async function fetchNasaPowerClimatology(options: {
     optimalTiltDegrees: optimalAngle ?? undefined,
     meanAirTempC: annualMean(parameterData.T2M) ?? undefined,
     monthlyGhi: monthlySeries(parameterData.ALLSKY_SFC_SW_DWN),
+    monthlyDni: monthlySeries(parameterData.ALLSKY_SFC_SW_DNI),
     // Angles and temperatures are already monthly means — do not scale by days.
     monthlyOptimalTilt: monthlyMeans(parameterData.SI_TILTED_AVG_OPTIMAL_ANG),
     monthlyAirTempC: monthlyMeans(parameterData.T2M),
+    monthlyCloudPct: monthlyMeans(parameterData.CLOUD_AMT),
     source: provider.attribution,
     dataset: (response.header?.sources ?? []).join(", ") || provider.dataset,
     vintage: describePeriod(response),
@@ -137,6 +140,8 @@ export async function fetchNasaPowerClimatology(options: {
       `Solar parameters come from a ${SOLAR_GRID_DEGREES}° grid, about 110 km. ${answeringCell}`,
       "Use this as a global cross-check rather than a site-specific figure; PVGIS and NSRDB " +
         "are an order of magnitude finer where they have coverage.",
+      "CLOUD_AMT is MERRA-2 cloud amount (%). Meteorology is coarser than the solar cell; " +
+        "Solargis/GSA rasters already include cloudiness in irradiation.",
     ],
     requestUrl: url,
   };

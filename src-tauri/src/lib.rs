@@ -97,6 +97,7 @@ pub fn run() {
             commands::raster_viewport_preview,
             commands::terrain_slope_preview,
             commands::terrain_slope_zonal,
+            commands::terrain_horizon_profile,
             commands::landcover_preview,
             commands::vector_datasets,
             commands::vector_query_bbox,

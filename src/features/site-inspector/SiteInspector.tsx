@@ -11,8 +11,8 @@ import { useDrawStore } from "@/core/map/draw/store";
 import { useMapStore } from "@/core/store/mapStore";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
-import type { Site } from "@/core/store/siteStore";
-import { useSiteStore } from "@/core/store/siteStore";
+import type { Site, SystemFamily } from "@/core/store/siteStore";
+import { screeningTechnologyOf, systemFamilyOf, useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { Button, Field, IconButton, Input, Select } from "@/design-system/controls";
 import {
@@ -85,7 +85,8 @@ function SiteDetail({ site }: { site: Site }) {
   const setResource = useSiteStore((state) => state.setResource);
   const setTerrain = useSiteStore((state) => state.setTerrain);
   const setNudges = useSiteStore((state) => state.setNudges);
-  const setKind = useSiteStore((state) => state.setKind);
+  const setSystemFamily = useSiteStore((state) => state.setSystemFamily);
+  const setScreeningTechnology = useSiteStore((state) => state.setScreeningTechnology);
   const flyTo = useMapStore((state) => state.flyTo);
   const setView = useUiStore((state) => state.setView);
   const notify = useUiStore((state) => state.notify);
@@ -97,10 +98,8 @@ function SiteDetail({ site }: { site: Site }) {
   const cancelDraw = useDrawStore((state) => state.cancel);
   const useKey = useSettingsStore((state) => state.useKey);
 
-  const [technology, setTechnology] = useState<TechnologyProfile>(
-    site.kind === "rooftop" ? "rooftop" : "pv_fixed",
-  );
   const [fetching, setFetching] = useState(false);
+  const technology = screeningTechnologyOf(site);
 
   const area = scaleArea(site.areaM2);
   const perimeter = scaleDistance(site.perimeterM);
@@ -479,7 +478,10 @@ function SiteDetail({ site }: { site: Site }) {
             type="button"
             className="tool-chip"
             aria-pressed={technology === value}
-            onClick={() => setTechnology(value)}
+            onClick={() => {
+              setScreeningTechnology(site.id, value);
+              markDirty();
+            }}
           >
             {label}
           </button>
@@ -490,41 +492,49 @@ function SiteDetail({ site }: { site: Site }) {
       </Button>
       <NudgeList nudges={site.nudges} />
 
-      <SectionLabel>Next</SectionLabel>
-      <div className="inspector__actions">
-        <Button block icon={<ReportIcon size={13} />} onClick={() => setView("report")}>
-          Open site report
-        </Button>
-        {site.kind !== "rooftop" && (
-          <Button
-            block
+      <SectionLabel>System</SectionLabel>
+      <div className="inspector__technology">
+        {(
+          [
+            ["pv-greenfield", "PV"],
+            ["pv-rooftop", "Rooftop PV"],
+            ["csp", "CSP"],
+          ] as Array<[SystemFamily, string]>
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            className="tool-chip"
+            aria-pressed={systemFamilyOf(site) === value}
             onClick={() => {
-              setKind(site.id, "rooftop");
+              setSystemFamily(site.id, value);
               markDirty();
-              notify({
-                tone: "info",
-                message: "Marked as rooftop",
-                detail: "Open Design to query Google Solar or pack a drawn roof outline.",
-              });
             }}
           >
-            Treat as rooftop
-          </Button>
-        )}
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="inspector__actions">
         <Button
           block
           variant="primary"
-          disabled={site.kind !== "rooftop" && (!site.ring || !site.geometryValid)}
+          disabled={
+            systemFamilyOf(site) !== "pv-rooftop" && (!site.ring || !site.geometryValid)
+          }
           onClick={() => setView("design")}
           title={
-            site.kind === "rooftop"
+            systemFamilyOf(site) === "pv-rooftop"
               ? "Design a rooftop system"
               : site.ring
                 ? "Design a system for this boundary"
-                : "Greenfield designs need a boundary; mark as rooftop for building-level design"
+                : "Area designs need a boundary; choose Rooftop PV for building-level design"
           }
         >
           Design a system
+        </Button>
+        <Button block icon={<ReportIcon size={13} />} onClick={() => setView("report")}>
+          Open site report
         </Button>
       </div>
     </div>

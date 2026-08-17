@@ -17,7 +17,8 @@ use crate::sidecar::{EngineCommand, EngineStatus};
 use crate::datasets::{self, DiscoverResult, InstallResult};
 use crate::landcover::{self, LandcoverPreviewRequest};
 use crate::terrain::{
-    self, TerrainSlopePreviewRequest, TerrainSlopeZonalRequest, TerrainSlopeZonalResult,
+    self, TerrainHorizonRequest, TerrainHorizonResult, TerrainSlopePreviewRequest,
+    TerrainSlopeZonalRequest, TerrainSlopeZonalResult,
 };
 use crate::vector::{BboxQuery, BboxResult, DatasetSummary, Feature, PlantCentroid, VectorStore};
 use crate::AppState;
@@ -138,6 +139,18 @@ pub async fn terrain_slope_zonal(
     tauri::async_runtime::spawn_blocking(move || terrain::slope_zonal(&cache, &request))
         .await
         .map_err(|e| Error::Invalid(format!("terrain zonal task failed: {e}")))?
+}
+
+/// Far-field terrain horizon (max elevation vs azimuth) from Terrarium tiles.
+#[tauri::command]
+pub async fn terrain_horizon_profile(
+    state: State<'_, AppState>,
+    request: TerrainHorizonRequest,
+) -> Result<TerrainHorizonResult> {
+    let cache = state.paths.cache_dir();
+    tauri::async_runtime::spawn_blocking(move || terrain::horizon_profile(&cache, &request))
+        .await
+        .map_err(|e| Error::Invalid(format!("terrain horizon task failed: {e}")))?
 }
 
 // ---------------------------------------------------------------------------

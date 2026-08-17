@@ -74,6 +74,54 @@ pub struct TerrainSlopeZonalResult {
     pub zoom: u32,
 }
 
+const DEFAULT_HORIZON_RADIUS_M: f64 = 20_000.0;
+const MAX_HORIZON_RADIUS_M: f64 = 20_000.0;
+const DEFAULT_AZIMUTH_STEP_DEG: f64 = 2.0;
+const DEFAULT_EYE_HEIGHT_M: f64 = 2.0;
+
+fn default_horizon_radius() -> f64 {
+    DEFAULT_HORIZON_RADIUS_M
+}
+
+fn default_azimuth_step() -> f64 {
+    DEFAULT_AZIMUTH_STEP_DEG
+}
+
+fn default_eye_height() -> f64 {
+    DEFAULT_EYE_HEIGHT_M
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerrainHorizonRequest {
+    pub longitude: f64,
+    pub latitude: f64,
+    #[serde(default = "default_horizon_radius")]
+    pub radius_m: f64,
+    #[serde(default = "default_azimuth_step")]
+    pub azimuth_step_degrees: f64,
+    #[serde(default = "default_eye_height")]
+    pub eye_height_m: f64,
+    #[serde(default = "default_max_tiles")]
+    pub max_tiles: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HorizonSample {
+    pub azimuth: f64,
+    pub elevation_degrees: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerrainHorizonResult {
+    pub samples: Vec<HorizonSample>,
+    pub observer_elevation_m: Option<f64>,
+    pub radius_m: f64,
+    pub method: String,
+}
+
 struct ElevationGrid {
     width: u32,
     height: u32,
@@ -103,6 +151,26 @@ impl ElevationGrid {
         } else {
             None
         }
+    }
+
+    /// Bilinear sample in geographic coordinates.
+    fn sample(&self, lon: f64, lat: f64) -> Option<f64> {
+        let span_x = self.east - self.west;
+        let span_y = self.north - self.south;
+        if span_x <= 0.0 || span_y <= 0.0 {
+            return None;
+        }
+        let fx = (lon - self.west) / span_x * self.width as f64 - 0.5;
+        let fy = (self.north - lat) / span_y * self.height as f64 - 0.5;
+        let x0 = fx.floor() as i32;
+        let y0 = fy.floor() as i32;
+        let tx = fx - x0 as f64;
+        let ty = fy - y0 as f64;
+        let z00 = self.elev(x0, y0)?;
+        let z10 = self.elev(x0 + 1, y0).unwrap_or(z00);
+        let z01 = self.elev(x0, y0 + 1).unwrap_or(z00);
+        let z11 = self.elev(x0 + 1, y0 + 1).unwrap_or(z10);
+        Some(z00 * (1.0 - tx) * (1.0 - ty) + z10 * tx * (1.0 - ty) + z01 * (1.0 - tx) * ty + z11 * tx * ty)
     }
 }
 
@@ -556,6 +624,100 @@ pub fn slope_zonal(cache_root: &Path, request: &TerrainSlopeZonalRequest) -> Res
     })
 }
 
+fn destination(lon: f64, lat: f64, azimuth_deg: f64, distance_m: f64) -> (f64, f64) {
+    let lat1 = lat.to_radians();
+    let lon1 = lon.to_radians();
+    let brng = azimuth_deg.to_radians();
+    let ang = distance_m / EARTH_RADIUS_M;
+    let lat2 = (lat1.sin() * ang.cos() + lat1.cos() * ang.sin() * brng.cos()).asin();
+    let lon2 = lon1
+        + (brng.sin() * ang.sin() * lat1.cos())
+            .atan2(ang.cos() - lat1.sin() * lat2.sin());
+    (lon2.to_degrees(), lat2.to_degrees())
+}
+
+fn horizon_from_grid(
+    elev: &ElevationGrid,
+    longitude: f64,
+    latitude: f64,
+    eye_height_m: f64,
+    radius_m: f64,
+    azimuth_step_deg: f64,
+) -> Vec<HorizonSample> {
+    let observer_z = elev.sample(longitude, latitude).unwrap_or(0.0) + eye_height_m;
+    let pixel_m = ((elev.east - elev.west) / elev.width as f64)
+        .abs()
+        .to_radians()
+        * EARTH_RADIUS_M
+        * latitude.to_radians().cos().abs();
+    let step_m = pixel_m.max(50.0).min(250.0);
+    let mut samples = Vec::new();
+    let mut az = 0.0;
+    while az < 360.0 - 1e-9 {
+        let mut max_el = 0.0_f64;
+        let mut dist = step_m.max(50.0);
+        while dist <= radius_m {
+            let (lon, lat) = destination(longitude, latitude, az, dist);
+            if let Some(z) = elev.sample(lon, lat) {
+                let el = ((z - observer_z) / dist).atan().to_degrees();
+                if el > max_el {
+                    max_el = el;
+                }
+            }
+            dist += step_m;
+        }
+        samples.push(HorizonSample {
+            azimuth: az,
+            elevation_degrees: max_el,
+        });
+        az += azimuth_step_deg;
+    }
+    samples
+}
+
+/// Max terrain elevation angle vs azimuth from the site centre (far-field only).
+pub fn horizon_profile(cache_root: &Path, request: &TerrainHorizonRequest) -> Result<TerrainHorizonResult> {
+    if !request.longitude.is_finite() || !request.latitude.is_finite() {
+        return Err(Error::Invalid("horizon profile needs a finite longitude and latitude".into()));
+    }
+    let radius_m = request.radius_m.clamp(1_000.0, MAX_HORIZON_RADIUS_M);
+    let azimuth_step = request.azimuth_step_degrees.clamp(1.0, 15.0);
+    let eye_height_m = request.eye_height_m.clamp(0.0, 50.0);
+    let dlat = (radius_m / EARTH_RADIUS_M).to_degrees();
+    let cos_lat = request.latitude.to_radians().cos().abs().max(0.2);
+    let dlon = dlat / cos_lat;
+    let bounds = TerrainBounds {
+        min_lon: request.longitude - dlon,
+        min_lat: request.latitude - dlat,
+        max_lon: request.longitude + dlon,
+        max_lat: request.latitude + dlat,
+    };
+    let elev = build_elevation_grid(cache_root, &bounds, request.max_tiles)?;
+    let observer = elev.sample(request.longitude, request.latitude);
+    let samples = horizon_from_grid(
+        &elev,
+        request.longitude,
+        request.latitude,
+        eye_height_m,
+        radius_m,
+        azimuth_step,
+    );
+    if samples.is_empty() {
+        return Err(Error::NoData(
+            "No horizon samples. Check network access to AWS Terrarium tiles.".into(),
+        ));
+    }
+    Ok(TerrainHorizonResult {
+        samples,
+        observer_elevation_m: observer,
+        radius_m,
+        method: format!(
+            "terrarium-z{}-horizon; radius={radius_m:.0} m; eye={eye_height_m:.1} m AGL; far-field terrain only (not trees or buildings)",
+            elev.zoom
+        ),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -608,5 +770,52 @@ mod tests {
         let ring = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]];
         assert!(point_in_ring(0.5, 0.5, &ring));
         assert!(!point_in_ring(1.5, 0.5, &ring));
+    }
+
+    #[test]
+    fn east_peak_raises_eastern_horizon() {
+        let w = 64u32;
+        let h = 64u32;
+        let mut data = vec![100.0; (w * h) as usize];
+        for row in 30..35 {
+            for col in 46..51 {
+                data[(row * w + col) as usize] = 1_100.0;
+            }
+        }
+        let elev = ElevationGrid {
+            width: w,
+            height: h,
+            data,
+            west: 0.0,
+            east: 0.2,
+            south: 0.0,
+            north: 0.2,
+            zoom: 10,
+        };
+        let samples = horizon_from_grid(&elev, 0.1, 0.1, 2.0, 8_000.0, 10.0);
+        let east = samples
+            .iter()
+            .min_by(|a, b| {
+                (a.azimuth - 90.0)
+                    .abs()
+                    .partial_cmp(&(b.azimuth - 90.0).abs())
+                    .unwrap()
+            })
+            .unwrap();
+        let west = samples
+            .iter()
+            .min_by(|a, b| {
+                (a.azimuth - 270.0)
+                    .abs()
+                    .partial_cmp(&(b.azimuth - 270.0).abs())
+                    .unwrap()
+            })
+            .unwrap();
+        assert!(
+            east.elevation_degrees > west.elevation_degrees + 2.0,
+            "east={} west={}",
+            east.elevation_degrees,
+            west.elevation_degrees
+        );
     }
 }

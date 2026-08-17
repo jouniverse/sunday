@@ -80,6 +80,10 @@ const report: SiteReport = {
         month: index + 1,
         value: 120 + index * 8,
       })),
+      monthlyDni: Array.from({ length: 12 }, (_, index) => ({
+        month: index + 1,
+        value: 160 + index * 10,
+      })),
     },
     {
       provider: "nasa_power",
@@ -104,6 +108,10 @@ const report: SiteReport = {
       monthlyAirTempC: Array.from({ length: 12 }, (_, index) => ({
         month: index + 1,
         value: 10 + index,
+      })),
+      monthlyCloudPct: Array.from({ length: 12 }, (_, index) => ({
+        month: index + 1,
+        value: 30 + index,
       })),
     },
   ],
@@ -244,6 +252,8 @@ describe("report export", () => {
     expect(html).toContain("Site location");
     expect(html).toContain("World_Imagery/MapServer/export");
     expect(html).toContain("Monthly irradiation");
+    expect(html).toContain("Monthly direct normal irradiation");
+    expect(html).toContain("Monthly cloud amount (NASA POWER)");
   });
 
   it("escapes untrusted text rather than injecting it", () => {

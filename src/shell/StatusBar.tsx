@@ -120,7 +120,11 @@ function engineLabel(engine: EngineStatus | null): string {
   if (!engine) return "Solar engine: unknown";
   switch (engine.state) {
     case "ready":
-      return engine.pvlibVersion ? `pvlib ${engine.pvlibVersion}` : "Solar engine ready";
+      return engine.pvlibVersion
+        ? engine.pysamVersion
+          ? `pvlib ${engine.pvlibVersion} · PySAM ${engine.pysamVersion}`
+          : `pvlib ${engine.pvlibVersion}`
+        : "Solar engine ready";
     case "starting":
       return "Solar engine starting";
     case "unavailable":
@@ -133,7 +137,10 @@ function engineLabel(engine: EngineStatus | null): string {
 function engineTitle(engine: EngineStatus | null): string {
   if (!engine) return "The solar engine status is unknown.";
   if (engine.state === "ready") {
-    return `pvlib-backed modelling is available at ${engine.baseUrl}.`;
+    const pysam = engine.pysamVersion
+      ? ` PySAM ${engine.pysamVersion} (CSP ${engine.cspAvailable ? "available" : "unavailable"}).`
+      : " PySAM is not installed — CSP yield is a labelled reduced-capability state.";
+    return `pvlib-backed modelling is available at ${engine.baseUrl}.${pysam}`;
   }
   return (
     (engine.detail ?? "The solar engine is not running.") +

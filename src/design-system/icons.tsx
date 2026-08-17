@@ -389,3 +389,36 @@ export const ResearchIcon = (props: IconProps) => (
     <path d="M1032.12,863.26c-67.76.35-121.61,42.19-139.37,105.18-6.75,23.93-32.17,36.67-54.32,31.87-22.98-4.99-42.53-28.63-36.37-54.07,25-103.27,116.45-173.95,221.93-176.92,28.27-.8,50.42,15.19,53.36,42.94,2.53,23.77-15.89,50.86-45.23,51.01Z" />
   </Mark>
 );
+
+/**
+ * CSP rail mark from notes/ui-design/icon-design/sunday-icons/csp.svg.
+ * Stroke width 110 on a 2048 canvas — thicker than the first draft so 16px chrome reads.
+ */
+export const CspIcon = ({ size = 16, ...rest }: IconProps) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 2048 2048"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={110}
+    strokeMiterlimit={10}
+    aria-hidden="true"
+    focusable="false"
+    {...rest}
+  >
+    <line x1="215.81" y1="1265.33" x2="562.7" y2="923.44" />
+    <line x1="1258.04" y1="1848.63" x2="1383.92" y2="682.84" />
+    <line x1="1834.11" y1="1841.73" x2="1710.35" y2="680.67" />
+    <line x1="470.22" y1="1877.03" x2="466.93" y2="1420.47" />
+    <line x1="548.72" y1="1878.15" x2="548.7" y2="1563.3" />
+    <line x1="635.6" y1="1677.74" x2="982.33" y2="1337.06" />
+    <line x1="1354.49" y1="687.01" x2="1740.2" y2="685.72" />
+    <line x1="1327.07" y1="179.34" x2="1769.63" y2="175.98" />
+    <line x1="1711.91" y1="694.85" x2="1714.87" y2="159.71" />
+    <line x1="1382.44" y1="706.37" x2="1381.82" y2="168.58" />
+    <line x1="214.65" y1="1188.98" x2="712.36" y2="1679.5" />
+    <line x1="485.46" y1="922.78" x2="978.73" y2="1409.9" />
+    <line x1="199.73" y1="1853.18" x2="1907.54" y2="1853.14" />
+  </svg>
+);

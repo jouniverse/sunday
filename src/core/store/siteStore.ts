@@ -15,11 +15,29 @@ import {
   isSimpleRing,
   ringCentroid,
 } from "@/domain/geometry";
+import type { CspParameters } from "@/domain/csp/types";
 import type { MountType } from "@/domain/packing/priors";
-import type { Nudge } from "@/domain/siting/nudges";
+import type { Nudge, TechnologyProfile } from "@/domain/siting/nudges";
 import type { ZonalStats } from "../platform";
 
 export type SiteKind = "point" | "area" | "rooftop";
+
+/** Plant family for Design routing — independent of screening technology chips. */
+export type SystemFamily = "pv-greenfield" | "pv-rooftop" | "csp";
+
+export function systemFamilyOf(site: Pick<Site, "kind" | "systemFamily">): SystemFamily {
+  if (site.systemFamily) return site.systemFamily;
+  if (site.kind === "rooftop") return "pv-rooftop";
+  return "pv-greenfield";
+}
+
+/** Screening chip — independent of Design-view systemFamily. */
+export function screeningTechnologyOf(
+  site: Pick<Site, "kind" | "screeningTechnology">,
+): TechnologyProfile {
+  if (site.screeningTechnology) return site.screeningTechnology;
+  return site.kind === "rooftop" ? "rooftop" : "pv_fixed";
+}
 
 export interface SiteResource {
   /** Annual global horizontal irradiation, kWh/m²/year. */
@@ -61,14 +79,21 @@ export interface SavedDesign {
   id: string;
   name: string;
   updatedAt: string;
-  kind: "greenfield" | "rooftop";
-  parameters: DesignParameters;
+  kind: "greenfield" | "rooftop" | "csp-tower" | "csp-trough";
+  /** PV parameters — omitted on CSP saves so they do not overwrite `site.design`. */
+  parameters?: DesignParameters;
+  cspParameters?: CspParameters;
   capacityKwDc?: number;
+  /** CSP gross rating, MWₑ. */
+  capacityMwe?: number;
   annualKwh?: number;
   /** Google Solar: how many preferred panels were taken. */
   googlePanelCount?: number;
   /** Google Solar: zero-based indices of inactive panels among the shown set. */
   inactivePanelIndices?: number[];
+  /** Rooftop packer orientation; Google layouts ignore this until insights are cleared. */
+  rooftopOrientation?: "portrait" | "landscape";
+  rooftopSetbackM?: number;
   notes?: string;
 }
 
@@ -76,6 +101,12 @@ export interface Site {
   id: string;
   name: string;
   kind: SiteKind;
+  /** Persisted Design-view family. Independent of screening technology. */
+  systemFamily?: SystemFamily;
+  /** Persisted Screening-section technology chip. Independent of systemFamily. */
+  screeningTechnology?: TechnologyProfile;
+  /** Working CSP parameters (mirrors the active CSP saved design when selected). */
+  cspDesign?: CspParameters;
   /** Boundary ring for an area or rooftop; null for a point. */
   ring: LngLat[] | null;
   /** Representative point: the marker for a point site, the centroid otherwise. */
@@ -103,6 +134,9 @@ interface SiteState {
   addAreaSite: (ring: LngLat[], name?: string, kind?: SiteKind) => string;
   updateSiteRing: (id: string, ring: LngLat[]) => void;
   setKind: (id: string, kind: SiteKind) => void;
+  setSystemFamily: (id: string, family: SystemFamily) => void;
+  setScreeningTechnology: (id: string, technology: TechnologyProfile) => void;
+  setCspDesign: (id: string, design: CspParameters) => void;
   renameSite: (id: string, name: string) => void;
   removeSite: (id: string) => void;
   selectSite: (id: string | null) => void;
@@ -201,6 +235,37 @@ export const useSiteStore = create<SiteState>((set, get) => ({
       sites: state.sites.map((site) => (site.id === id ? { ...site, kind } : site)),
     })),
 
+  setSystemFamily: (id, family) =>
+    set((state) => ({
+      sites: state.sites.map((site) => {
+        if (site.id !== id) return site;
+        let kind = site.kind;
+        if (family === "pv-rooftop") {
+          kind = "rooftop";
+        } else if (
+          (family === "pv-greenfield" || family === "csp") &&
+          site.kind === "rooftop" &&
+          site.ring &&
+          site.geometryValid
+        ) {
+          kind = "area";
+        }
+        return { ...site, systemFamily: family, kind };
+      }),
+    })),
+
+  setScreeningTechnology: (id, technology) =>
+    set((state) => ({
+      sites: state.sites.map((site) =>
+        site.id === id ? { ...site, screeningTechnology: technology } : site,
+      ),
+    })),
+
+  setCspDesign: (id, design) =>
+    set((state) => ({
+      sites: state.sites.map((site) => (site.id === id ? { ...site, cspDesign: design } : site)),
+    })),
+
   renameSite: (id, name) =>
     set((state) => ({
       sites: state.sites.map((site) => (site.id === id ? { ...site, name } : site)),
@@ -250,11 +315,13 @@ export const useSiteStore = create<SiteState>((set, get) => ({
         const index = designs.findIndex((entry) => entry.id === design.id);
         if (index >= 0) designs[index] = design;
         else designs.push(design);
+        const isCsp = design.kind === "csp-tower" || design.kind === "csp-trough";
         return {
           ...site,
           designs,
           activeDesignId: design.id,
-          design: design.parameters,
+          design: isCsp ? site.design : (design.parameters ?? site.design),
+          cspDesign: isCsp ? (design.cspParameters ?? site.cspDesign) : site.cspDesign,
         };
       }),
     })),
@@ -279,10 +346,12 @@ export const useSiteStore = create<SiteState>((set, get) => ({
         if (!designId) return { ...site, activeDesignId: null };
         const selected = (site.designs ?? []).find((entry) => entry.id === designId);
         if (!selected) return site;
+        const isCsp = selected.kind === "csp-tower" || selected.kind === "csp-trough";
         return {
           ...site,
           activeDesignId: designId,
-          design: selected.parameters,
+          design: isCsp ? site.design : (selected.parameters ?? site.design),
+          cspDesign: isCsp ? (selected.cspParameters ?? site.cspDesign) : site.cspDesign,
         };
       }),
     })),

@@ -12,6 +12,9 @@
 notes/
 freezer/
 
+# Images (extra images for the app)
+imgs/extra-imgs/
+
 # Environment variables
 .env
 .env.local

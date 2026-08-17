@@ -95,11 +95,15 @@ export interface ResourceReport {
   /** Specific yield for the provider's own reference system, kWh/kWp/year. */
   specificYieldKwhPerKwp?: number;
   monthlyGhi?: MonthlyValue[];
+  /** Monthly direct normal irradiation, kWh/m² per month. Google Solar does not provide this. */
+  monthlyDni?: MonthlyValue[];
   monthlyYield?: MonthlyValue[];
   /** Monthly optimal fixed-tilt angles (°), when the provider reports them. */
   monthlyOptimalTilt?: MonthlyValue[];
   /** Monthly mean air temperature near 2 m (°C). */
   monthlyAirTempC?: MonthlyValue[];
+  /** Monthly mean cloud amount (%). NASA POWER CLOUD_AMT only. */
+  monthlyCloudPct?: MonthlyValue[];
   /** Provenance, required. The UI renders it next to every figure. */
   source: string;
   dataset: string;

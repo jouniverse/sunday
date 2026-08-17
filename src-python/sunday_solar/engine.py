@@ -6,6 +6,8 @@ entry point can reuse it.
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 import pvlib
@@ -46,12 +48,38 @@ class EngineError(ValueError):
     """A request that pvlib cannot answer as asked."""
 
 
+_ISO_OFFSET = re.compile(r"^([+-])(\d{2}):?(\d{2})$")
+
+
+def zoneinfo_key(tz: str) -> str:
+    """Map a site timezone string to a ZoneInfo key pvlib Location accepts.
+
+    ISO offsets like `-08:00` are not IANA names — Location uses zoneinfo and
+    raises ZoneInfoNotFoundError. `Etc/GMT±N` uses POSIX-inverted signs
+    (Etc/GMT+8 is UTC−8).
+    """
+    name = (tz or "UTC").strip()
+    if name.upper() in {"UTC", "Z", "GMT"}:
+        return "UTC"
+    match = _ISO_OFFSET.match(name)
+    if match:
+        hours = int(match.group(2))
+        if match.group(1) == "-":
+            hours = -hours
+        if hours == 0:
+            return "UTC"
+        posix = -hours
+        sign = "+" if posix >= 0 else "-"
+        return f"Etc/GMT{sign}{abs(posix)}"
+    return name
+
+
 def location_of(site: Site) -> Location:
     return Location(
         latitude=site.latitude,
         longitude=site.longitude,
         altitude=site.altitude,
-        tz=site.timezone,
+        tz=zoneinfo_key(site.timezone),
     )
 
 
@@ -64,7 +92,7 @@ def build_weather(site: Site, source: WeatherSource) -> tuple[pd.DataFrame, str]
             f"{source.year}-01-01",
             f"{source.year}-12-31 23:59",
             freq=source.freq,
-            tz=site.timezone,
+            tz=zoneinfo_key(site.timezone),
         )
         weather = location.get_clearsky(times, model="ineichen")
         weather["temp_air"] = source.default_temp_air
@@ -76,7 +104,7 @@ def build_weather(site: Site, source: WeatherSource) -> tuple[pd.DataFrame, str]
     if len(source.times) != len(source.ghi):
         raise EngineError("times and ghi must have the same length")
 
-    index = pd.DatetimeIndex(pd.to_datetime(source.times, utc=True)).tz_convert(site.timezone)
+    index = pd.DatetimeIndex(pd.to_datetime(source.times, utc=True)).tz_convert(zoneinfo_key(site.timezone))
     weather = pd.DataFrame(index=index)
     weather["ghi"] = np.asarray(source.ghi, dtype=float)
 
@@ -344,7 +372,7 @@ def sun_path(request: SunPathRequest) -> SunPathResponse:
             f"{date} 00:00",
             f"{date} 23:59",
             freq=f"{request.step_minutes}min",
-            tz=site.timezone,
+            tz=zoneinfo_key(site.timezone),
         )
         position = location.get_solarposition(times)
 
@@ -393,7 +421,7 @@ def sun_path(request: SunPathRequest) -> SunPathResponse:
 def transpose(request: TransposeRequest) -> TransposeResponse:
     site = request.site
     location = location_of(site)
-    index = pd.DatetimeIndex(pd.to_datetime(request.times, utc=True)).tz_convert(site.timezone)
+    index = pd.DatetimeIndex(pd.to_datetime(request.times, utc=True)).tz_convert(zoneinfo_key(site.timezone))
     if len(index) != len(request.ghi):
         raise EngineError("times and ghi must have the same length")
 

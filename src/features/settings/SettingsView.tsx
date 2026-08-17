@@ -421,6 +421,16 @@ export function SettingsView() {
                 label: "pvlib version",
                 value: appInfo?.engine.pvlibVersion ?? "—",
               },
+              {
+                key: "pysam",
+                label: "PySAM version",
+                value: appInfo?.engine.pysamVersion ?? "not installed",
+              },
+              {
+                key: "csp",
+                label: "CSP physics",
+                value: appInfo?.engine.cspAvailable ? "available" : "unavailable",
+              },
             ]}
           />
           {appInfo?.engine.detail && <Callout tone="note">{appInfo.engine.detail}</Callout>}

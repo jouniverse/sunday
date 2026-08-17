@@ -121,6 +121,7 @@ interface MrcalcResponse {
  */
 export function climatologyFromMrcalc(monthly: MrcalcMonth[]): {
   monthlyGhi: MonthlyValue[];
+  monthlyDni: MonthlyValue[];
   ghiKwhM2Year: number;
   dniKwhM2Year: number | undefined;
   dhiKwhM2Year: number | undefined;
@@ -150,6 +151,7 @@ export function climatologyFromMrcalc(monthly: MrcalcMonth[]): {
   };
 
   const monthlyGhi: MonthlyValue[] = [];
+  const monthlyDni: MonthlyValue[] = [];
   let ghiKwhM2Year = 0;
   let dniYear = 0;
   let dhiYear = 0;
@@ -165,6 +167,7 @@ export function climatologyFromMrcalc(monthly: MrcalcMonth[]): {
     }
     const dni = meanForMonth(month, "Hb(n)_m");
     if (dni !== undefined) {
+      monthlyDni.push({ month, value: dni });
       dniYear += dni;
       hasDni = true;
     }
@@ -179,6 +182,7 @@ export function climatologyFromMrcalc(monthly: MrcalcMonth[]): {
 
   return {
     monthlyGhi,
+    monthlyDni,
     ghiKwhM2Year,
     dniKwhM2Year: hasDni ? dniYear : undefined,
     dhiKwhM2Year: hasDhi ? dhiYear : undefined,
@@ -389,6 +393,7 @@ export async function fetchPvgisRadiation(options: {
     dhiKwhM2Year: climate.dhiKwhM2Year,
     meanAirTempC: climate.meanAirTempC,
     monthlyGhi: climate.monthlyGhi,
+    monthlyDni: climate.monthlyDni.length > 0 ? climate.monthlyDni : undefined,
     source: provider.attribution,
     dataset,
     fidelity: "modelled",

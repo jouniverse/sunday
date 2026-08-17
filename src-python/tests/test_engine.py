@@ -20,6 +20,7 @@ from sunday_solar.engine import (
     run_model_chain,
     sun_path,
     transpose,
+    zoneinfo_key,
 )
 from sunday_solar.models import (
     ArraySpec,
@@ -222,6 +223,23 @@ def test_polar_summer_has_no_night() -> None:
         SunPathRequest(site=tromso, dates=["2023-06-21"], step_minutes=30)
     )
     assert result.traces[0].daylight_hours > 23
+
+
+def test_zoneinfo_key_maps_iso_offsets_to_etc_gmt() -> None:
+    assert zoneinfo_key("-08:00") == "Etc/GMT+8"
+    assert zoneinfo_key("+09:00") == "Etc/GMT-9"
+    assert zoneinfo_key("UTC") == "UTC"
+    assert zoneinfo_key("Etc/GMT+8") == "Etc/GMT+8"
+
+
+def test_sun_path_accepts_iso_offset_timezone() -> None:
+    """pvlib Location rejects `-08:00`; the engine must map it to Etc/GMT+8."""
+    site = Site(latitude=35.05, longitude=-118.17, timezone="-08:00")
+    result = sun_path(SunPathRequest(site=site, dates=["2023-06-21"], step_minutes=60))
+    assert result.traces[0].max_elevation > 70
+    hours = {int(point.time[11:13]) for point in result.traces[0].points}
+    assert 0 in hours
+    assert 12 in hours
 
 
 # --------------------------------------------------------------------------

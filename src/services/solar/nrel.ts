@@ -109,6 +109,7 @@ export async function fetchNrelResource(options: {
     dniKwhM2Year: typeof dniDaily === "number" ? dniDaily * 365.25 : undefined,
     poaKwhM2Year: typeof tiltDaily === "number" ? tiltDaily * 365.25 : undefined,
     monthlyGhi: monthlyFromDailyMeans(response.outputs?.avg_ghi?.monthly),
+    monthlyDni: monthlyFromDailyMeans(response.outputs?.avg_dni?.monthly),
     source: provider.attribution,
     dataset: provider.dataset,
     fidelity: "measured",

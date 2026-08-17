@@ -6,7 +6,8 @@
  * averaged away. A single confident number would be easier to read and less true.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { platform } from "@/core/platform";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useResourceCacheStore } from "@/core/store/resourceCacheStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
@@ -34,8 +35,13 @@ import {
   writeExport,
 } from "@/services/export";
 import { formatCoordinates, formatNumber } from "@/domain/units";
+import { solarTimezoneFromLongitude } from "@/domain/siting/horizon";
+import type { HorizonProfile } from "@/domain/siting/horizon";
+import { EngineUnavailable, fetchSunPath } from "@/services/engine/client";
+import type { SunPathResult } from "@/services/engine/client";
 import { MonthlyChart } from "./MonthlyChart";
 import { MonthlySeriesChart } from "./MonthlySeriesChart";
+import { SunPathChart } from "./SunPathChart";
 import "./report.css";
 
 const ALL_PROVIDERS: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
@@ -68,11 +74,70 @@ export function ReportView() {
 
 function SiteReportPanel({ site }: { site: Site }) {
   const notify = useUiStore((state) => state.notify);
+  const startBusy = useUiStore((state) => state.startBusy);
+  const endBusy = useUiStore((state) => state.endBusy);
   const projectName = useProjectStore((state) => state.name);
   const useKey = useSettingsStore((state) => state.useKey);
 
   const [report, setReport] = useState<SiteReport | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [sunPath, setSunPath] = useState<SunPathResult | null>(null);
+  const [sunPathError, setSunPathError] = useState<string | null>(null);
+  const [horizon, setHorizon] = useState<HorizonProfile | null>(null);
+
+  useEffect(() => {
+    if (!report) return;
+    let cancelled = false;
+    const latitude = site.centre[1];
+    const longitude = site.centre[0];
+    void fetchSunPath({
+      site: {
+        latitude,
+        longitude,
+        timezone: solarTimezoneFromLongitude(longitude),
+      },
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setSunPath(result);
+          setSunPathError(null);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSunPath(null);
+        const detail =
+          error instanceof EngineUnavailable
+            ? `${error.message} Start the solar engine to draw the sun-path diagram.`
+            : error instanceof Error
+              ? error.message
+              : String(error);
+        setSunPathError(detail);
+      });
+    startBusy("horizon", "Loading terrain horizon");
+    void platform()
+      .terrain.horizonProfile({ longitude, latitude })
+      .then((result) => {
+        if (!cancelled) {
+          setHorizon({
+            samples: result.samples,
+            observerElevationM: result.observerElevationM,
+            radiusM: result.radiusM,
+            method: result.method,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setHorizon(null);
+      })
+      .finally(() => {
+        if (!cancelled) endBusy("horizon");
+      });
+    return () => {
+      cancelled = true;
+      endBusy("horizon");
+    };
+  }, [report, site.centre, startBusy, endBusy]);
 
   async function generate(forceRefresh = false) {
     setProgress({ done: 0, total: ALL_PROVIDERS.length });
@@ -131,7 +196,9 @@ function SiteReportPanel({ site }: { site: Site }) {
     if (!report) return;
     const meta = defaultMeta(projectName);
     const contents =
-      format === "csv" ? exportReportCsv(report, meta) : exportReportHtml(report, meta, site);
+      format === "csv"
+        ? exportReportCsv(report, meta)
+        : exportReportHtml(report, meta, site, { sunPath, horizon });
     const path = await writeExport(`${site.name}-report`, format, contents);
     if (path) notify({ tone: "success", message: `Exported to ${path}` });
   }
@@ -354,6 +421,20 @@ function SiteReportPanel({ site }: { site: Site }) {
 
             <MonthlyChart reports={report.reports} />
             <MonthlySeriesChart
+              title="Monthly direct normal irradiation"
+              ariaLabel="Monthly direct normal irradiation by source"
+              unitLabel="Monthly direct normal irradiation, kWh/m² per month."
+              reports={report.reports}
+              select={(entry) => entry.monthlyDni}
+              valueDigits={0}
+            />
+            <SunPathChart
+              sunPath={sunPath}
+              latitude={site.centre[1]}
+              horizon={horizon}
+              engineError={sunPathError}
+            />
+            <MonthlySeriesChart
               title="Monthly optimal tilt (NASA POWER)"
               ariaLabel="Monthly optimal fixed-tilt angle from NASA POWER"
               unitLabel="Monthly optimal fixed-tilt angle, degrees from horizontal."
@@ -390,6 +471,14 @@ function SiteReportPanel({ site }: { site: Site }) {
                     ]
                   : undefined
               }
+            />
+            <MonthlySeriesChart
+              title="Monthly cloud amount (NASA POWER)"
+              ariaLabel="Monthly mean cloud amount from NASA POWER"
+              unitLabel="Monthly mean cloud amount, percent. MERRA-2; qualitative check — all-sky GHI already includes cloudiness."
+              reports={report.reports}
+              select={(entry) => entry.monthlyCloudPct}
+              valueDigits={0}
             />
 
             <div className="card">

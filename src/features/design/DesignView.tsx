@@ -10,8 +10,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useProjectLibraryStore } from "@/core/store/projectLibraryStore";
 import { useProjectStore } from "@/core/store/projectStore";
 import { useSettingsStore } from "@/core/store/settingsStore";
-import type { Site } from "@/core/store/siteStore";
-import { newDesignId, useSiteStore } from "@/core/store/siteStore";
+import type { Site, DesignParameters } from "@/core/store/siteStore";
+import { newDesignId, systemFamilyOf, useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { Button, Field, IconButton, Input, Select, Stepper } from "@/design-system/controls";
 import {
@@ -52,6 +52,7 @@ import { SidePanel } from "@/shell/SidePanel";
 import { satelliteSnapshot } from "@/core/map/satelliteExport";
 import { ArrayMapPreview, type ArrayMapPreviewHandle } from "./ArrayMapPreview";
 import { buildFullSchematicSvg, computeArrayStrips } from "./ArrayPreview";
+import { CspDesignView } from "./CspDesignView";
 import { DesignExportMenu, type DesignExportFormat } from "./DesignExportMenu";
 import { RooftopDesignView } from "./RooftopDesignView";
 import "./design.css";
@@ -61,6 +62,17 @@ const MOUNTS: Array<{ value: MountType; label: string }> = [
   { value: "single_axis", label: "Single-axis tracker" },
   { value: "dual_axis", label: "Dual-axis tracker" },
 ];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function activeGreenfieldParameters(site: Site): DesignParameters | undefined {
+  const active = site.designs?.find(
+    (entry) => entry.id === site.activeDesignId && entry.kind === "greenfield",
+  );
+  return active?.parameters ?? site.design;
+}
 
 export function DesignView() {
   const sites = useSiteStore((state) => state.sites);
@@ -75,7 +87,7 @@ export function DesignView() {
           <EmptyState
             icon={<PolygonIcon size={28} />}
             title="Select a site"
-            body="Pick a site from the map, then open Design. Area sites use the greenfield packing engine; rooftop sites use building insights and module packing."
+            body="Pick a site from the map, then open Design. Area sites use the greenfield packing engine or CSP design; rooftop sites use building insights and module packing."
             action={<Button onClick={() => setView("map")}>Go to the map</Button>}
           />
         </div>
@@ -83,7 +95,27 @@ export function DesignView() {
     );
   }
 
-  if (site.kind === "rooftop") {
+  const family = systemFamilyOf(site);
+
+  if (family === "csp") {
+    if (!site.ring || !site.geometryValid) {
+      return (
+        <div className="content-view">
+          <div className="content-view__inner">
+            <EmptyState
+              icon={<PolygonIcon size={28} />}
+              title="Select a site with a boundary"
+              body="A CSP design needs an area to place the field in. Draw a boundary on the map, then choose CSP under System in the inspector."
+              action={<Button onClick={() => setView("map")}>Go to the map</Button>}
+            />
+          </div>
+        </div>
+      );
+    }
+    return <CspDesignView key={site.id} site={site} />;
+  }
+
+  if (family === "pv-rooftop" || site.kind === "rooftop") {
     return <RooftopDesignView key={site.id} site={site} />;
   }
 
@@ -94,7 +126,7 @@ export function DesignView() {
           <EmptyState
             icon={<PolygonIcon size={28} />}
             title="Select a site with a boundary"
-            body="A greenfield design needs an area to place modules in. Draw a boundary on the map, or mark the site as a rooftop and query Google Solar."
+            body="A greenfield design needs an area to place modules in. Draw a boundary on the map, or choose Rooftop PV under System in the inspector."
             action={<Button onClick={() => setView("map")}>Go to the map</Button>}
           />
         </div>
@@ -121,8 +153,9 @@ function DesignWorkspace({ site }: { site: Site }) {
   const projectName = useProjectStore((state) => state.name);
 
   const latitude = site.centre[1];
-  const [moduleId, setModuleId] = useState(site.design?.moduleId ?? "topcon-620");
-  const [mount, setMount] = useState<MountType>(site.design?.mount ?? "fixed_tilt");
+  const saved = activeGreenfieldParameters(site);
+  const [moduleId, setModuleId] = useState(saved?.moduleId ?? "topcon-620");
+  const [mount, setMount] = useState<MountType>(saved?.mount ?? "fixed_tilt");
   /** schematic | blend (satellite + schematic) | satellite-only */
   const [previewMode, setPreviewMode] = useState<"schematic" | "blend" | "satellite">("schematic");
   const [summaryCollapsed, setSummaryCollapsed] = useState(false);
@@ -143,21 +176,19 @@ function DesignWorkspace({ site }: { site: Site }) {
   // Prefer a measured/modelled optimal tilt from the site report (NASA POWER
   // consensus) over the latitude rule-of-thumb when available.
   const resourceTilt = site.resource?.optimalTiltDegrees;
-  const [tilt, setTilt] = useState(
-    site.design?.tiltDegrees ?? resourceTilt ?? envelope.tilt.suggested,
-  );
-  const [gcr, setGcr] = useState(site.design?.groundCoverageRatio ?? envelope.gcr.suggested);
+  const [tilt, setTilt] = useState(saved?.tiltDegrees ?? resourceTilt ?? envelope.tilt.suggested);
+  const [gcr, setGcr] = useState(saved?.groundCoverageRatio ?? envelope.gcr.suggested);
   const [azimuth, setAzimuth] = useState(
-    site.design?.azimuthDegrees ?? equatorFacingAzimuth(latitude),
+    saved?.azimuthDegrees ?? equatorFacingAzimuth(latitude),
   );
-  const [bosFraction, setBosFraction] = useState(site.design?.balanceOfSystemFraction ?? 0.1);
+  const [bosFraction, setBosFraction] = useState(saved?.balanceOfSystemFraction ?? 0.1);
 
-  // A new module or mount changes what is feasible, so re-anchor to the new
-  // envelope rather than leaving the sliders somewhere now-invalid.
+  // Keep sliders inside a new module/mount envelope. Do not reset to suggested
+  // values — that wiped saved designs after load (moduleId change → new envelope).
   useEffect(() => {
-    setTilt(resourceTilt ?? envelope.tilt.suggested);
-    setGcr(envelope.gcr.suggested);
-  }, [envelope, resourceTilt]);
+    setTilt((current) => clamp(current, envelope.tilt.min, envelope.tilt.max));
+    setGcr((current) => clamp(current, envelope.gcr.min, envelope.gcr.max));
+  }, [envelope]);
 
   const packing = useMemo(
     () =>
@@ -300,7 +331,7 @@ function DesignWorkspace({ site }: { site: Site }) {
     }
   }
 
-  const savedDesigns = site.designs ?? [];
+  const savedDesigns = (site.designs ?? []).filter((entry) => entry.kind === "greenfield");
   const activeDesign = savedDesigns.find((entry) => entry.id === site.activeDesignId) ?? null;
 
   function designParameters() {
@@ -349,7 +380,7 @@ function DesignWorkspace({ site }: { site: Site }) {
       return;
     }
     const selected = savedDesigns.find((entry) => entry.id === designId);
-    if (!selected) return;
+    if (!selected?.parameters) return;
     selectDesign(site.id, designId);
     setDesignNameDraft(selected.name);
     setModuleId(selected.parameters.moduleId);

@@ -27,6 +27,7 @@ import type {
   RasterInfo,
   RasterSource,
   SettingsView,
+  TerrainHorizonResult,
   TerrainSlopeZonalResult,
   VectorFeature,
   ViewportPreview,
@@ -166,6 +167,13 @@ export const tauriPlatform: Platform = {
     slopeZonal: (rings) =>
       call<TerrainSlopeZonalResult>("terrain_slope_zonal", {
         request: { rings },
+      }),
+    horizonProfile: (point) =>
+      call<TerrainHorizonResult>("terrain_horizon_profile", {
+        request: {
+          longitude: point.longitude,
+          latitude: point.latitude,
+        },
       }),
   },
 

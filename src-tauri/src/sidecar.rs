@@ -42,6 +42,9 @@ pub struct EngineStatus {
     pub detail: Option<String>,
     /// pvlib version reported by the engine, for provenance in reports.
     pub pvlib_version: Option<String>,
+    /// NREL-PySAM version when the optional CSP extra is installed.
+    pub pysam_version: Option<String>,
+    pub csp_available: bool,
     /// True when the engine was started by an external process (dev workflow).
     pub external: bool,
 }
@@ -74,6 +77,8 @@ impl Sidecar {
                     token: None,
                     detail: None,
                     pvlib_version: None,
+                    pysam_version: None,
+                    csp_available: false,
                     external: false,
                 },
             }),
@@ -85,30 +90,45 @@ impl Sidecar {
         let base_url = format!("http://{HOST}:{}", inner.port);
         let token = inner.status.token.clone();
 
-        // `status` used to return a stale Stopped cache forever when the user had
-        // already started the engine externally (`npm run engine:dev`). Probe
-        // health whenever we are not supervising a live child we know is Ready.
-        let should_probe = match inner.status.state {
-            EngineState::Ready if inner.child.is_some() => false,
-            _ => true,
-        };
-
-        if should_probe {
-            if let Some(health) = probe(&base_url, token.as_deref()) {
-                inner.status = EngineStatus {
-                    state: EngineState::Ready,
-                    base_url,
-                    token,
-                    detail: None,
-                    pvlib_version: health.pvlib_version,
-                    external: inner.child.is_none(),
-                };
-            } else if inner.status.state == EngineState::Ready && inner.child.is_none() {
-                // External engine went away.
+        // A Child handle is not proof the HTTP server is up — SSC SIGSEGV leaves
+        // `child: Some` while uvicorn is already dead. Reap first, then always probe.
+        if let Some(child) = inner.child.as_mut() {
+            if let Ok(Some(exit)) = child.try_wait() {
+                inner.child = None;
                 inner.status.state = EngineState::Stopped;
+                inner.status.token = None;
                 inner.status.pvlib_version = None;
+                inner.status.pysam_version = None;
+                inner.status.csp_available = false;
                 inner.status.external = false;
-                inner.status.detail = None;
+                inner.status.detail = Some(format!(
+                    "solar engine process exited ({exit}). Start it again from Settings or `npm run engine:dev`."
+                ));
+            }
+        }
+
+        if let Some(health) = probe(&base_url, token.as_deref()) {
+            inner.status = EngineStatus {
+                state: EngineState::Ready,
+                base_url,
+                token: inner.status.token.clone(),
+                detail: None,
+                pvlib_version: health.pvlib_version,
+                pysam_version: health.pysam_version,
+                csp_available: health.csp_available,
+                external: inner.child.is_none(),
+            };
+        } else if inner.status.state == EngineState::Ready && inner.child.is_none() {
+            inner.status.state = EngineState::Stopped;
+            inner.status.pvlib_version = None;
+            inner.status.pysam_version = None;
+            inner.status.csp_available = false;
+            inner.status.external = false;
+            if inner.status.detail.is_none() {
+                inner.status.detail = Some(
+                    "Solar engine is not answering /health. Start it with `npm run engine:dev` or from Settings."
+                        .into(),
+                );
             }
         }
 
@@ -136,6 +156,8 @@ impl Sidecar {
                 token: None,
                 detail: None,
                 pvlib_version: health.pvlib_version,
+                pysam_version: health.pysam_version,
+                csp_available: health.csp_available,
                 external: true,
             };
             return inner.status.clone();
@@ -151,6 +173,8 @@ impl Sidecar {
                     token: Some(token.clone()),
                     detail: None,
                     pvlib_version: None,
+                    pysam_version: None,
+                    csp_available: false,
                     external: false,
                 };
 
@@ -160,6 +184,8 @@ impl Sidecar {
                     if let Some(health) = probe(&base_url, Some(&token)) {
                         inner.status.state = EngineState::Ready;
                         inner.status.pvlib_version = health.pvlib_version;
+                        inner.status.pysam_version = health.pysam_version;
+                        inner.status.csp_available = health.csp_available;
                         return inner.status.clone();
                     }
                     if let Some(child) = inner.child.as_mut() {
@@ -186,6 +212,8 @@ impl Sidecar {
                     token: None,
                     detail: Some(error.to_string()),
                     pvlib_version: None,
+                    pysam_version: None,
+                    csp_available: false,
                     external: false,
                 };
                 inner.status.clone()
@@ -266,6 +294,10 @@ fn spawn(command: &EngineCommand, port: u16, token: &str) -> Result<Child> {
 struct Health {
     #[serde(default)]
     pvlib_version: Option<String>,
+    #[serde(default)]
+    pysam_version: Option<String>,
+    #[serde(default)]
+    csp_available: bool,
 }
 
 fn probe(base_url: &str, token: Option<&str>) -> Option<Health> {

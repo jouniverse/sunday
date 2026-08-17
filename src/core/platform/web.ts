@@ -54,12 +54,17 @@ function writeLibraryIndex(index: LibraryIndex): void {
 interface HealthPayload {
   pvlib_version?: string;
   pvlibVersion?: string;
+  pysam_version?: string | null;
+  pysamVersion?: string | null;
+  csp_available?: boolean;
+  cspAvailable?: boolean;
 }
 
 async function probeEngine(): Promise<EngineStatus> {
   try {
     const response = await fetch(`${ENGINE_BASE}/health`, {
       method: "GET",
+      cache: "no-store",
       signal: AbortSignal.timeout(800),
     });
     if (!response.ok) {
@@ -70,6 +75,8 @@ async function probeEngine(): Promise<EngineStatus> {
         detail:
           "Solar engine is not answering /health. Start it with `npm run engine:dev` or from Settings.",
         pvlibVersion: null,
+        pysamVersion: null,
+        cspAvailable: false,
         external: true,
       };
     }
@@ -80,6 +87,8 @@ async function probeEngine(): Promise<EngineStatus> {
       token: null,
       detail: "Local pvlib sidecar reached via the Vite /solar-engine proxy.",
       pvlibVersion: body.pvlibVersion ?? body.pvlib_version ?? null,
+      pysamVersion: body.pysamVersion ?? body.pysam_version ?? null,
+      cspAvailable: Boolean(body.cspAvailable ?? body.csp_available),
       external: true,
     };
   } catch {
@@ -90,6 +99,8 @@ async function probeEngine(): Promise<EngineStatus> {
       detail:
         "Could not reach the solar engine. Start it with `npm run engine:dev` in a terminal, then wait a few seconds.",
       pvlibVersion: null,
+      pysamVersion: null,
+      cspAvailable: false,
       external: true,
     };
   }
@@ -298,6 +309,9 @@ export const webPlatform: Platform = {
     async slopeZonal() {
       throw unavailable("Terrain slope sampling");
     },
+    async horizonProfile() {
+      throw unavailable("Terrain horizon profile");
+    },
   },
 
   landcover: {
@@ -367,6 +381,8 @@ export const webPlatform: Platform = {
         detail:
           "Browser dev cannot stop an external sidecar. Interrupt the `npm run engine:dev` terminal instead.",
         pvlibVersion: null,
+        pysamVersion: null,
+        cspAvailable: false,
         external: true,
       };
     },

@@ -21,6 +21,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "engine:dev": "cd src-python && python3 -m uvicorn sunday_solar.server:app --host 127.0.0.1 --port 8787",
+    "engine:csp": "cd src-python && pip install -e '.[csp]'",
     "data:rankings": "node scripts/data-pipeline/prepare-country-rankings.mjs",
     "data:gem": "node scripts/data-pipeline/import-gem.mjs",
     "data:priors": "node scripts/data-pipeline/extract-gmseus-priors.mjs",

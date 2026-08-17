@@ -9,8 +9,11 @@ import { satelliteImageUrlAt, satelliteSnapshot } from "@/core/map/satelliteExpo
 import { platform } from "@/core/platform";
 import type { LngLat } from "@/domain/geometry";
 import type { Site } from "@/core/store/siteStore";
+import type { HorizonProfile } from "@/domain/siting/horizon";
+import type { SunPathResult } from "../engine/client";
 import type { SiteReport } from "../solar/orchestrator";
 import { buildMonthlyChartSvg } from "./monthly-charts";
+import { buildSunPathChartSvg } from "./sun-path-chart";
 
 export type ExportFormat = "csv" | "json" | "geojson" | "html" | "zip";
 
@@ -198,6 +201,7 @@ export function exportReportHtml(
   report: SiteReport,
   meta: ExportMeta,
   site?: Site,
+  extras?: { sunPath?: SunPathResult | null; horizon?: HorizonProfile | null },
 ): string {
   const rows = reportToRows(report);
   const columns: Array<{ key: string; label: string }> = [
@@ -225,6 +229,12 @@ export function exportReportHtml(
     reports: report.reports,
     select: (entry) => entry.monthlyGhi,
   });
+  const dniChart = buildMonthlyChartSvg({
+    title: "Monthly direct normal irradiation",
+    unitLabel: "Monthly direct normal irradiation, kWh/m² per month.",
+    reports: report.reports,
+    select: (entry) => entry.monthlyDni,
+  });
   const tiltChart = buildMonthlyChartSvg({
     title: "Monthly optimal tilt (NASA POWER)",
     unitLabel: "Monthly optimal fixed-tilt angle, degrees from horizontal.",
@@ -247,6 +257,27 @@ export function exportReportHtml(
         ? [{ value: tempConsensus, label: "Annual mean", colour: "#422c00" }]
         : undefined,
   });
+  const cloudChart = buildMonthlyChartSvg({
+    title: "Monthly cloud amount (NASA POWER)",
+    unitLabel: "Monthly mean cloud amount, percent.",
+    reports: report.reports,
+    select: (entry) => entry.monthlyCloudPct,
+    valueDigits: 0,
+  });
+  const sunPathChart =
+    extras?.sunPath && site
+      ? buildSunPathChartSvg({
+          sunPath: extras.sunPath,
+          latitude: site.centre[1],
+          horizon: extras.horizon,
+        })
+      : extras?.sunPath
+        ? buildSunPathChartSvg({
+            sunPath: extras.sunPath,
+            latitude: report.latitude,
+            horizon: extras.horizon,
+          })
+        : null;
 
   return `<!doctype html>
 <html lang="en">
@@ -367,8 +398,11 @@ ${
 }
 
 ${ghiChart ?? ""}
+${dniChart ?? ""}
+${sunPathChart ?? ""}
 ${tiltChart ?? ""}
 ${tempChart ?? ""}
+${cloudChart ?? ""}
 
 <h2>Methods</h2>
 ${report.reports

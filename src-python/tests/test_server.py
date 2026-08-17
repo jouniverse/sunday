@@ -24,6 +24,66 @@ def test_health_reports_versions(client: TestClient) -> None:
     assert body["status"] == "ok"
     assert body["pvlib_version"]
     assert body["engine_version"]
+    assert "csp_available" in body
+    assert "pysam_version" in body
+    assert isinstance(body["csp_available"], bool)
+    assert "csp_tower_layout" in body
+    assert "csp_tower_plant" in body
+    assert "csp_trough_plant" in body
+
+
+def test_csp_tower_layout_unavailable_is_503(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sunday_solar.csp import CspUnavailable
+
+    def boom(_body: dict) -> dict:
+        raise CspUnavailable("PySAM is not installed.")
+
+    monkeypatch.setattr(server, "run_tower_layout", boom)
+    response = client.post(
+        "/csp/tower/layout",
+        json={
+            "latitude": 35.0,
+            "longitude": -3.0,
+            "h_tower": 150,
+            "q_design": 250,
+            "helio_width": 12.2,
+            "helio_height": 12.2,
+            "layout_method": "radial_stagger",
+        },
+    )
+    assert response.status_code == 503
+    body = response.json()
+    assert "PySAM" in body["detail"]
+    assert "nrel-pysam" in body["guidance"]
+
+
+def test_csp_plant_physics_failure_does_not_tell_you_to_reinstall_pysam(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sunday_solar.csp import CspUnavailable
+
+    def boom(_body: dict) -> dict:
+        raise CspUnavailable("Plant returned no usable annual energy (NaN or zero).")
+
+    monkeypatch.setattr(server, "run_tower_plant", boom)
+    response = client.post(
+        "/csp/tower/plant",
+        json={
+            "latitude": 35.0,
+            "longitude": -3.0,
+            "rated_mwe": 115,
+            "solar_multiple": 2.4,
+            "tes_hours": 10,
+            "cooling": "wet",
+        },
+    )
+    assert response.status_code == 503
+    body = response.json()
+    assert "annual energy" in body["detail"]
+    assert "nrel-pysam" not in body["guidance"]
+    assert "Try Estimate again" in body["guidance"]
 
 
 def test_model_chain_options_preflight(client: TestClient) -> None:
