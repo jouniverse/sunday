@@ -44,12 +44,12 @@ Automation **proposes**; you **dispose**. Envelopes show a feasible range, not a
 
 ## Requirements
 
-| Tool | Why |
-| --- | --- |
-| **Node.js ≥ 22** | Vite UI, tests, data scripts |
-| **Rust toolchain** | `tauri:dev` / `tauri:build` (native shell, rasters, SQLite, Terrarium) |
-| **Python 3.11+** | pvlib solar engine sidecar |
-| **GDAL ≥ 3.1** (optional) | Convert Solargis GeoTIFFs to COG; vector GPKG → GeoJSON on Install |
+| Tool                      | Why                                                                    |
+| ------------------------- | ---------------------------------------------------------------------- |
+| **Node.js ≥ 22**          | Vite UI, tests, data scripts                                           |
+| **Rust toolchain**        | `tauri:dev` / `tauri:build` (native shell, rasters, SQLite, Terrarium) |
+| **Python 3.11+**          | pvlib solar engine sidecar                                             |
+| **GDAL ≥ 3.1** (optional) | Convert Solargis GeoTIFFs to COG; vector GPKG → GeoJSON on Install     |
 
 Python packages: see [`src-python/requirements.txt`](src-python/requirements.txt). CSP plant runs also need `nrel-pysam` (`npm run engine:csp`).
 
@@ -116,13 +116,13 @@ Authoritative product plan: [`notes/plans/SUNDAY_PLAN_v1.md`](notes/plans/SUNDAY
 
 Most large layers are **not bundled**. In **Settings**, set a datasets folder and **Install** each row. Sunday copies or converts into app data. Details: [`scripts/data-pipeline/README.md`](scripts/data-pipeline/README.md).
 
-| Dataset | Typical input | Used for |
-| --- | --- | --- |
-| Global Solar Atlas GHI / DNI / PVOUT | `GHI.tif` / `DNI.tif` / `PVOUT.tif` (or `*_cog.tif`) | Project map resource layers; zonal samples |
-| GEM solar plants | CSV / JSONL (`Solar power plants.*`) | Plant points on the map; Insights aggregates |
-| TZ-SAM global PV footprints | GeoJSON / GPKG | Imagery-derived footprints (CC BY-NC; enable NC layers) |
-| GM-SEUS US arrays | GeoJSON / GPKG | US array polygons; packing priors |
-| WDPA protected areas | Shapefile or GeoJSON | Map overlay + screening intersect |
+| Dataset                              | Typical input                                        | Used for                                                |
+| ------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------- |
+| Global Solar Atlas GHI / DNI / PVOUT | `GHI.tif` / `DNI.tif` / `PVOUT.tif` (or `*_cog.tif`) | Project map resource layers; zonal samples              |
+| GEM solar plants                     | CSV / JSONL (`Solar power plants.*`)                 | Plant points on the map; Insights aggregates            |
+| TZ-SAM global PV footprints          | GeoJSON / GPKG                                       | Imagery-derived footprints (CC BY-NC; enable NC layers) |
+| GM-SEUS US arrays                    | GeoJSON / GPKG                                       | US array polygons; packing priors                       |
+| WDPA protected areas                 | Shapefile or GeoJSON                                 | Map overlay + screening intersect                       |
 
 **CLI still useful for prep** (source files often live under `notes/datasets/` during development; the app does not hard-code those paths):
 
@@ -145,16 +145,17 @@ Bundled Insights JSON (country rankings, OWID, IRENA, GEM country aggregates) is
 
 Configure keys in **Settings** (write-only; never shown again). Onboarding covers the same providers.
 
-| Provider | Key? | What it unlocks |
-| --- | --- | --- |
-| **PVGIS** | No | Global-ish climatology and PV yield (~5 km; weak at high latitudes) |
-| **NASA POWER** | No | Global climatology, tilt, temperature, cloud amount (~1° solar grid) |
-| **NREL / NLR** | Yes (free) | NSRDB / PVWatts for the Americas (`developer.nrel.gov` / `developer.nlr.gov`) |
-| **Google Solar** | Yes (metered) | Rooftop geometry, panel layouts, annual/monthly flux |
-| **MapTiler** | Yes (free tier) | Hillshade / 3D terrain **visuals** — not analytical slope |
-| **Ember** | Optional | Live country electricity stats in Insights |
-| **Springer Nature** | Optional | Insights → Research literature |
-| **Zenodo** | Optional | Insights → Research repository search |
+| Provider             | Key?            | What it unlocks                                                               |
+| -------------------- | --------------- | ----------------------------------------------------------------------------- |
+| **PVGIS**            | No              | Global-ish climatology and PV yield (~5 km; weak at high latitudes)           |
+| **NASA POWER**       | No              | Global climatology, tilt, temperature, cloud amount (~1° solar grid)          |
+| **NREL / NLR**       | Yes (free)      | NSRDB / PVWatts for the Americas (`developer.nrel.gov` / `developer.nlr.gov`) |
+| **Google Solar**     | Yes (metered)   | Rooftop geometry, panel layouts, annual/monthly flux                          |
+| **MapTiler**         | Yes (free tier) | Hillshade / 3D terrain **visuals** — not analytical slope                     |
+| **Ember**            | Optional        | Live country electricity stats in Insights                                    |
+| **Springer Nature**  | Optional        | Insights → Research literature                                                |
+| **Zenodo**           | Optional        | Insights → Research repository search                                         |
+| **Semantic Scholar** | Optional        | Insights → Research literature                                                |
 
 Browser `npm run dev` proxies PVGIS, NASA POWER and NREL through Vite to avoid CORS. The Tauri shell calls them directly.
 
@@ -172,11 +173,11 @@ Screening checks use the selected profile’s thresholds (slope, GHI/DNI floors,
 
 Routed by System family:
 
-| Family | Workspace |
-| --- | --- |
-| PV | Greenfield packing, first-order or pvlib yield, LCOE in Settings currency |
-| Rooftop PV | Google Solar or local packer; flux overlay when layers load |
-| CSP | Tower (SolarPILOT / DELSOL sketch) or trough (Sunday row packing); PySAM plant energy, SAM FCR LCOE and capital cost in USD |
+| Family     | Workspace                                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
+| PV         | Greenfield packing, first-order or pvlib yield, LCOE in Settings currency                                                   |
+| Rooftop PV | Google Solar or local packer; flux overlay when layers load                                                                 |
+| CSP        | Tower (SolarPILOT / DELSOL sketch) or trough (Sunday row packing); PySAM plant energy, SAM FCR LCOE and capital cost in USD |
 
 Named designs save under the site. HTML export includes schematic + satellite (greenfield and CSP).
 

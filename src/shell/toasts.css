@@ -8,14 +8,16 @@
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-  max-width: 380px;
+  max-width: min(380px, calc(100vw - 24px));
 }
 
 .toast {
   display: flex;
   align-items: flex-start;
   gap: var(--gap);
+  max-width: 100%;
   padding: 10px 8px 10px 12px;
+  overflow: hidden;
   background: var(--surface-container-high);
   border: 1px solid var(--outline-variant);
   border-left-width: 2px;
@@ -32,14 +34,22 @@
 }
 
 .toast__message {
+  overflow: hidden;
   font-size: 12.5px;
   color: var(--on-surface);
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toast__detail {
+  overflow: hidden;
   font-size: 11px;
   line-height: 1.45;
   color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toast--info {

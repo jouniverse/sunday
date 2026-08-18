@@ -6,12 +6,38 @@
  */
 
 import { useEffect } from "react";
+import { useUiStore } from "@/core/store/uiStore";
 import { IconButton } from "@/design-system/controls";
 import { CloseIcon } from "@/design-system/icons";
-import { useUiStore } from "@/core/store/uiStore";
 import "./toasts.css";
 
 const AUTO_DISMISS_MS = 5000;
+
+function looksLikePath(value: string): boolean {
+  return value.startsWith("/") || value.startsWith("~") || /^[A-Za-z]:[\\/]/.test(value);
+}
+
+/** Keep the first segment and the filename so long export paths fit the toast. */
+function shortenPath(path: string): string {
+  const sep = path.includes("\\") && !path.startsWith("/") ? "\\" : "/";
+  const parts = path.split(/[/\\]/).filter(Boolean);
+  if (parts.length <= 3) return path;
+  const file = parts[parts.length - 1];
+  const first = path.startsWith("/") ? `/${parts[0]}` : parts[0];
+  return `${first}${sep}…${sep}${file}`;
+}
+
+function formatToastText(text: string): string {
+  const marker = " to ";
+  const idx = text.lastIndexOf(marker);
+  if (idx !== -1) {
+    const rest = text.slice(idx + marker.length);
+    if (looksLikePath(rest)) return text.slice(0, idx + marker.length) + shortenPath(rest);
+  }
+  const trimmed = text.trim();
+  if (looksLikePath(trimmed)) return shortenPath(trimmed);
+  return text;
+}
 
 export function Toasts() {
   const toasts = useUiStore((state) => state.toasts);
@@ -37,8 +63,14 @@ export function Toasts() {
           role={toast.tone === "error" ? "alert" : "status"}
         >
           <div className="toast__body">
-            <span className="toast__message">{toast.message}</span>
-            {toast.detail && <span className="toast__detail">{toast.detail}</span>}
+            <span className="toast__message" title={toast.message}>
+              {formatToastText(toast.message)}
+            </span>
+            {toast.detail && (
+              <span className="toast__detail" title={toast.detail}>
+                {formatToastText(toast.detail)}
+              </span>
+            )}
           </div>
           <IconButton label="Dismiss" size="sm" onClick={() => dismiss(toast.id)}>
             <CloseIcon size={13} />

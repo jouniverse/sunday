@@ -431,6 +431,11 @@
   border-left: 1px solid var(--outline-variant);
 }
 
+.rooftop-map-controls > .rooftop-map-controls__activate:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
 .rooftop-map-controls__slider {
   display: flex;
   flex-direction: column;

@@ -60,4 +60,26 @@ describe("rooftop packing schematic helpers", () => {
     expect(svg).toContain(`${packing.moduleCount} modules`);
     expect(svg).toContain("path");
   });
+
+  it("omits inactive modules from the HTML schematic", () => {
+    const { polygon } = ringToLocalFrame(RING);
+    const packing = packRooftop({
+      roof: polygon,
+      module: MODULE,
+      orientation: "portrait",
+      gridRotationDegrees: 0,
+    });
+    expect(packing.moduleCount).toBeGreaterThan(1);
+    const full = buildRooftopSchematicSvg({ site, packing });
+    const partial = buildRooftopSchematicSvg({
+      site,
+      packing,
+      inactiveModules: new Set([0]),
+    });
+    expect(partial).toContain(
+      `${packing.moduleCount - 1} active of ${packing.moduleCount} modules`,
+    );
+    const closeCount = (svg: string | null) => (svg?.match(/Z/g) ?? []).length;
+    expect(closeCount(partial)).toBe(closeCount(full) - 1);
+  });
 });

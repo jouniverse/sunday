@@ -60,12 +60,12 @@ export function SidePanel({
 }
 
 /**
- * The right panel needs a reopen affordance once it has collapsed to zero width,
- * so it is rendered as a floating button over the canvas instead.
+ * The right panel needs a reopen affordance once it has collapsed to zero width.
+ * Positioned by the Project canvas overlay column, not by this component.
  */
 export function RightPanelReopen({ onClick }: { onClick: () => void }) {
   return (
-    <div className="canvas__overlay canvas__overlay--top-right">
+    <div className="canvas__overlay">
       <IconButton label="Show the inspector" onClick={onClick}>
         <ChevronLeftIcon />
       </IconButton>

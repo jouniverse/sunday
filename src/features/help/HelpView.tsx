@@ -146,6 +146,20 @@ export function HelpView() {
             NREL SPA via pvlib; the far-field horizon overlay is AWS Terrarium terrain, not trees or
             buildings.
           </p>
+          <p className="help__body">
+            Rooftop Design with Google Solar can show three annual figures at once; they are
+            different quantities. The top-right <strong>Annual DC</strong> is the sum of Google's
+            per-panel <span className="mono">yearlyEnergyDcKwh</span> for currently active panels,
+            scaled to the Module dropdown (your module watts ÷ Google's reference panel watts). The{" "}
+            <strong>configuration ladder</strong> is Google's own discrete configs: DC energy at
+            Google's reference panel, not scaled to your module. <strong>Last estimate</strong> is AC
+            from the pvlib model chain (or the labelled first-order fallback), using the selected
+            module, tilt and azimuth from the first roof segment or the site resource, and the
+            current active capacity. Specific yield from that run does not depend on panel count, so
+            selected and full-layout annuals are specific yield times the corresponding kW. Local
+            packing has no Google DC figure: the top-right annual is the last estimate on the
+            selected (active) modules.
+          </p>
           <SectionLabel>Default loss stack</SectionLabel>
           <p className="help__body">
             Losses compound rather than add. The defaults follow the PVWatts loss stack:{" "}

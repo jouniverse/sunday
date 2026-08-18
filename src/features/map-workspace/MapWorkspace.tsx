@@ -93,7 +93,14 @@ export function MapWorkspace() {
             <MapView />
           </div>
           <MapToolbelt />
-          <DrawReadout />
+          {/*
+            Stack the inspector reopen and the live draw readout so they cannot
+            occupy the same top-right corner when the right panel is collapsed.
+          */}
+          <div className="canvas__overlay-column canvas__overlay-column--top-right">
+            {rightCollapsed && <RightPanelReopen onClick={() => setRightCollapsed(false)} />}
+            <DrawReadout />
+          </div>
           <MapControls />
           {/*
             Same stacking level as MapControls (sibling of the WebGL host).
@@ -103,7 +110,6 @@ export function MapWorkspace() {
             <ResourceRasterLegend />
             <ScaleBar />
           </div>
-          {rightCollapsed && <RightPanelReopen onClick={() => setRightCollapsed(false)} />}
         </main>
 
         <SidePanel
@@ -388,7 +394,7 @@ function DrawReadout() {
       : `${Math.round(measurements.perimeterM)} m`;
 
   return (
-    <div className="canvas__overlay canvas__overlay--top-right draw-readout">
+    <div className="canvas__overlay draw-readout">
       <div className="draw-readout__row">
         <span>Area</span>
         <span className="draw-readout__value">

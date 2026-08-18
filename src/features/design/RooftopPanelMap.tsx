@@ -5,13 +5,18 @@
  * and optional RGB + flux GeoTIFF overlays sit above the Esri basemap.
  */
 
-import { Map as MapLibreMap, Popup, type GeoJSONSource, type MapLayerMouseEvent } from "maplibre-gl";
-import { useEffect, useMemo, useRef } from "react";
+import {
+  type GeoJSONSource,
+  type MapLayerMouseEvent,
+  Map as MapLibreMap,
+  Popup,
+} from "maplibre-gl";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { basemapById } from "@/core/map/basemaps";
 import "@/core/map/maplibre-worker";
-import type { BuildingInsights, GoogleSolarPanel, RoofSegment } from "@/services/solar/types";
 import type { DecodedRaster } from "@/services/solar/geotiff-decode";
 import { imageDataToDataUrl, rasterToImageData } from "@/services/solar/geotiff-decode";
+import type { BuildingInsights, GoogleSolarPanel, RoofSegment } from "@/services/solar/types";
 
 const PANEL_SOURCE = "sunday-google-panels";
 const PANEL_LAYER = "sunday-google-panels-fill";
@@ -117,287 +122,307 @@ export interface RooftopPanelMapProps {
   visible?: boolean;
 }
 
-export function RooftopPanelMap({
-  insights,
-  panelCount,
-  inactivePanels,
-  onTogglePanel,
-  overlays,
-  rgbOpacity = 0.65,
-  showFlux = false,
-  fluxOpacity = 0.55,
-  showPanels = true,
-  visible = true,
-}: RooftopPanelMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapLibreMap | null>(null);
-  const popupRef = useRef<Popup | null>(null);
-  const toggleRef = useRef(onTogglePanel);
-  toggleRef.current = onTogglePanel;
-
-  const energies = useMemo(() => {
-    const slice = insights.solarPanels.slice(0, Math.max(0, panelCount));
-    const values = slice.map((panel) => panel.yearlyEnergyDcKwh);
-    return {
-      min: values.length ? Math.min(...values) : 0,
-      max: values.length ? Math.max(...values) : 1,
-    };
-  }, [insights.solarPanels, panelCount]);
-
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-
-    const style = basemapById("satellite").build({});
-    const map = new MapLibreMap({
-      container: containerRef.current,
-      style,
-      center: [insights.centre[0], insights.centre[1]],
-      zoom: 19,
-      attributionControl: { compact: true },
-    });
-    mapRef.current = map;
-    popupRef.current = new Popup({
-      closeButton: false,
-      closeOnClick: false,
-      offset: 8,
-      className: "sunday-map-popup",
-    });
-
-    map.on("load", () => {
-      map.addSource(PANEL_SOURCE, {
-        type: "geojson",
-        data: panelsGeoJson(
-          insights.solarPanels,
-          panelCount,
-          insights.panelHeightM,
-          insights.panelWidthM,
-          inactivePanels,
-          energies.min,
-          energies.max,
-        ),
-      });
-      map.addLayer({
-        id: PANEL_LAYER,
-        type: "fill",
-        source: PANEL_SOURCE,
-        layout: { visibility: showPanels ? "visible" : "none" },
-        paint: {
-          "fill-color": ["get", "colour"],
-          "fill-opacity": ["case", ["boolean", ["get", "active"], true], 0.7, 0.25],
-        },
-      });
-      map.addLayer({
-        id: PANEL_OUTLINE,
-        type: "line",
-        source: PANEL_SOURCE,
-        layout: { visibility: showPanels ? "visible" : "none" },
-        paint: {
-          "line-color": ["case", ["boolean", ["get", "active"], true], "#422c00", "#2a2824"],
-          "line-width": 1,
-        },
-      });
-
-      map.on("mousemove", PANEL_LAYER, (event: MapLayerMouseEvent) => {
-        map.getCanvas().style.cursor = "";
-        const feature = event.features?.[0];
-        if (!feature || !popupRef.current) return;
-        const energy = feature.properties?.energy;
-        const index = feature.properties?.index;
-        const active = feature.properties?.active;
-        popupRef.current
-          .setLngLat(event.lngLat)
-          .setHTML(
-            `<div style="color:#1b1710;font:12px/1.4 system-ui,sans-serif">` +
-              `<strong>Panel ${Number(index) + 1}</strong><br/>` +
-              `${Number(energy).toFixed(0)} kWh/yr DC` +
-              (active === false || active === "false" ? "<br/><em>Inactive</em>" : "") +
-              `</div>`,
-          )
-          .addTo(map);
-      });
-      map.on("mouseleave", PANEL_LAYER, () => {
-        map.getCanvas().style.cursor = "";
-        popupRef.current?.remove();
-      });
-      map.on("click", PANEL_LAYER, (event: MapLayerMouseEvent) => {
-        const index = event.features?.[0]?.properties?.index;
-        if (index === undefined || index === null) return;
-        toggleRef.current(Number(index));
-      });
-    });
-
-    return () => {
-      popupRef.current?.remove();
-      map.remove();
-      mapRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [insights.centre[0], insights.centre[1], insights.name]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map?.getSource(PANEL_SOURCE)) return;
-    const source = map.getSource(PANEL_SOURCE);
-    if (source && "setData" in source) {
-      (source as GeoJSONSource).setData(
-        panelsGeoJson(
-          insights.solarPanels,
-          panelCount,
-          insights.panelHeightM,
-          insights.panelWidthM,
-          inactivePanels,
-          energies.min,
-          energies.max,
-        ),
-      );
-    }
-  }, [insights, panelCount, inactivePanels, energies.min, energies.max]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const apply = () => {
-      if (!map.getLayer(PANEL_LAYER)) return;
-      const visibility = showPanels ? "visible" : "none";
-      map.setLayoutProperty(PANEL_LAYER, "visibility", visibility);
-      if (map.getLayer(PANEL_OUTLINE)) {
-        map.setLayoutProperty(PANEL_OUTLINE, "visibility", visibility);
-      }
-    };
-    apply();
-    // First toggle can race map load; re-apply once the style is ready.
-    map.once("idle", apply);
-  }, [showPanels]);
-
-  // RGB overlay. Wait for style load so a remount still paints.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const apply = () => {
-      const bounds = overlays?.rgbBounds;
-      const url = overlays?.rgbDataUrl;
-      if (map.getLayer(RGB_LAYER)) map.removeLayer(RGB_LAYER);
-      if (map.getSource(RGB_SOURCE)) map.removeSource(RGB_SOURCE);
-      if (!url || !bounds) return;
-      const coordinates: [
-        [number, number],
-        [number, number],
-        [number, number],
-        [number, number],
-      ] = [
-        [bounds.west, bounds.north],
-        [bounds.east, bounds.north],
-        [bounds.east, bounds.south],
-        [bounds.west, bounds.south],
-      ];
-      map.addSource(RGB_SOURCE, { type: "image", url, coordinates });
-      map.addLayer(
-        {
-          id: RGB_LAYER,
-          type: "raster",
-          source: RGB_SOURCE,
-          paint: { "raster-opacity": rgbOpacity },
-        },
-        map.getLayer(PANEL_LAYER) ? PANEL_LAYER : undefined,
-      );
-    };
-    return whenStyleReady(map, apply);
-  }, [overlays?.rgbDataUrl, overlays?.rgbBounds, rgbOpacity]);
-
-  // Annual / monthly flux overlay.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const apply = () => {
-      const raster = overlays?.fluxRaster;
-      if (map.getLayer(FLUX_LAYER)) map.removeLayer(FLUX_LAYER);
-      if (map.getSource(FLUX_SOURCE)) map.removeSource(FLUX_SOURCE);
-      if (!showFlux || !raster?.bounds) return;
-      const dataUrl = imageDataToDataUrl(rasterToImageData(raster));
-      const { west, south, east, north } = raster.bounds;
-      const coordinates: [
-        [number, number],
-        [number, number],
-        [number, number],
-        [number, number],
-      ] = [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-      ];
-      map.addSource(FLUX_SOURCE, { type: "image", url: dataUrl, coordinates });
-      map.addLayer(
-        {
-          id: FLUX_LAYER,
-          type: "raster",
-          source: FLUX_SOURCE,
-          paint: { "raster-opacity": fluxOpacity },
-        },
-        map.getLayer(PANEL_LAYER) ? PANEL_LAYER : undefined,
-      );
-    };
-    return whenStyleReady(map, apply);
-  }, [overlays?.fluxRaster, showFlux, fluxOpacity]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!visible || !map) return;
-    requestAnimationFrame(() => map.resize());
-  }, [visible]);
-
-  const shown = Math.min(panelCount, insights.solarPanels.length);
-  let inactiveShown = 0;
-  for (const index of inactivePanels) {
-    if (index >= 0 && index < shown) inactiveShown += 1;
-  }
-  const activeCount = Math.max(0, shown - inactiveShown);
-  const flux = overlays?.fluxRaster;
-  const showFluxLegend = Boolean(showFlux && flux && !showPanels);
-
-  return (
-    <div className="rooftop-panel-map">
-      <div ref={containerRef} className="rooftop-panel-map__canvas" />
-      <div className="rooftop-panel-map__legend">
-        {showFluxLegend && flux ? (
-          <>
-            <span
-              className="rooftop-panel-map__swatch"
-              style={{ background: "rgb(59, 47, 107)" }}
-            />
-            {flux.min.toFixed(0)}
-            <span className="rooftop-panel-map__swatch rooftop-panel-map__swatch--flux" />
-            <span
-              className="rooftop-panel-map__swatch"
-              style={{ background: "rgb(255, 240, 194)" }}
-            />
-            {flux.max.toFixed(0)} kWh/kWp/yr flux
-          </>
-        ) : (
-          <>
-            <span
-              className="rooftop-panel-map__swatch"
-              style={{ background: energyColour(energies.min, energies.min, energies.max, true) }}
-            />
-            {energies.min.toFixed(0)}
-            <span className="rooftop-panel-map__swatch rooftop-panel-map__swatch--mid" />
-            <span
-              className="rooftop-panel-map__swatch"
-              style={{ background: energyColour(energies.max, energies.min, energies.max, true) }}
-            />
-            {energies.max.toFixed(0)} kWh/yr DC
-          </>
-        )}
-      </div>
-      <p className="rooftop-panel-map__note">
-        {activeCount} active of {shown} shown panels
-        {inactiveShown > 0 ? ` (${inactiveShown} inactive — excluded from totals/exports)` : ""}
-        {showPanels ? " · click a panel to toggle" : " · panels hidden"}. Positions may sit
-        slightly off the Esri basemap; Google RGB aligns better when loaded.
-      </p>
-    </div>
-  );
+export interface RooftopPanelMapHandle {
+  fitToSite: () => void;
 }
+
+export const RooftopPanelMap = forwardRef<RooftopPanelMapHandle, RooftopPanelMapProps>(
+  function RooftopPanelMap(
+    {
+      insights,
+      panelCount,
+      inactivePanels,
+      onTogglePanel,
+      overlays,
+      rgbOpacity = 0.65,
+      showFlux = false,
+      fluxOpacity = 0.55,
+      showPanels = true,
+      visible = true,
+    },
+    ref,
+  ) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<MapLibreMap | null>(null);
+    const popupRef = useRef<Popup | null>(null);
+    const toggleRef = useRef(onTogglePanel);
+    toggleRef.current = onTogglePanel;
+
+    const energies = useMemo(() => {
+      const slice = insights.solarPanels.slice(0, Math.max(0, panelCount));
+      const values = slice.map((panel) => panel.yearlyEnergyDcKwh);
+      return {
+        min: values.length ? Math.min(...values) : 0,
+        max: values.length ? Math.max(...values) : 1,
+      };
+    }, [insights.solarPanels, panelCount]);
+
+    useEffect(() => {
+      if (!containerRef.current || mapRef.current) return;
+
+      const style = basemapById("satellite").build({});
+      const map = new MapLibreMap({
+        container: containerRef.current,
+        style,
+        center: [insights.centre[0], insights.centre[1]],
+        zoom: 19,
+        attributionControl: { compact: true },
+      });
+      mapRef.current = map;
+      popupRef.current = new Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 8,
+        className: "sunday-map-popup",
+      });
+
+      map.on("load", () => {
+        map.addSource(PANEL_SOURCE, {
+          type: "geojson",
+          data: panelsGeoJson(
+            insights.solarPanels,
+            panelCount,
+            insights.panelHeightM,
+            insights.panelWidthM,
+            inactivePanels,
+            energies.min,
+            energies.max,
+          ),
+        });
+        map.addLayer({
+          id: PANEL_LAYER,
+          type: "fill",
+          source: PANEL_SOURCE,
+          layout: { visibility: showPanels ? "visible" : "none" },
+          paint: {
+            "fill-color": ["get", "colour"],
+            "fill-opacity": ["case", ["boolean", ["get", "active"], true], 0.7, 0.25],
+          },
+        });
+        map.addLayer({
+          id: PANEL_OUTLINE,
+          type: "line",
+          source: PANEL_SOURCE,
+          layout: { visibility: showPanels ? "visible" : "none" },
+          paint: {
+            "line-color": ["case", ["boolean", ["get", "active"], true], "#422c00", "#2a2824"],
+            "line-width": 1,
+          },
+        });
+
+        map.on("mousemove", PANEL_LAYER, (event: MapLayerMouseEvent) => {
+          map.getCanvas().style.cursor = "";
+          const feature = event.features?.[0];
+          if (!feature || !popupRef.current) return;
+          const energy = feature.properties?.energy;
+          const index = feature.properties?.index;
+          const active = feature.properties?.active;
+          popupRef.current
+            .setLngLat(event.lngLat)
+            .setHTML(
+              `<div style="color:#1b1710;font:12px/1.4 system-ui,sans-serif">` +
+                `<strong>Panel ${Number(index) + 1}</strong><br/>` +
+                `${Number(energy).toFixed(0)} kWh/yr DC` +
+                (active === false || active === "false" ? "<br/><em>Inactive</em>" : "") +
+                `</div>`,
+            )
+            .addTo(map);
+        });
+        map.on("mouseleave", PANEL_LAYER, () => {
+          map.getCanvas().style.cursor = "";
+          popupRef.current?.remove();
+        });
+        map.on("click", PANEL_LAYER, (event: MapLayerMouseEvent) => {
+          const index = event.features?.[0]?.properties?.index;
+          if (index === undefined || index === null) return;
+          toggleRef.current(Number(index));
+        });
+      });
+
+      return () => {
+        popupRef.current?.remove();
+        map.remove();
+        mapRef.current = null;
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [insights.centre[0], insights.centre[1], insights.name]);
+
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map?.getSource(PANEL_SOURCE)) return;
+      const source = map.getSource(PANEL_SOURCE);
+      if (source && "setData" in source) {
+        (source as GeoJSONSource).setData(
+          panelsGeoJson(
+            insights.solarPanels,
+            panelCount,
+            insights.panelHeightM,
+            insights.panelWidthM,
+            inactivePanels,
+            energies.min,
+            energies.max,
+          ),
+        );
+      }
+    }, [insights, panelCount, inactivePanels, energies.min, energies.max]);
+
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      const apply = () => {
+        if (!map.getLayer(PANEL_LAYER)) return;
+        const visibility = showPanels ? "visible" : "none";
+        map.setLayoutProperty(PANEL_LAYER, "visibility", visibility);
+        if (map.getLayer(PANEL_OUTLINE)) {
+          map.setLayoutProperty(PANEL_OUTLINE, "visibility", visibility);
+        }
+      };
+      apply();
+      // First toggle can race map load; re-apply once the style is ready.
+      map.once("idle", apply);
+    }, [showPanels]);
+
+    // RGB overlay. Wait for style load so a remount still paints.
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      const apply = () => {
+        const bounds = overlays?.rgbBounds;
+        const url = overlays?.rgbDataUrl;
+        if (map.getLayer(RGB_LAYER)) map.removeLayer(RGB_LAYER);
+        if (map.getSource(RGB_SOURCE)) map.removeSource(RGB_SOURCE);
+        if (!url || !bounds) return;
+        const coordinates: [
+          [number, number],
+          [number, number],
+          [number, number],
+          [number, number],
+        ] = [
+          [bounds.west, bounds.north],
+          [bounds.east, bounds.north],
+          [bounds.east, bounds.south],
+          [bounds.west, bounds.south],
+        ];
+        map.addSource(RGB_SOURCE, { type: "image", url, coordinates });
+        map.addLayer(
+          {
+            id: RGB_LAYER,
+            type: "raster",
+            source: RGB_SOURCE,
+            paint: { "raster-opacity": rgbOpacity },
+          },
+          map.getLayer(PANEL_LAYER) ? PANEL_LAYER : undefined,
+        );
+      };
+      return whenStyleReady(map, apply);
+    }, [overlays?.rgbDataUrl, overlays?.rgbBounds, rgbOpacity]);
+
+    // Annual / monthly flux overlay.
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      const apply = () => {
+        const raster = overlays?.fluxRaster;
+        if (map.getLayer(FLUX_LAYER)) map.removeLayer(FLUX_LAYER);
+        if (map.getSource(FLUX_SOURCE)) map.removeSource(FLUX_SOURCE);
+        if (!showFlux || !raster?.bounds) return;
+        const dataUrl = imageDataToDataUrl(rasterToImageData(raster));
+        const { west, south, east, north } = raster.bounds;
+        const coordinates: [
+          [number, number],
+          [number, number],
+          [number, number],
+          [number, number],
+        ] = [
+          [west, north],
+          [east, north],
+          [east, south],
+          [west, south],
+        ];
+        map.addSource(FLUX_SOURCE, { type: "image", url: dataUrl, coordinates });
+        map.addLayer(
+          {
+            id: FLUX_LAYER,
+            type: "raster",
+            source: FLUX_SOURCE,
+            paint: { "raster-opacity": fluxOpacity },
+          },
+          map.getLayer(PANEL_LAYER) ? PANEL_LAYER : undefined,
+        );
+      };
+      return whenStyleReady(map, apply);
+    }, [overlays?.fluxRaster, showFlux, fluxOpacity]);
+
+    useEffect(() => {
+      const map = mapRef.current;
+      if (!visible || !map) return;
+      requestAnimationFrame(() => map.resize());
+    }, [visible]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        fitToSite: () => {
+          const map = mapRef.current;
+          if (map) fitGoogleInsights(map, insights);
+        },
+      }),
+      [insights],
+    );
+
+    const shown = Math.min(panelCount, insights.solarPanels.length);
+    let inactiveShown = 0;
+    for (const index of inactivePanels) {
+      if (index >= 0 && index < shown) inactiveShown += 1;
+    }
+    const activeCount = Math.max(0, shown - inactiveShown);
+    const flux = overlays?.fluxRaster;
+    const showFluxLegend = Boolean(showFlux && flux && !showPanels);
+
+    return (
+      <div className="rooftop-panel-map">
+        <div ref={containerRef} className="rooftop-panel-map__canvas" />
+        <div className="rooftop-panel-map__legend">
+          {showFluxLegend && flux ? (
+            <>
+              <span
+                className="rooftop-panel-map__swatch"
+                style={{ background: "rgb(59, 47, 107)" }}
+              />
+              {flux.min.toFixed(0)}
+              <span className="rooftop-panel-map__swatch rooftop-panel-map__swatch--flux" />
+              <span
+                className="rooftop-panel-map__swatch"
+                style={{ background: "rgb(255, 240, 194)" }}
+              />
+              {flux.max.toFixed(0)} kWh/kWp/yr flux
+            </>
+          ) : (
+            <>
+              <span
+                className="rooftop-panel-map__swatch"
+                style={{ background: energyColour(energies.min, energies.min, energies.max, true) }}
+              />
+              {energies.min.toFixed(0)}
+              <span className="rooftop-panel-map__swatch rooftop-panel-map__swatch--mid" />
+              <span
+                className="rooftop-panel-map__swatch"
+                style={{ background: energyColour(energies.max, energies.min, energies.max, true) }}
+              />
+              {energies.max.toFixed(0)} kWh/yr DC
+            </>
+          )}
+        </div>
+        <p className="rooftop-panel-map__note">
+          {activeCount} active of {shown} shown panels
+          {inactiveShown > 0 ? ` (${inactiveShown} inactive — excluded from totals/exports)` : ""}
+          {showPanels ? " · click a panel to toggle" : " · panels hidden"}. Positions may sit
+          slightly off the Esri basemap; Google RGB aligns better when loaded.
+        </p>
+      </div>
+    );
+  },
+);
 
 export function segmentStatsForPanel(
   insights: BuildingInsights,
@@ -529,4 +554,29 @@ function whenStyleReady(map: MapLibreMap, apply: () => void): () => void {
   return () => {
     map.off("load", apply);
   };
+}
+
+function fitGoogleInsights(map: MapLibreMap, insights: BuildingInsights) {
+  const panels = insights.solarPanels;
+  if (panels.length === 0) {
+    map.easeTo({ center: [insights.centre[0], insights.centre[1]], zoom: 19, duration: 450 });
+    return;
+  }
+  let minLng = Infinity;
+  let minLat = Infinity;
+  let maxLng = -Infinity;
+  let maxLat = -Infinity;
+  for (const panel of panels) {
+    minLng = Math.min(minLng, panel.centre[0]);
+    minLat = Math.min(minLat, panel.centre[1]);
+    maxLng = Math.max(maxLng, panel.centre[0]);
+    maxLat = Math.max(maxLat, panel.centre[1]);
+  }
+  map.fitBounds(
+    [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ],
+    { padding: 48, duration: 450, maxZoom: 21 },
+  );
 }

@@ -91,6 +91,8 @@ export interface SavedDesign {
   googlePanelCount?: number;
   /** Google Solar: zero-based indices of inactive panels among the shown set. */
   inactivePanelIndices?: number[];
+  /** Local rooftop packing: zero-based indices of inactive modules in the packed array. */
+  inactiveLocalModuleIndices?: number[];
   /** Rooftop packer orientation; Google layouts ignore this until insights are cleared. */
   rooftopOrientation?: "portrait" | "landscape";
   rooftopSetbackM?: number;

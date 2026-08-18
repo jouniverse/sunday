@@ -371,6 +371,30 @@
   right: 12px;
 }
 
+/*
+ * Top-right stack: inspector reopen sits above the draw readout so the Area
+ * figure is never covered when the right panel is collapsed.
+ */
+.canvas__overlay-column {
+  position: absolute;
+  z-index: calc(var(--z-map-overlay) + 5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.canvas__overlay-column--top-right {
+  top: 12px;
+  right: 12px;
+}
+
+.canvas__overlay-column .canvas__overlay {
+  position: static;
+  pointer-events: auto;
+}
+
 /* --- Scrollable content view (report, analytics, settings) ---------------- */
 
 .content-view {
