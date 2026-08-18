@@ -237,10 +237,19 @@ Not planned, often requested elsewhere:
 - User-supplied arbitrary rasters beyond the catalogue
 - Paid near-horizon APIs (Shadowmap, LiDAR canopy)
 
-Installable macOS bundle, dataset bundling policy, and a short PDF user manual are the next documentation/review track — not part of this README’s run-from-source beta.
+Installable macOS bundle, dataset bundling policy, and a short PDF user guide are the next documentation/review track — not part of this README’s run-from-source beta.
 
 ---
 
 ## Licence / attribution
 
-Sunday’s own code in this repo follows the project licence. Third-party layers and APIs keep theirs (GEM, PVGIS, NASA POWER, NREL, MapTiler, Solargis / Global Solar Atlas, TZ-SAM, GM-SEUS, WDPA, OSM, ESA WorldCover, Google Solar, Ember, Springer, Zenodo, SAM/PySAM). Attribution is shown in Help, layer metadata, and exports where applicable.
+This project is **Source-Available** for local testing, evaluation, and research
+purposes only. It is **not** open-source under traditional terms (like MIT or GPL).
+
+- You **may** download, run, and audit the code locally.
+- You **may not** modify the code, distribute it, or use it for commercial purposes.
+- Future production versions may become closed-source.
+
+Please see the full [LICENSE](LICENSE) file for exact legal terms and liability disclaimers.
+
+Third-party layers and APIs keep theirs (GEM, PVGIS, NASA POWER, NREL, MapTiler, Solargis / Global Solar Atlas, TZ-SAM, GM-SEUS, WDPA, OSM, ESA WorldCover, Google Solar, Ember, Springer, Zenodo, Semantic Scholar, SAM/PySAM). Attribution is shown in Help, layer metadata, and exports where applicable.
