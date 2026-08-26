@@ -262,6 +262,6 @@ purposes only. It is **not** open-source under traditional terms (like MIT or GP
 - You **may not** modify the code, distribute it, or use it for commercial purposes.
 - Future production versions may become closed-source.
 
-Please see the full [LICENSE](LICENSE) file for exact legal terms and liability disclaimers.
+Please see the full [LICENSE](./LICENSE.md) file for exact legal terms and liability disclaimers.
 
 Third-party layers and APIs keep theirs (GEM, PVGIS, NASA POWER, NREL, MapTiler, Solargis / Global Solar Atlas, TZ-SAM, GM-SEUS, WDPA, OSM, ESA WorldCover, Google Solar, Ember, Springer, Zenodo, Semantic Scholar, SAM/PySAM). Attribution is shown in Help, layer metadata, and exports where applicable.
