@@ -81,9 +81,9 @@ async def engine_error_handler(_request: Request, exc: EngineError) -> JSONRespo
 
 def _csp_guidance(detail: str) -> str:
     text = detail.lower()
-    if "not installed" in text or "nrel-pysam" in text:
+    if "not installed" in text or "nrel-pysam" in text or "nlr-pysam" in text:
         return (
-            "Install the optional sidecar extra: pip install 'nrel-pysam>=5' "
+            "Install the optional sidecar extra: pip install 'nlr-pysam>=8' "
             "(macOS arm64 wheels exist). CSP design still opens; yield stays unavailable until PySAM is present."
         )
     return (

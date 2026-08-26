@@ -1,6 +1,6 @@
 """PySAM probe and CSP compute wrappers.
 
-Lazy-imports NREL-PySAM so pvlib /health stays fast when the optional extra is
+Lazy-imports NLR-PySAM so pvlib /health stays fast when the optional extra is
 absent. Layout and plant routes refuse with guidance rather than inventing MWh.
 
 SSC bundled with PySAM includes LGPL NLopt/lp_solve; we call the wheel, we do
@@ -51,7 +51,7 @@ def probe_pysam() -> PysamProbe:
             trough_plant=False,
             detail=(
                 "PySAM is not installed. From the src-python directory run: "
-                "pip install 'nrel-pysam>=5'  (or: pip install -e '.[csp]'). "
+                "pip install 'nlr-pysam>=8'  (or: pip install -e '.[csp]'). "
                 "Do not run that extra from the Sunday repo root — pyproject.toml lives in src-python."
             ),
         )

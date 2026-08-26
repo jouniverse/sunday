@@ -341,7 +341,7 @@ export function CspDesignView({ site }: { site: Site }) {
         tone: "warning",
         message: "Showing DELSOL spacing sketch",
         detail:
-          "PySAM SolarPILOT is not available. This sketch is not a field layout and is not annual energy. Install nrel-pysam in the sidecar.",
+          "PySAM SolarPILOT is not available. This sketch is not a field layout and is not annual energy. Install nlr-pysam in the sidecar.",
       });
       return;
     }
@@ -397,7 +397,7 @@ export function CspDesignView({ site }: { site: Site }) {
         tone: "warning",
         message: "CSP yield needs PySAM",
         detail:
-          "Install the sidecar extra (`pip install nrel-pysam`) and start the solar engine. Sunday will not invent an annual energy figure.",
+          "Install the sidecar extra (`pip install nlr-pysam`) and start the solar engine. Sunday will not invent an annual energy figure.",
       });
       return;
     }
@@ -774,7 +774,7 @@ export function CspDesignView({ site }: { site: Site }) {
                 <Callout tone="warning">
                   PySAM is not installed in the solar engine. Tower layout falls back to a labelled
                   DELSOL sketch. Annual energy stays unavailable until you install{" "}
-                  <code>nrel-pysam</code>.
+                  <code>nlr-pysam</code>.
                 </Callout>
               )}
 

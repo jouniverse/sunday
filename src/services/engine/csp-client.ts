@@ -59,11 +59,11 @@ async function callCsp<TRequest, TResponse>(endpoint: string, body: TRequest): P
     return await platform().engine.call<TRequest, TResponse>(endpoint, body);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const missing = /not installed|nrel-pysam/i.test(message);
+    const missing = /not installed|nrel-pysam|nlr-pysam/i.test(message);
     throw new EngineUnavailable(
       message,
       missing
-        ? "From src-python run `pip install nrel-pysam` or `npm run engine:csp`, then restart the solar engine. CSP yield is not estimated without PySAM."
+        ? "From src-python run `pip install nlr-pysam` or `npm run engine:csp`, then restart the solar engine. CSP yield is not estimated without PySAM."
         : "The live schematic is still a labelled sketch. Annual energy stays blank until the plant run succeeds. If the status bar still says the engine is live, wait a moment — a native SSC crash is isolated and should not kill the sidecar.",
     );
   }

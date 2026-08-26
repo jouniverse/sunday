@@ -56,7 +56,7 @@ def test_csp_tower_layout_unavailable_is_503(
     assert response.status_code == 503
     body = response.json()
     assert "PySAM" in body["detail"]
-    assert "nrel-pysam" in body["guidance"]
+    assert "nlr-pysam" in body["guidance"]
 
 
 def test_csp_plant_physics_failure_does_not_tell_you_to_reinstall_pysam(
@@ -83,6 +83,7 @@ def test_csp_plant_physics_failure_does_not_tell_you_to_reinstall_pysam(
     body = response.json()
     assert "annual energy" in body["detail"]
     assert "nrel-pysam" not in body["guidance"]
+    assert "nlr-pysam" not in body["guidance"]
     assert "Try Estimate again" in body["guidance"]
 
 

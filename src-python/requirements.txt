@@ -8,9 +8,10 @@ pandas>=2.2
 numpy>=1.26
 tzdata>=2024.1
 
-# Optional CSP extra (NREL-PySAM wraps SSC). Large native wheel; lazy-imported.
-# The extra lives on src-python/pyproject.toml — run from that directory:
-#   cd src-python && pip install 'nrel-pysam>=5'
+# Optional CSP extra (NLR-PySAM wraps SSC). Large native wheel; lazy-imported.
+# PyPI renamed nrel-pysam → nlr-pysam in 8.0.0 (SAM 2026.7.3). The Python
+# import is still `PySAM`. The extra lives on src-python/pyproject.toml:
+#   cd src-python && pip install 'nlr-pysam>=8'
 #   cd src-python && pip install -e '.[csp]'
 # Or from the repo root: npm run engine:csp
 # Bundled SSC includes LGPL NLopt/lp_solve — we ship the wheel, not a fork.

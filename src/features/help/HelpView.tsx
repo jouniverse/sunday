@@ -141,7 +141,7 @@ export function HelpView() {
           </p>
           <p className="help__body">
             CSP annual energy comes from PySAM (SAM SSC) in the same sidecar when{" "}
-            <span className="mono">nrel-pysam</span> is installed. Sunday does not invent a CSP
+            <span className="mono">nlr-pysam</span> is installed. Sunday does not invent a CSP
             megawatt-hour: without PySAM the plant estimate stays blank. Report sun-path traces use
             NREL SPA via pvlib; the far-field horizon overlay is AWS Terrarium terrain, not trees or
             buildings.

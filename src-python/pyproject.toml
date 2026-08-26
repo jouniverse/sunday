@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-csp = ["nrel-pysam>=5.0"]
+csp = ["nlr-pysam>=8.0"]
 dev = ["pytest>=8.3", "httpx>=0.27"]
 
 [build-system]

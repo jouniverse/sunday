@@ -63,7 +63,7 @@ Automation **proposes**; you **dispose**. Envelopes show a feasible range, not a
 | **Python 3.11+**          | pvlib solar engine sidecar                                             |
 | **GDAL ≥ 3.1** (optional) | Convert Solargis GeoTIFFs to COG; vector GPKG → GeoJSON on Install     |
 
-Python packages: see [`src-python/requirements.txt`](src-python/requirements.txt). CSP plant runs also need `nrel-pysam` (`npm run engine:csp`).
+Python packages: see [`src-python/requirements.txt`](src-python/requirements.txt). CSP plant runs also need `nlr-pysam` (`npm run engine:csp`).
 
 ---
 
