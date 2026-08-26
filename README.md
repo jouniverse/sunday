@@ -50,7 +50,7 @@ Automation **proposes**; you **dispose**. Envelopes show a feasible range, not a
 
 **Save.** Projects persist as `.sunday` files (library + export/import). Hierarchy: **project → sites → designs**, and independently **project → screening areas**.
 
-**User manual.** For a more detailed get started guide, see the [SUNDAY_USER_GUIDE](./SUNDAY_USER_GUIDE.pdf).
+**User guide.** For a more detailed get started guide, see the [SUNDAY_USER_GUIDE](./SUNDAY_USER_GUIDE.pdf).
 
 ---
 
