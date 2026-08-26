@@ -196,6 +196,13 @@ function SiteDetail({ site }: { site: Site }) {
   /** Runs the screening soft rules over whatever facts are known. */
   async function runScreening() {
     startBusy("screening", "Running screening checks");
+    // Two frames so React can commit the busy state and the status bar can paint
+    // before WDPA / Terrarium / Overpass occupy the main thread.
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
     try {
       let inProtectedArea: boolean | undefined;
       let protectedAreasAvailable: boolean | undefined;

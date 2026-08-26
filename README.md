@@ -6,6 +6,16 @@ This repository is **developer beta v0.1**. The app is run locally from the term
 
 Sunday is **not a web product**: no Next.js, no serverless backend, no cloud deploy. The UI can still run in a browser via Vite so the interface can be developed without a Rust rebuild.
 
+## UI
+
+![Project - GHI](./imgs/project-ghi.png)
+![Project - Power Grid](./imgs/project-power-grid.png)
+![Project - Terrain Slope](./imgs/project-terrain-slope.png)
+![Design - Greenfield PV](./imgs/design-greenfield-pv.png)
+![Design - Rooftop PV](./imgs/design-rooftop.png)
+![Design - CSP](./imgs/design-csp.png)
+![Report - Sun Path](./imgs/report-sun-path.png)
+
 ---
 
 ## What it does
@@ -39,6 +49,8 @@ Automation **proposes**; you **dispose**. Envelopes show a feasible range, not a
 **Insights.** Portfolio of the open project’s sites, country rankings, statistics, news, World Bank solar projects, research search.
 
 **Save.** Projects persist as `.sunday` files (library + export/import). Hierarchy: **project → sites → designs**, and independently **project → screening areas**.
+
+**User manual.** For a more detailed get started guide, see the [SUNDAY_USER_GUIDE](./SUNDAY_USER_GUIDE.pdf).
 
 ---
 

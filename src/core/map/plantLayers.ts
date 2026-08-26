@@ -355,6 +355,9 @@ export async function refreshPlantLayer(map: MapLibreMap): Promise<void> {
   });
 }
 
+const PLANT_BUSY_KEY = "gem-solar";
+const PLANT_BUSY_LABEL = "Loading solar power plants";
+
 async function paintPlantLayer(map: MapLibreMap): Promise<void> {
   try {
     if (!map.getStyle() || !map.isStyleLoaded()) return;
@@ -368,6 +371,7 @@ async function paintPlantLayer(map: MapLibreMap): Promise<void> {
 
   if (!visible) {
     setPlantVisibility(map, false);
+    useUiStore.getState().endBusy(PLANT_BUSY_KEY);
     return;
   }
 
@@ -376,9 +380,11 @@ async function paintPlantLayer(map: MapLibreMap): Promise<void> {
     ensureLayers(map);
     setPlantVisibility(map, true);
     applyOpacity(map, opacity);
+    useUiStore.getState().endBusy(PLANT_BUSY_KEY);
     return;
   }
 
+  useUiStore.getState().startBusy(PLANT_BUSY_KEY, PLANT_BUSY_LABEL);
   try {
     const data = await ensureCentroidCollection();
     if (!useLayerStore.getState().isVisible("gem-solar")) return;
@@ -403,6 +409,8 @@ async function paintPlantLayer(map: MapLibreMap): Promise<void> {
       message: "Could not load plant layer",
       detail: message,
     });
+  } finally {
+    useUiStore.getState().endBusy(PLANT_BUSY_KEY);
   }
 }
 
@@ -495,6 +503,9 @@ export function installPlantLayerSync(map: MapLibreMap): () => void {
     if (visible === prevVisible && opacity === prevOpacity) return;
     prevVisible = visible;
     prevOpacity = opacity;
+    if (visible && !cachedCollection) {
+      useUiStore.getState().startBusy(PLANT_BUSY_KEY, PLANT_BUSY_LABEL);
+    }
     void refreshPlantLayer(map);
   });
 }
