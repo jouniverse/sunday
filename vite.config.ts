@@ -53,6 +53,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/nasa-power/, ""),
       },
+      "/api/nlr": {
+        target: "https://developer.nlr.gov",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nlr/, ""),
+      },
+      // Former path kept so a stale browser tab still reaches the same host.
       "/api/nrel": {
         target: "https://developer.nlr.gov",
         changeOrigin: true,

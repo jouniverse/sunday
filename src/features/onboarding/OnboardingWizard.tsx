@@ -21,7 +21,7 @@ interface Step {
   title: string;
   body: string;
   /** Null for steps that need nothing configured. */
-  provider: "nrel" | "google_solar" | "maptiler" | null;
+  provider: "nlr" | "google_solar" | "maptiler" | null;
   unlocks: string[];
   keyUrl?: string;
 }
@@ -42,12 +42,12 @@ const STEPS: Step[] = [
     ],
   },
   {
-    id: "nrel",
-    title: "NREL, for the Americas",
+    id: "nlr",
+    title: "NLR, for the Americas",
     body:
       "A free key, issued instantly, adds the National Solar Radiation Database and PVWatts. " +
       "Where it has coverage it is the highest-fidelity free source available.",
-    provider: "nrel",
+    provider: "nlr",
     unlocks: ["NSRDB measured resource", "PVWatts modelled yield"],
     keyUrl: "https://developer.nlr.gov/signup/",
   },

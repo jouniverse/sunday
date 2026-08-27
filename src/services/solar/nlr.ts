@@ -1,10 +1,12 @@
 /**
- * NREL client: solar resource and PVWatts v8.
+ * NLR client: solar resource and PVWatts v8.
  *
  * US-focused and key-gated. Where it has coverage it is the highest-fidelity
  * free source available, because NSRDB is a 4 km satellite product validated
  * against ground stations. Outside the Americas it returns nothing, and the
  * client says so rather than returning zeros.
+ *
+ * The lab was NREL until December 2025; the APIs and datasets are the same.
  */
 
 import { ApiError, query, requestJson } from "../http/client";
@@ -55,17 +57,17 @@ const MONTH_KEYS = [
 /**
  * Long-term average resource: GHI, DNI and latitude-tilt irradiation.
  *
- * NREL reports these as daily means in kWh/m²/day, so they are scaled to annual
+ * NLR reports these as daily means in kWh/m²/day, so they are scaled to annual
  * totals here to match the other providers.
  */
-export async function fetchNrelResource(options: {
+export async function fetchNlrResource(options: {
   latitude: number;
   longitude: number;
   apiKey: string;
   signal?: AbortSignal;
 }): Promise<ResourceReport> {
-  const provider = PROVIDERS.nrel;
-  const url = `${solarApiBase("nrel")}/solar/solar_resource/v1.json?${query({
+  const provider = PROVIDERS.nlr;
+  const url = `${solarApiBase("nlr")}/solar/solar_resource/v1.json?${query({
     api_key: options.apiKey,
     lat: options.latitude,
     lon: options.longitude,
@@ -83,7 +85,7 @@ export async function fetchNrelResource(options: {
       provider: provider.label,
       message: response.errors.join(" "),
       guidance:
-        "NREL's solar resource dataset covers the Americas. Outside that, use PVGIS or NASA POWER.",
+        "NLR's solar resource dataset covers the Americas. Outside that, use PVGIS or NASA POWER.",
     });
   }
 
@@ -94,14 +96,14 @@ export async function fetchNrelResource(options: {
   if (typeof ghiDaily !== "number") {
     throw new ApiError({
       provider: provider.label,
-      message: "NREL returned no annual irradiation for this location",
+      message: "NLR returned no annual irradiation for this location",
       guidance:
         "This location is probably outside NSRDB coverage. PVGIS and NASA POWER are global.",
     });
   }
 
   return {
-    provider: "nrel",
+    provider: "nlr",
     latitude: options.latitude,
     longitude: options.longitude,
     // Daily means to annual totals.
@@ -114,7 +116,7 @@ export async function fetchNrelResource(options: {
     dataset: provider.dataset,
     fidelity: "measured",
     method:
-      "NREL solar resource: long-term monthly and annual averages from the National Solar " +
+      "NLR solar resource: long-term monthly and annual averages from the National Solar " +
       "Radiation Database, scaled from daily means to annual totals.",
     caveats: [`Spatial resolution is ${provider.resolution}.`, ...(response.warnings ?? [])],
     requestUrl: redactKey(url),
@@ -139,10 +141,10 @@ export async function fetchPvWatts(options: {
   groundCoverageRatio?: number;
   signal?: AbortSignal;
 }): Promise<ResourceReport> {
-  const provider = PROVIDERS.nrel;
+  const provider = PROVIDERS.nlr;
   const capacityKwDc = options.capacityKwDc ?? 1;
 
-  const url = `${solarApiBase("nrel")}/pvwatts/v8.json?${query({
+  const url = `${solarApiBase("nlr")}/pvwatts/v8.json?${query({
     api_key: options.apiKey,
     lat: options.latitude,
     lon: options.longitude,
@@ -196,7 +198,7 @@ export async function fetchPvWatts(options: {
   }
 
   return {
-    provider: "nrel",
+    provider: "nlr",
     latitude: options.latitude,
     longitude: options.longitude,
     poaKwhM2Year:
@@ -208,7 +210,7 @@ export async function fetchPvWatts(options: {
     source: provider.attribution,
     dataset: station?.solar_resource_file ?? provider.dataset,
     fidelity: "modelled",
-    method: `NREL PVWatts ${response.version ?? "v8"} with the reported array type and loss assumptions.`,
+    method: `NLR PVWatts ${response.version ?? "v8"} with the reported array type and loss assumptions.`,
     caveats,
     requestUrl: redactKey(url),
   };

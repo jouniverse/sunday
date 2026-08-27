@@ -44,7 +44,7 @@ import { MonthlySeriesChart } from "./MonthlySeriesChart";
 import { SunPathChart } from "./SunPathChart";
 import "./report.css";
 
-const ALL_PROVIDERS: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
+const ALL_PROVIDERS: SolarProvider[] = ["pvgis", "nasa_power", "nlr"];
 
 export function ReportView() {
   const sites = useSiteStore((state) => state.sites);
@@ -219,7 +219,7 @@ function SiteReportPanel({ site }: { site: Site }) {
             </div>
             <p className="report__intro">
               Sunday queries every source it can reach for this location and shows them together.
-              PVGIS and NASA POWER are free and need no key. NREL needs a free key and covers the
+              PVGIS and NASA POWER are free and need no key. NLR needs a free key and covers the
               Americas. Google Solar is queried only from the rooftop workflow, because it is
               metered.
             </p>

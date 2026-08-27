@@ -124,10 +124,24 @@ function read(): StoredSettings {
   };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...empty, ...(JSON.parse(raw) as StoredSettings) } : empty;
+    const settings = raw ? { ...empty, ...(JSON.parse(raw) as StoredSettings) } : empty;
+    if (migrateNrelApiKey(settings)) write(settings);
+    return settings;
   } catch {
     return empty;
   }
+}
+
+/** Lab renamed NREL → NLR in December 2025; keep a previously stored key. */
+function migrateNrelApiKey(settings: StoredSettings): boolean {
+  const keys = settings.apiKeys as Record<string, string | undefined>;
+  const legacy = keys.nrel;
+  if (typeof legacy !== "string") return false;
+  if (!keys.nlr?.trim() && legacy.trim()) {
+    keys.nlr = legacy;
+  }
+  delete keys.nrel;
+  return true;
 }
 
 function write(settings: StoredSettings): void {

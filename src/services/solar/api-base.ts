@@ -8,7 +8,7 @@
  * the webview origin is `http://localhost:1420`.
  */
 
-export type SolarApiHost = "pvgis" | "nasa_power" | "nrel";
+export type SolarApiHost = "pvgis" | "nasa_power" | "nlr";
 
 function isTauriHost(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -26,8 +26,8 @@ export function solarApiBase(host: SolarApiHost): string {
         return "/api/pvgis/api/v5_3";
       case "nasa_power":
         return "/api/nasa-power/api/temporal";
-      case "nrel":
-        return "/api/nrel/api";
+      case "nlr":
+        return "/api/nlr/api";
     }
   }
 
@@ -36,8 +36,8 @@ export function solarApiBase(host: SolarApiHost): string {
       return "https://re.jrc.ec.europa.eu/api/v5_3";
     case "nasa_power":
       return "https://power.larc.nasa.gov/api/temporal";
-    case "nrel":
-      // Federal developer portal host (NLR). developer.nrel.gov often fails DNS.
+    case "nlr":
+      // Federal developer portal. developer.nrel.gov is the former host and often fails DNS.
       return "https://developer.nlr.gov/api";
   }
 }

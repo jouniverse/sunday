@@ -42,7 +42,7 @@ pub struct EngineStatus {
     pub detail: Option<String>,
     /// pvlib version reported by the engine, for provenance in reports.
     pub pvlib_version: Option<String>,
-    /// NREL-PySAM version when the optional CSP extra is installed.
+    /// NLR-PySAM version when the optional CSP extra is installed.
     pub pysam_version: Option<String>,
     pub csp_available: bool,
     /// True when the engine was started by an external process (dev workflow).

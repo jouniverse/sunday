@@ -17,7 +17,7 @@ const FILE_NAME: &str = "settings.json";
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Settings {
-    /// Secret values, keyed by provider id (`google_solar`, `nrel`, ...).
+    /// Secret values, keyed by provider id (`google_solar`, `nlr`, ...).
     pub api_keys: std::collections::BTreeMap<String, String>,
     /// Non-secret preferences owned by the frontend (units, basemap, defaults).
     pub preferences: serde_json::Value,
@@ -110,13 +110,35 @@ pub fn load(paths: &Paths) -> Result<Settings> {
     let text = std::fs::read_to_string(&file)?;
     // A corrupt settings file must not brick the app; start clean but keep a copy.
     match serde_json::from_str(&text) {
-        Ok(settings) => Ok(settings),
+        Ok(mut settings) => {
+            // Lab renamed NREL → NLR in December 2025; keep a previously stored key.
+            if migrate_nrel_api_key(&mut settings) {
+                let _ = save(paths, &settings);
+            }
+            Ok(settings)
+        }
         Err(_) => {
             let backup = file.with_extension("json.corrupt");
             std::fs::rename(&file, &backup).ok();
             Ok(Settings::default())
         }
     }
+}
+
+/// Copies `api_keys.nrel` to `api_keys.nlr` when the new key is empty.
+fn migrate_nrel_api_key(settings: &mut Settings) -> bool {
+    let Some(legacy) = settings.api_keys.remove("nrel") else {
+        return false;
+    };
+    let nlr_empty = settings
+        .api_keys
+        .get("nlr")
+        .map(|value| value.trim().is_empty())
+        .unwrap_or(true);
+    if nlr_empty && !legacy.trim().is_empty() {
+        settings.api_keys.insert("nlr".into(), legacy);
+    }
+    true
 }
 
 pub fn save(paths: &Paths, settings: &Settings) -> Result<()> {
@@ -156,7 +178,7 @@ mod tests {
     fn view_redacts_key_values_and_lists_names() {
         let mut settings = Settings::default();
         settings.api_keys.insert("google_solar".into(), "AIzaSECRET".into());
-        settings.api_keys.insert("nrel".into(), "   ".into());
+        settings.api_keys.insert("nlr".into(), "   ".into());
 
         let view = settings.view(&paths());
         let json = serde_json::to_string(&view).unwrap();
@@ -170,13 +192,13 @@ mod tests {
     fn round_trips_settings_on_disk() {
         let paths = paths();
         let mut settings = Settings::default();
-        settings.api_keys.insert("nrel".into(), "abc123".into());
+        settings.api_keys.insert("nlr".into(), "abc123".into());
         settings.preferences = serde_json::json!({ "units": "metric" });
         settings.onboarding_complete = true;
 
         save(&paths, &settings).unwrap();
         let loaded = load(&paths).unwrap();
-        assert_eq!(loaded.api_keys.get("nrel").map(String::as_str), Some("abc123"));
+        assert_eq!(loaded.api_keys.get("nlr").map(String::as_str), Some("abc123"));
         assert_eq!(loaded.preferences["units"], "metric");
         assert!(loaded.onboarding_complete);
         std::fs::remove_dir_all(paths.config_dir.parent().unwrap()).ok();
@@ -206,6 +228,24 @@ mod tests {
         let settings = load(&paths).unwrap();
         assert!(settings.api_keys.is_empty());
         assert!(paths.settings_file().with_extension("json.corrupt").exists());
+        std::fs::remove_dir_all(&paths.config_dir).ok();
+    }
+
+    #[test]
+    fn migrates_legacy_nrel_key_to_nlr_on_load() {
+        let paths = Paths {
+            config_dir: std::env::temp_dir()
+                .join(format!("sunday-nrel-migrate-{}", std::process::id())),
+            data_dir: std::env::temp_dir().join("sunday-nrel-migrate-data"),
+        };
+        std::fs::create_dir_all(&paths.config_dir).unwrap();
+        let mut legacy = Settings::default();
+        legacy.api_keys.insert("nrel".into(), "legacy-key".into());
+        save(&paths, &legacy).unwrap();
+
+        let loaded = load(&paths).unwrap();
+        assert_eq!(loaded.api_keys.get("nlr").map(String::as_str), Some("legacy-key"));
+        assert!(!loaded.api_keys.contains_key("nrel"));
         std::fs::remove_dir_all(&paths.config_dir).ok();
     }
 }

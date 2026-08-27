@@ -13,7 +13,7 @@
 
 import type { ApiError } from "../http/client";
 import { fetchNasaPowerClimatology } from "./nasa-power";
-import { fetchNrelResource, fetchPvWatts } from "./nrel";
+import { fetchNlrResource, fetchPvWatts } from "./nlr";
 import { fetchPvgisPerformance, fetchPvgisRadiation } from "./pvgis";
 import type { Comparison, ResourceReport, SolarProvider } from "./types";
 import { compareValues } from "./types";
@@ -24,7 +24,7 @@ export interface SiteReportRequest {
   /** Providers to consult. Missing keys are skipped with a stated reason. */
   providers: SolarProvider[];
   /** Resolves a provider's key, or null when it is not configured. */
-  getApiKey: (provider: "google_solar" | "nrel") => Promise<string | null>;
+  getApiKey: (provider: "google_solar" | "nlr") => Promise<string | null>;
   capacityKwDc?: number;
   tiltDegrees?: number;
   azimuthDegrees?: number;
@@ -70,7 +70,7 @@ export interface SiteReport {
  * established: NSRDB at 4 km is measured, PVGIS at 5 km is modelled from
  * satellite, POWER at 1 degree is a regional average.
  */
-const FIDELITY_ORDER: SolarProvider[] = ["nrel", "pvgis", "google_solar", "nasa_power"];
+const FIDELITY_ORDER: SolarProvider[] = ["nlr", "pvgis", "google_solar", "nasa_power"];
 
 /**
  * Optimal tilt preference. PVGIS PVcalc can return nonsensical slopes outside
@@ -78,10 +78,10 @@ const FIDELITY_ORDER: SolarProvider[] = ["nrel", "pvgis", "google_solar", "nasa_
  * NASA POWER’s SI_TILTED_AVG_OPTIMAL_ANG tracks the tilt-near-latitude rule
  * more reliably globally; we still show PVGIS in the comparison table.
  */
-const TILT_ORDER: SolarProvider[] = ["nasa_power", "nrel", "google_solar", "pvgis"];
+const TILT_ORDER: SolarProvider[] = ["nasa_power", "nlr", "google_solar", "pvgis"];
 
 /** Near-surface air temperature: MERRA-2 via POWER is the global default. */
-const AIR_TEMP_ORDER: SolarProvider[] = ["nasa_power", "nrel", "pvgis", "google_solar"];
+const AIR_TEMP_ORDER: SolarProvider[] = ["nasa_power", "nlr", "pvgis", "google_solar"];
 
 export async function generateSiteReport(request: SiteReportRequest): Promise<SiteReport> {
   const outcomes: ProviderOutcome[] = [];
@@ -134,18 +134,18 @@ export async function generateSiteReport(request: SiteReportRequest): Promise<Si
           break;
         }
 
-        case "nrel": {
-          const key = await request.getApiKey("nrel");
+        case "nlr": {
+          const key = await request.getApiKey("nlr");
           if (!key) {
             record({
               provider,
               status: "skipped",
-              reason: "No NREL API key configured.",
-              guidance: "Add a free NREL key in Settings to include NSRDB and PVWatts.",
+              reason: "No NLR API key configured.",
+              guidance: "Add a free NLR key in Settings to include NSRDB and PVWatts.",
             });
             break;
           }
-          const resource = await fetchNrelResource({
+          const resource = await fetchNlrResource({
             latitude: request.latitude,
             longitude: request.longitude,
             apiKey: key,
@@ -168,7 +168,7 @@ export async function generateSiteReport(request: SiteReportRequest): Promise<Si
             // The resource figures are still worth having without PVWatts.
             merged = {
               ...resource,
-              caveats: [...resource.caveats, "PVWatts did not answer, so no modelled yield from NREL."],
+              caveats: [...resource.caveats, "PVWatts did not answer, so no modelled yield from NLR."],
             };
           }
           record({ provider, status: "ok", report: merged });

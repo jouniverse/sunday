@@ -437,6 +437,18 @@
   padding: 24px 0;
 }
 
+.insights__portfolio-nested {
+  display: inline-block;
+  padding-left: 10px;
+  border-left: 2px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+.insights__portfolio-meta {
+  color: var(--on-surface-variant);
+  font-weight: 400;
+}
+
 .insights__wb-detail {
   font-size: 12px;
   line-height: 1.5;

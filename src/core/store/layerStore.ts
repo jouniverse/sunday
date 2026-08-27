@@ -308,7 +308,7 @@ export function isLayerUsable(layer: LayerDefinition): boolean {
   // Runtime unlocks: a key in Settings or an installed dataset makes the layer
   // usable without mutating the catalogue definition permanently.
   if (layer.availability.state === "needs-key") {
-    const provider = layer.availability.provider as "google_solar" | "nrel" | "maptiler" | "stadia";
+    const provider = layer.availability.provider as "google_solar" | "nlr" | "maptiler" | "stadia";
     return useSettingsStore.getState().configuredKeys.includes(provider);
   }
 

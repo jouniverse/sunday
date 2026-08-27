@@ -40,11 +40,11 @@ const PROVIDER_CARDS: ProviderCard[] = [
     url: "https://developers.google.com/maps/documentation/solar/get-api-key",
   },
   {
-    id: "nrel",
-    label: "NREL",
+    id: "nlr",
+    label: "NLR",
     unlocks: "NSRDB solar resource and PVWatts modelled yield across the Americas.",
     free: "Free, issued instantly.",
-    url: "https://developer.nrel.gov/signup/",
+    url: "https://developer.nlr.gov/signup/",
   },
   {
     id: "maptiler",

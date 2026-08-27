@@ -6,7 +6,7 @@
  * field names — is how the reference apps ended up impossible to extend.
  */
 
-export type SolarProvider = "pvgis" | "google_solar" | "nrel" | "nasa_power";
+export type SolarProvider = "pvgis" | "google_solar" | "nlr" | "nasa_power";
 
 export interface ProviderInfo {
   id: SolarProvider;
@@ -42,14 +42,14 @@ export const PROVIDERS: Record<SolarProvider, ProviderInfo> = {
     attribution: "Google Solar API",
     documentation: "https://developers.google.com/maps/documentation/solar",
   },
-  nrel: {
-    id: "nrel",
-    label: "NREL",
+  nlr: {
+    id: "nlr",
+    label: "NLR",
     dataset: "NSRDB / PVWatts v8",
     resolution: "about 4 km",
     coverage: "United States and the Americas",
     requiresKey: true,
-    attribution: "National Renewable Energy Laboratory",
+    attribution: "National Laboratory of the Rockies",
     documentation: "https://developer.nlr.gov/docs/solar/",
   },
   nasa_power: {

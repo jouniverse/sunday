@@ -115,7 +115,7 @@ function SiteDetail({ site }: { site: Site }) {
       let report = cache.get(latitude, longitude);
       const fromCache = Boolean(report);
       if (!report) {
-        const providers: SolarProvider[] = ["pvgis", "nasa_power", "nrel"];
+        const providers: SolarProvider[] = ["pvgis", "nasa_power", "nlr"];
         report = await generateSiteReport({
           latitude,
           longitude,
@@ -456,7 +456,7 @@ function SiteDetail({ site }: { site: Site }) {
       ) : (
         <Callout tone="note">
           No resource data yet. Fetching queries PVGIS and NASA POWER, which are free and need no
-          key, plus NREL if you have configured a key.
+          key, plus NLR if you have configured a key.
         </Callout>
       )}
 

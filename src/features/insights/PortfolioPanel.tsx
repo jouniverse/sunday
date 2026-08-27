@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { Site } from "@/core/store/siteStore";
+import type { SavedDesign, Site } from "@/core/store/siteStore";
 import { useSiteStore } from "@/core/store/siteStore";
 import { useUiStore } from "@/core/store/uiStore";
 import { Button } from "@/design-system/controls";
@@ -25,42 +25,22 @@ import { countryByIso3, loadCountryRankings } from "@/services/datasets/country-
 import { gemOperatingGw, irenaCapacityGw } from "@/services/insights/bundles";
 import { iso3ForLngLat } from "@/services/insights/country-from-point";
 
-/** Sum named-design ratings so CSP MWₑ and rooftop kW show, not only greenfield packing. */
-function designedCapacityKw(site: Site): number | undefined {
-  const fromSaved = (site.designs ?? []).reduce((sum, design) => {
-    if (design.capacityMwe != null && Number.isFinite(design.capacityMwe) && design.capacityMwe > 0) {
-      return sum + design.capacityMwe * 1000;
-    }
-    if (design.capacityKwDc != null && Number.isFinite(design.capacityKwDc) && design.capacityKwDc > 0) {
-      return sum + design.capacityKwDc;
-    }
-    return sum;
-  }, 0);
-  if (fromSaved > 0) return fromSaved;
-
-  const module = site.design ? moduleById(site.design.moduleId) : undefined;
-  if (!site.design || !module || site.areaM2 <= 0) return undefined;
-  return computeFillFactor({
-    usableAreaM2: site.areaM2,
-    module,
-    mount: site.design.mount,
-    tiltDegrees: site.design.tiltDegrees,
-    gcr: site.design.groundCoverageRatio,
-    balanceOfSystemFraction: site.design.balanceOfSystemFraction,
-  }).capacityKwDc;
+function capacityKwOfDesign(design: SavedDesign): number | undefined {
+  if (design.capacityMwe != null && Number.isFinite(design.capacityMwe) && design.capacityMwe > 0) {
+    return design.capacityMwe * 1000;
+  }
+  if (
+    design.capacityKwDc != null &&
+    Number.isFinite(design.capacityKwDc) &&
+    design.capacityKwDc > 0
+  ) {
+    return design.capacityKwDc;
+  }
+  return undefined;
 }
 
-function greenfieldFillFactor(site: Site): number | undefined {
-  const designs = site.designs ?? [];
-  const hasGreenfield = designs.some((design) => design.kind === "greenfield");
-  const onlyOtherFamilies =
-    designs.length > 0 &&
-    !hasGreenfield &&
-    designs.every(
-      (design) =>
-        design.kind === "rooftop" || design.kind === "csp-tower" || design.kind === "csp-trough",
-    );
-  if (onlyOtherFamilies) return undefined;
+/** Working greenfield packing when the site has no named design yet. */
+function workingGreenfieldPacking(site: Site) {
   const module = site.design ? moduleById(site.design.moduleId) : undefined;
   if (!site.design || !module || site.areaM2 <= 0) return undefined;
   return computeFillFactor({
@@ -70,7 +50,79 @@ function greenfieldFillFactor(site: Site): number | undefined {
     tiltDegrees: site.design.tiltDegrees,
     gcr: site.design.groundCoverageRatio,
     balanceOfSystemFraction: site.design.balanceOfSystemFraction,
+  });
+}
+
+function fillFactorOfDesign(site: Site, design: SavedDesign): number | undefined {
+  if (design.kind !== "greenfield") return undefined;
+  const parameters =
+    design.parameters ?? (site.activeDesignId === design.id ? site.design : undefined);
+  const module = parameters ? moduleById(parameters.moduleId) : undefined;
+  if (!parameters || !module || site.areaM2 <= 0) return undefined;
+  return computeFillFactor({
+    usableAreaM2: site.areaM2,
+    module,
+    mount: parameters.mount,
+    tiltDegrees: parameters.tiltDegrees,
+    gcr: parameters.groundCoverageRatio,
+    balanceOfSystemFraction: parameters.balanceOfSystemFraction,
   }).fillFactor;
+}
+
+/**
+ * One rating per site for the header total: the active named design, else the
+ * last saved one, else working packing. Named designs are variations, not
+ * additive subarrays, so they are never summed.
+ */
+function representativeCapacityKw(site: Site): number | undefined {
+  const designs = site.designs ?? [];
+  if (designs.length > 0) {
+    const chosen =
+      designs.find((design) => design.id === site.activeDesignId) ?? designs[designs.length - 1];
+    return chosen ? capacityKwOfDesign(chosen) : undefined;
+  }
+  return workingGreenfieldPacking(site)?.capacityKwDc;
+}
+
+function designKindLabel(kind: SavedDesign["kind"]): string {
+  switch (kind) {
+    case "greenfield":
+      return "Greenfield PV";
+    case "rooftop":
+      return "Rooftop";
+    case "csp-tower":
+      return "CSP tower";
+    case "csp-trough":
+      return "CSP trough";
+  }
+}
+
+function formatCapacity(capacityKw: number | undefined): string {
+  if (capacityKw == null) return "—";
+  const scaled = scalePower(capacityKw);
+  return `${scaled.value} ${scaled.unit}`;
+}
+
+function formatFillFactor(fillFactor: number | undefined): string {
+  if (fillFactor == null) return "—";
+  return `${(fillFactor * 100).toFixed(1)}%`;
+}
+
+interface PortfolioRow {
+  id: string;
+  level: "site" | "design";
+  siteId: string;
+  designId?: string;
+  name: string;
+  designCount: number;
+  active?: boolean;
+  areaM2?: number;
+  ghi?: number;
+  kindLabel?: string;
+  capacityKw?: number;
+  fillFactor?: number;
+  screened?: boolean;
+  blocked?: boolean;
 }
 
 interface CountryCard {
@@ -89,38 +141,55 @@ interface CountryCard {
 export function PortfolioPanel() {
   const sites = useSiteStore((state) => state.sites);
   const selectSite = useSiteStore((state) => state.selectSite);
+  const selectDesign = useSiteStore((state) => state.selectDesign);
   const setView = useUiStore((state) => state.setView);
   const [countryCards, setCountryCards] = useState<CountryCard[]>([]);
   const rankingsMeta = loadCountryRankings();
 
-  const rows = useMemo(
-    () =>
-      sites.map((site) => {
-        const designs = site.designs ?? [];
-        return {
-          id: site.id,
-          name: site.name,
-          areaM2: site.areaM2,
-          ghi: site.resource?.ghiKwhM2Year,
-          capacityKw: designedCapacityKw(site),
-          fillFactor: greenfieldFillFactor(site),
-          designCount: designs.length,
-          designNames: designs.map((design) => design.name).join(", "),
-          blocked: hasBlockingNudge(site.nudges),
-          screened: site.nudges.length > 0,
-        };
-      }),
-    [sites],
-  );
+  const rows = useMemo(() => {
+    const next: PortfolioRow[] = [];
+    for (const site of sites) {
+      const designs = site.designs ?? [];
+      const packing = designs.length === 0 ? workingGreenfieldPacking(site) : undefined;
+      next.push({
+        id: site.id,
+        level: "site",
+        siteId: site.id,
+        name: site.name,
+        designCount: designs.length,
+        areaM2: site.areaM2,
+        ghi: site.resource?.ghiKwhM2Year,
+        capacityKw: packing?.capacityKwDc,
+        fillFactor: packing?.fillFactor,
+        screened: site.nudges.length > 0,
+        blocked: hasBlockingNudge(site.nudges),
+      });
+      for (const design of designs) {
+        next.push({
+          id: `${site.id}/${design.id}`,
+          level: "design",
+          siteId: site.id,
+          designId: design.id,
+          name: design.name,
+          designCount: 0,
+          active: design.id === site.activeDesignId,
+          kindLabel: designKindLabel(design.kind),
+          capacityKw: capacityKwOfDesign(design),
+          fillFactor: fillFactorOfDesign(site, design),
+        });
+      }
+    }
+    return next;
+  }, [sites]);
 
   const totals = useMemo(
     () => ({
-      areaM2: rows.reduce((sum, row) => sum + row.areaM2, 0),
-      capacityKw: rows.reduce((sum, row) => sum + (row.capacityKw ?? 0), 0),
-      designed: rows.filter((row) => row.capacityKw !== undefined).length,
-      blocked: rows.filter((row) => row.blocked).length,
+      areaM2: sites.reduce((sum, site) => sum + site.areaM2, 0),
+      capacityKw: sites.reduce((sum, site) => sum + (representativeCapacityKw(site) ?? 0), 0),
+      designed: sites.filter((site) => representativeCapacityKw(site) !== undefined).length,
+      blocked: sites.filter((site) => hasBlockingNudge(site.nudges)).length,
     }),
-    [rows],
+    [sites],
   );
 
   useEffect(() => {
@@ -196,17 +265,39 @@ export function PortfolioPanel() {
         </div>
 
         <DataGrid
-          caption="Sites in this project"
+          caption="Sites and designs in this project"
           columns={[
-            { key: "name", header: "Site", render: (row) => row.name },
+            {
+              key: "name",
+              header: "Site",
+              render: (row) =>
+                row.level === "design" ? (
+                  <span className="insights__portfolio-nested">
+                    {row.name}
+                    {row.active ? " · active" : ""}
+                  </span>
+                ) : (
+                  <>
+                    {row.name}
+                    {row.designCount > 0 && (
+                      <span className="insights__portfolio-meta">
+                        {" "}
+                        · {row.designCount} design{row.designCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </>
+                ),
+            },
             {
               key: "area",
               header: "Area",
               numeric: true,
-              render: (row) =>
-                row.areaM2 > 0
-                  ? `${scaleArea(row.areaM2).value} ${scaleArea(row.areaM2).unit}`
-                  : "point",
+              render: (row) => {
+                if (row.level === "design" || row.areaM2 == null) return "—";
+                if (row.areaM2 <= 0) return "point";
+                const area = scaleArea(row.areaM2);
+                return `${area.value} ${area.unit}`;
+              },
             },
             {
               key: "ghi",
@@ -215,43 +306,50 @@ export function PortfolioPanel() {
               render: (row) => (row.ghi ? formatNumber(row.ghi, 0) : "—"),
             },
             {
-              key: "designs",
-              header: "Designs",
-              render: (row) =>
-                row.designCount > 0 ? row.designNames : "—",
+              key: "kind",
+              header: "Kind",
+              render: (row) => row.kindLabel ?? "—",
             },
             {
               key: "capacity",
               header: "Capacity",
               numeric: true,
-              render: (row) =>
-                row.capacityKw
-                  ? `${scalePower(row.capacityKw).value} ${scalePower(row.capacityKw).unit}`
-                  : "—",
+              render: (row) => formatCapacity(row.capacityKw),
             },
             {
               key: "fill",
               header: "Fill factor",
               numeric: true,
-              render: (row) => (row.fillFactor ? `${(row.fillFactor * 100).toFixed(1)}%` : "—"),
+              render: (row) => formatFillFactor(row.fillFactor),
             },
             {
               key: "screening",
               header: "Screening",
-              render: (row) =>
-                !row.screened ? "not run" : row.blocked ? "blocking issues" : "no obstacles",
+              render: (row) => {
+                if (row.level === "design") return "—";
+                if (!row.screened) return "not run";
+                return row.blocked ? "blocking issues" : "no obstacles";
+              },
             },
           ]}
           rows={rows}
           rowKey={(row) => row.id}
           onRowClick={(row) => {
-            selectSite(row.id);
+            selectSite(row.siteId);
+            if (row.level === "design" && row.designId) {
+              selectDesign(row.siteId, row.designId);
+              setView("design");
+              return;
+            }
             setView("map");
           }}
         />
         <p className="report__units">
-          {totals.designed} of {sites.length} sites have a saved or working design. Capacity sums
-          named designs (PV kW DC and CSP MWₑ). Click a row to open it on the map.
+          {totals.designed} of {sites.length} sites have a saved or working design. Named designs
+          are variations of a site, not additive plants — each row shows that design’s own capacity
+          (PV kW DC or CSP MWₑ). Fill factor is module area over usable site area for greenfield
+          packing; rooftop and CSP have none. Designed capacity above uses the active design on each
+          site. Click a site to open it on the map, or a design to open it in Design.
         </p>
       </div>
 

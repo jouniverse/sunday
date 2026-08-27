@@ -36,7 +36,7 @@ Automation **proposes**; you **dispose**. Envelopes show a feasible range, not a
 
 **Screen a region.** Open **Project**. Draw a screening area if you want windowed map layers. Toggle Solar Resource (GHI / DNI / PVOUT), plants, grid, protected areas, land cover, or slope in the left panel. Layers that need a file or a key explain what is missing.
 
-**Add a site.** Draw site (click corners, Enter or click the first corner to finish; Escape cancels) or Mark location. Fetch solar resource (PVGIS and NASA POWER need no key; NREL needs a key). Run screening checks with a profile: PV fixed, PV tracker, CSP, or rooftop. That chip is saved on the site and is independent of Design’s System family.
+**Add a site.** Draw site (click corners, Enter or click the first corner to finish; Escape cancels) or Mark location. Fetch solar resource (PVGIS and NASA POWER need no key; NLR needs a key). Run screening checks with a profile: PV fixed, PV tracker, CSP, or rooftop. That chip is saved on the site and is independent of Design’s System family.
 
 **Design.** In the inspector, set System to PV, Rooftop PV, or CSP, then open **Design**.
 
@@ -161,7 +161,7 @@ Configure keys in **Settings** (write-only; never shown again). Onboarding cover
 | -------------------- | --------------- | ----------------------------------------------------------------------------- |
 | **PVGIS**            | No              | Global-ish climatology and PV yield (~5 km; weak at high latitudes)           |
 | **NASA POWER**       | No              | Global climatology, tilt, temperature, cloud amount (~1° solar grid)          |
-| **NREL / NLR**       | Yes (free)      | NSRDB / PVWatts for the Americas (`developer.nrel.gov` / `developer.nlr.gov`) |
+| **NLR**              | Yes (free)      | NSRDB / PVWatts for the Americas (`developer.nlr.gov`)                        |
 | **Google Solar**     | Yes (metered)   | Rooftop geometry, panel layouts, annual/monthly flux                          |
 | **MapTiler**         | Yes (free tier) | Hillshade / 3D terrain **visuals** — not analytical slope                     |
 | **Ember**            | Optional        | Live country electricity stats in Insights                                    |
@@ -169,7 +169,7 @@ Configure keys in **Settings** (write-only; never shown again). Onboarding cover
 | **Zenodo**           | Optional        | Insights → Research repository search                                         |
 | **Semantic Scholar** | Optional        | Insights → Research literature                                                |
 
-Browser `npm run dev` proxies PVGIS, NASA POWER and NREL through Vite to avoid CORS. The Tauri shell calls them directly.
+Browser `npm run dev` proxies PVGIS, NASA POWER and NLR through Vite to avoid CORS. The Tauri shell calls them directly.
 
 ---
 
@@ -264,4 +264,4 @@ purposes only. It is **not** open-source under traditional terms (like MIT or GP
 
 Please see the full [LICENSE](./LICENSE.md) file for exact legal terms and liability disclaimers.
 
-Third-party layers and APIs keep theirs (GEM, PVGIS, NASA POWER, NREL, MapTiler, Solargis / Global Solar Atlas, TZ-SAM, GM-SEUS, WDPA, OSM, ESA WorldCover, Google Solar, Ember, Springer, Zenodo, Semantic Scholar, SAM/PySAM). Attribution is shown in Help, layer metadata, and exports where applicable.
+Third-party layers and APIs keep theirs (GEM, PVGIS, NASA POWER, NLR, MapTiler, Solargis / Global Solar Atlas, TZ-SAM, GM-SEUS, WDPA, OSM, ESA WorldCover, Google Solar, Ember, Springer, Zenodo, Semantic Scholar, SAM/PySAM). Attribution is shown in Help, layer metadata, and exports where applicable.

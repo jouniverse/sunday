@@ -71,7 +71,7 @@ export interface AppInfo {
 /** Providers that need a key. PVGIS and NASA POWER deliberately do not. */
 export type ApiProvider =
   | "google_solar"
-  | "nrel"
+  | "nlr"
   | "maptiler"
   | "stadia"
   | "ember"

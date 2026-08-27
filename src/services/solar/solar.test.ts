@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearHttpCache } from "../http/client";
 import { fetchNasaPowerClimatology } from "./nasa-power";
-import { fetchNrelResource, fetchPvWatts, redactKey } from "./nrel";
+import { fetchNlrResource, fetchPvWatts, redactKey } from "./nlr";
 import { generateSiteReport } from "./orchestrator";
 import {
   climatologyFromMrcalc,
@@ -274,9 +274,9 @@ describe("NASA POWER", () => {
   });
 });
 
-/* --- NREL ----------------------------------------------------------------- */
+/* --- NLR ------------------------------------------------------------------ */
 
-describe("NREL", () => {
+describe("NLR", () => {
   const RESOURCE = {
     outputs: {
       avg_ghi: { annual: 5.5, monthly: monthlyLower(5.5) },
@@ -304,7 +304,7 @@ describe("NREL", () => {
 
   it("scales daily means to annual totals", async () => {
     stubFetch([{ match: "solar_resource", body: RESOURCE }]);
-    const report = await fetchNrelResource({
+    const report = await fetchNlrResource({
       latitude: 35,
       longitude: -118,
       apiKey: "SECRET",
@@ -319,7 +319,7 @@ describe("NREL", () => {
 
   it("never stores the API key in the recorded request", async () => {
     stubFetch([{ match: "solar_resource", body: RESOURCE }]);
-    const report = await fetchNrelResource({
+    const report = await fetchNlrResource({
       latitude: 35,
       longitude: -118,
       apiKey: "SUPERSECRET",
@@ -338,7 +338,7 @@ describe("NREL", () => {
   it("explains an out-of-coverage location", async () => {
     stubFetch([{ match: "solar_resource", body: { errors: ["No data for this location"] } }]);
     await expect(
-      fetchNrelResource({ latitude: 60, longitude: 25, apiKey: "K" }),
+      fetchNlrResource({ latitude: 60, longitude: 25, apiKey: "K" }),
     ).rejects.toMatchObject({ guidance: expect.stringContaining("Americas") });
   });
 
@@ -397,7 +397,7 @@ describe("source comparison", () => {
   it("ignores missing values instead of treating them as zero", () => {
     const comparison = compareValues("DNI", "kWh/m²/yr", [
       { provider: "pvgis", value: 2000, fidelity: "modelled" },
-      { provider: "nrel", value: undefined, fidelity: "measured" },
+      { provider: "nlr", value: undefined, fidelity: "measured" },
     ]);
     expect(comparison?.values).toHaveLength(1);
     expect(comparison?.significant).toBe(false);
@@ -497,11 +497,11 @@ describe("site report orchestration", () => {
     const report = await generateSiteReport({
       latitude: 35,
       longitude: -118,
-      providers: ["pvgis", "nrel"],
+      providers: ["pvgis", "nlr"],
       getApiKey: noKeys,
     });
 
-    const skipped = report.outcomes.find((outcome) => outcome.provider === "nrel");
+    const skipped = report.outcomes.find((outcome) => outcome.provider === "nlr");
     expect(skipped?.status).toBe("skipped");
     expect(skipped?.guidance).toContain("Settings");
   });
